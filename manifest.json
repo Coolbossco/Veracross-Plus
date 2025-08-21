@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "Veracross Plus",
+    "version": "0.1.0",
+    "permissions": ["storage"],
+    "host_permissions": [
+      "*://*.veracross.com/*",
+      "*://*.myveracross.com/*",
+      "*://portals.veracross.com/*",
+      "*://portals-embed.veracross.com/*"
+    ],
+    "content_scripts": [
+      {
+        "matches": [
+          "*://*.veracross.com/*",
+          "*://*.myveracross.com/*",
+          "*://portals.veracross.com/*",
+          "*://portals-embed.veracross.com/*"
+        ],
+        "js": ["content.js"],
+        "css": ["styles.css"],
+        "run_at": "document_end",
+        "all_frames": true
+      }
+    ],
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "Veracross Plus"
+    },
+    "options_page": "options.html"
+  }
