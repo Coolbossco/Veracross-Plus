@@ -97,19 +97,36 @@ const DEFAULTS = {
       if (assignmentCount >= 3) {
         console.log(`${DEBUG_PREFIX} Timeline cell ${index + 1} needs scrolling (${assignmentCount} assignments)`);
         
-        // Method 2: Make scrollable (keeps layout clean)
-        cell.style.height = '120px';
-        cell.style.maxHeight = '120px';
+        // Calculate the actual content height needed for all assignments
+        let totalContentHeight = 0;
+        assignments.forEach(assignment => {
+          // Get the computed height of each assignment element
+          const assignmentHeight = assignment.offsetHeight || assignment.scrollHeight || 40; // fallback to 40px
+          totalContentHeight += assignmentHeight;
+        });
+        
+        // Add some padding for better spacing
+        totalContentHeight += 16; // 8px top + 8px bottom padding
+        
+        // Set cell height to accommodate 2 assignments plus some space for scrolling
+        const visibleHeight = Math.min(100, totalContentHeight - 15); // Show most content but leave room to scroll
+        const maxHeight = Math.max(100, totalContentHeight); // Allow full content height
+        
+        console.log(`${DEBUG_PREFIX} Cell ${index + 1} content height: ${totalContentHeight}px, visible: ${visibleHeight}px, max: ${maxHeight}px`);
+        
+        // Make scrollable with proper height calculations - keep width minimal
+        cell.style.height = `${visibleHeight}px`;
+        cell.style.maxHeight = `${maxHeight}px`;
         cell.style.overflowY = 'auto';
         cell.style.overflowX = 'hidden';
         cell.style.verticalAlign = 'top';
-        cell.style.padding = '4px';
+        // Remove all width and padding styling - let cell size naturally
         cell.classList.add('scrollable');
         
         // Don't expand parent row - keep table layout consistent
         const parentRow = cell.closest('tr');
         if (parentRow) {
-          parentRow.style.height = '120px';
+          parentRow.style.height = `${visibleHeight}px`;
           console.log(`${DEBUG_PREFIX} Set consistent row height for cell ${index + 1}`);
         }
         
@@ -203,6 +220,49 @@ const DEFAULTS = {
       rowsWithAssignments,
       timestamp: new Date().toISOString()
     });
+  }
+
+  // Enhanced scrolling function specifically for timeline cells
+  function enhanceTimelineScrolling() {
+    console.log(`${DEBUG_PREFIX} Enhancing timeline scrolling...`);
+    
+    // Find all scrollable timeline cells
+    const scrollableCells = document.querySelectorAll('.timeline-cell.scrollable');
+    console.log(`${DEBUG_PREFIX} Found ${scrollableCells.length} scrollable cells to enhance`);
+    
+    scrollableCells.forEach((cell, index) => {
+      const assignments = cell.querySelectorAll('.assignment');
+      if (assignments.length >= 3) {
+        // Recalculate heights to ensure proper scrolling
+        let totalContentHeight = 0;
+        assignments.forEach(assignment => {
+          const assignmentHeight = assignment.offsetHeight || assignment.scrollHeight || 40;
+          totalContentHeight += assignmentHeight;
+        });
+        
+        // Ensure there's enough scrollable content
+        const visibleHeight = Math.min(100, totalContentHeight - 15);
+        const maxHeight = Math.max(100, totalContentHeight);
+        
+        // Update cell dimensions for better scrolling - keep width minimal
+        cell.style.height = `${visibleHeight}px`;
+        cell.style.maxHeight = `${maxHeight}px`;
+        cell.style.overflowY = 'auto';
+        cell.style.overflowX = 'hidden';
+        // Remove all width and padding styling - let cell size naturally
+        
+        console.log(`${DEBUG_PREFIX} Enhanced scrolling for cell ${index + 1}: visible=${visibleHeight}px, max=${maxHeight}px, content=${totalContentHeight}px`);
+      }
+    });
+  }
+
+  // Handle window resize events to recalculate scrolling
+  function handleWindowResize() {
+    console.log(`${DEBUG_PREFIX} Window resized, recalculating scrolling...`);
+    setTimeout(() => {
+      fixClippingIssues();
+      enhanceTimelineScrolling();
+    }, 100);
   }
 
   // ———————————————— Feature 1: Homework checklist ————————————————
@@ -552,6 +612,8 @@ const DEFAULTS = {
       console.log(`${DEBUG_PREFIX} Applying initial clipping fixes...`);
       // Fix clipping issues first
       fixClippingIssues();
+      // Also enhance scrolling for timeline cells
+      setTimeout(() => enhanceTimelineScrolling(), 100);
       
       // For Veracross timeline, wait for the timeline to be rendered
       if (location.hostname.includes('veracross') || location.hostname.includes('portals')) {
@@ -572,14 +634,17 @@ const DEFAULTS = {
             setTimeout(() => {
               console.log(`${DEBUG_PREFIX} Applying clipping fix (500ms delay)`);
               fixClippingIssues();
+              enhanceTimelineScrolling();
             }, 500);
             setTimeout(() => {
               console.log(`${DEBUG_PREFIX} Applying clipping fix (1000ms delay)`);
               fixClippingIssues();
+              enhanceTimelineScrolling();
             }, 1000);
             setTimeout(() => {
               console.log(`${DEBUG_PREFIX} Applying clipping fix (2000ms delay)`);
               fixClippingIssues();
+              enhanceTimelineScrolling();
             }, 2000);
           } else if (timelineCheckCount < maxChecks) {
             console.log(`${DEBUG_PREFIX} Timeline not found yet, retrying in 100ms... (${timelineCheckCount}/${maxChecks})`);
@@ -596,9 +661,28 @@ const DEFAULTS = {
       const clipObserver = new MutationObserver((mutations) => {
         console.log(`${DEBUG_PREFIX} DOM mutations detected (${mutations.length} mutations), reapplying fixes...`);
         fixClippingIssues();
+        // Also enhance scrolling for any new scrollable cells
+        setTimeout(() => enhanceTimelineScrolling(), 100);
       });
       clipObserver.observe(document.documentElement, { childList: true, subtree: true });
       console.log(`${DEBUG_PREFIX} Mutation observer active`);
+
+      // Add window resize listener for responsive scrolling
+      console.log(`${DEBUG_PREFIX} Setting up window resize listener...`);
+      window.addEventListener('resize', handleWindowResize);
+      console.log(`${DEBUG_PREFIX} Window resize listener active`);
+      
+      // Add scroll event listener to fix alignment issues during horizontal scrolling
+      console.log(`${DEBUG_PREFIX} Setting up scroll listener for alignment fixes...`);
+      const scrollContainer = document.querySelector('.timeline-table-wrapper, .timeline-records-wrapper, .timeline-wrapper, .timeline-table, .timeline-records') || document;
+      scrollContainer.addEventListener('scroll', () => {
+        // Debounce the scroll event to avoid excessive calls
+        clearTimeout(scrollContainer.scrollTimeout);
+        scrollContainer.scrollTimeout = setTimeout(() => {
+          // fixTableAlignment(); // This function is removed
+        }, 100);
+      });
+      console.log(`${DEBUG_PREFIX} Scroll listener active`);
 
       if (settings.enableChecklist) {
         console.log(`${DEBUG_PREFIX} Checklist feature is ENABLED - applying checklist`);
@@ -619,10 +703,14 @@ const DEFAULTS = {
           document.addEventListener('DOMContentLoaded', () => {
             console.log(`${DEBUG_PREFIX} DOMContentLoaded fired, applying checklist`);
             applyChecklistToDocument(document, checked);
+            // Recalculate scrolling after checkboxes are added
+            setTimeout(() => enhanceTimelineScrolling(), 200);
           });
         } else {
           console.log(`${DEBUG_PREFIX} DOM ready, applying checklist immediately`);
           applyChecklistToDocument(document, checked);
+          // Recalculate scrolling after checkboxes are added
+          setTimeout(() => enhanceTimelineScrolling(), 200);
         }
       } else {
         console.log(`${DEBUG_PREFIX} Checklist feature is DISABLED`);

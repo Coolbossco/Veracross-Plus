@@ -13,12 +13,12 @@
 
 /* Enhanced checkbox styling - much smaller */
 .vch-checkbox {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   margin: 0;
   cursor: pointer;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 3px;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
   background: white;
   transition: all 0.2s ease;
   position: relative;
@@ -54,10 +54,10 @@
 /* Assignment type indicator bars - smaller */
 .vch-task-wrap::before {
   content: '';
-  width: 3px;
-  height: 16px;
-  margin-right: 6px;
-  border-radius: 1.5px;
+  width: 2px;
+  height: 14px;
+  margin-right: 4px;
+  border-radius: 1px;
   flex-shrink: 0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   pointer-events: none;
@@ -117,9 +117,9 @@
 /* Better integration with Veracross assignment boxes - more compact */
 .vch-task-wrap {
   background: rgba(255, 255, 255, 0.8);
-  border-radius: 4px;
-  padding: 2px 4px;
-  margin: 1px 2px 1px 0;
+  border-radius: 2px;
+  padding: 1px 2px;
+  margin: 0px 1px 0px 0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(0, 0, 0, 0.03);
   pointer-events: auto;
@@ -228,93 +228,20 @@
   }
   
   .vch-task-wrap {
-    margin-right: 4px;
-    padding: 1px 3px;
+    margin-right: 2px;
+    padding: 1px 2px;
   }
   
   .vch-checkbox {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
   }
   
   .vch-task-wrap::before {
-    width: 2px;
-    height: 14px;
-    margin-right: 4px;
+    width: 1px;
+    height: 12px;
+    margin-right: 2px;
   }
-}
-
-/* Clean scrollable approach for timeline-cell divs with multiple assignments */
-.timeline-cell {
-  vertical-align: top !important;
-}
-
-/* Scrollable styling for timeline cells with 3+ assignments */
-.timeline-cell.scrollable {
-  height: 120px !important;
-  max-height: 120px !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  vertical-align: top !important;
-  padding: 4px !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  border-radius: 4px !important;
-}
-
-/* Custom scrollbar for timeline cells */
-.timeline-cell.scrollable::-webkit-scrollbar {
-  width: 4px;
-}
-
-.timeline-cell.scrollable::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 2px;
-}
-
-.timeline-cell.scrollable::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 2px;
-}
-
-.timeline-cell.scrollable::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-/* Ensure consistent row heights */
-tr:has(.timeline-cell.scrollable) {
-  height: 120px !important;
-}
-
-/* Keep assignments nicely spaced in scrollable cells */
-.timeline-cell.scrollable .assignment {
-  margin-bottom: 4px !important;
-}
-
-.timeline-cell.scrollable .assignment:last-child {
-  margin-bottom: 0 !important;
-}
-
-/* Simple fix for assignment cell overflow - expand row height to show all assignments */
-.timeline-records tr,
-.timeline-records-inner tr,
-.timeline-table tr,
-tr:has(td[class*="assignment"]),
-tr:has(td:has([class*="assignment"])) {
-  height: auto !important;
-  min-height: 120px !important;
-}
-
-.timeline-records td,
-.timeline-records-inner td,
-.timeline-table td,
-td[data-date],
-td[class*="timeline"],
-td[class*="assignment"],
-td[class*="day"] {
-  height: auto !important;
-  min-height: 120px !important;
-  vertical-align: top !important;
-  padding: 8px !important;
 }
 
 /* Dark mode support */
@@ -346,4 +273,95 @@ td[class*="day"] {
   .vch-task-wrap:hover {
     background: rgba(60, 60, 60, 0.95);
   }
+}
+
+/* Fix for scrollable cells - ensure proper background and scrollbar styling */
+.timeline-cell.scrollable {
+  background: #FFFFDC !important; /* Light yellow background to match timeline cells */
+  background-clip: content-box !important; /* Ensure background covers the entire scrollable area */
+  min-height: 100% !important; /* Ensure minimum height covers scrollable area */
+}
+
+/* Fix scrollbar styling to prevent white bits */
+.timeline-cell.scrollable::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Ensure scrollable cells have proper background - don't inherit */
+.timeline-cell.scrollable {
+  background: #FFFFDC !important; /* Light yellow background */
+}
+
+/* Fix the white bar issue by ensuring background covers full scrollable area */
+.timeline-cell.scrollable {
+  background: #FFFFDC !important;
+  background-clip: content-box !important;
+  min-height: 100% !important;
+  position: relative !important;
+}
+
+/* Ensure the background extends to cover the entire scrollable region */
+.timeline-cell.scrollable::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: #FFFFDC !important;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Comprehensive fix for white bars in scrollable cells */
+.timeline-cell.scrollable,
+.timeline-cell.scrollable::before,
+.timeline-cell.scrollable::after {
+  background: #FFFFDC !important;
+}
+
+/* Target specific elements that might cause white bars */
+.timeline-cell.scrollable .assignment,
+.timeline-cell.scrollable .homework,
+.timeline-cell.scrollable .test,
+.timeline-cell.scrollable .paper,
+.timeline-cell.scrollable .quiz,
+.timeline-cell.scrollable .classwork {
+  background: #FFFFDC !important;
+}
+
+/* Fix for any pseudo-elements or borders that might show white */
+.timeline-cell.scrollable {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure no white backgrounds from any child elements */
+/* Removed the problematic universal selector that was applying light yellow to everything */
+
+/* Fix assignment backgrounds to be white */
+.timeline-cell.scrollable .assignment,
+.timeline-cell.scrollable .homework,
+.timeline-cell.scrollable .test,
+.timeline-cell.scrollable .paper,
+.timeline-cell.scrollable .quiz,
+.timeline-cell.scrollable .classwork,
+.timeline-cell.scrollable [data-assignment-id] {
+  background: white !important;
 }
