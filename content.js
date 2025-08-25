@@ -1,12 +1,13 @@
 // Veracross Plus — content script (MVP)
 // Adds: (1) homework checkboxes (2) exact % estimator (3) optional home redirect
 
-
+// Debug logging prefix for easy identification
+const DEBUG_PREFIX = '[Veracross Plus]';
 
 // Add global error handling to catch any JavaScript errors
 window.addEventListener('error', (event) => {
-  console.error('Veracross Plus: Global error caught:', event.error);
-  console.error('Veracross Plus: Error details:', {
+  console.error(`${DEBUG_PREFIX} Global error caught:`, event.error);
+  console.error(`${DEBUG_PREFIX} Error details:`, {
     message: event.message,
     filename: event.filename,
     lineno: event.lineno,
@@ -16,14 +17,14 @@ window.addEventListener('error', (event) => {
 
 // Also catch unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('Veracross Plus: Unhandled promise rejection:', event.reason);
+  console.error(`${DEBUG_PREFIX} Unhandled promise rejection:`, event.reason);
 });
 
 
 
 const DEFAULTS = {
-    enableChecklist: true,
-    enableEstimator: true,
+    enableChecklist: false,
+    enableEstimator: false,
     enableHomeRedirect: false,
     homeUrl: "" // e.g., "/student/schedule/weekly" or a full URL
   };
@@ -39,25 +40,171 @@ const DEFAULTS = {
   }
   
   function loadSettings() {
+    console.log(`${DEBUG_PREFIX} Loading settings...`);
     return new Promise(resolve => {
-      chrome.storage.sync.get(DEFAULTS, resolve);
+      chrome.storage.sync.get(DEFAULTS, (result) => {
+        console.log(`${DEBUG_PREFIX} Settings loaded:`, result);
+        resolve(result);
+      });
     });
   }
   
   function saveSettings(changes) {
+    console.log(`${DEBUG_PREFIX} Saving settings:`, changes);
     return new Promise(resolve => {
-      chrome.storage.sync.set(changes, resolve);
+      chrome.storage.sync.set(changes, () => {
+        console.log(`${DEBUG_PREFIX} Settings saved successfully`);
+        resolve();
+      });
     });
   }
   
   function getStorage(key) {
-    return new Promise(resolve => chrome.storage.sync.get(key, obj => resolve(obj[key])));
+    console.log(`${DEBUG_PREFIX} Getting storage for key:`, key);
+    return new Promise(resolve => chrome.storage.sync.get(key, obj => {
+      console.log(`${DEBUG_PREFIX} Storage retrieved for ${key}:`, obj[key]);
+      resolve(obj[key]);
+    }));
   }
   
   function setStorage(obj) {
-    return new Promise(resolve => chrome.storage.sync.set(obj, resolve));
+    console.log(`${DEBUG_PREFIX} Setting storage:`, obj);
+    return new Promise(resolve => chrome.storage.sync.set(obj, () => {
+      console.log(`${DEBUG_PREFIX} Storage set successfully`);
+      resolve();
+    }));
   }
   
+  // ———————————————— Fix clipping issues ————————————————
+  function fixClippingIssues() {
+    console.log(`${DEBUG_PREFIX} Starting clipping fix...`);
+    console.log(`${DEBUG_PREFIX} Current URL:`, location.href);
+    console.log(`${DEBUG_PREFIX} Document ready state:`, document.readyState);
+    
+    // Target timeline-cell divs specifically
+    const timelineCells = document.querySelectorAll('.timeline-cell');
+    console.log(`${DEBUG_PREFIX} Found ${timelineCells.length} timeline-cell elements`);
+    
+    let cellsFixed = 0;
+    
+    timelineCells.forEach((cell, index) => {
+      const assignments = cell.querySelectorAll('.assignment');
+      const assignmentCount = assignments.length;
+      
+      console.log(`${DEBUG_PREFIX} Timeline cell ${index + 1}: contains ${assignmentCount} assignments`);
+      
+      // If cell has 3 or more assignments, make it scrollable instead of expanding
+      if (assignmentCount >= 3) {
+        console.log(`${DEBUG_PREFIX} Timeline cell ${index + 1} needs scrolling (${assignmentCount} assignments)`);
+        
+        // Method 2: Make scrollable (keeps layout clean)
+        cell.style.height = '120px';
+        cell.style.maxHeight = '120px';
+        cell.style.overflowY = 'auto';
+        cell.style.overflowX = 'hidden';
+        cell.style.verticalAlign = 'top';
+        cell.style.padding = '4px';
+        cell.classList.add('scrollable');
+        
+        // Don't expand parent row - keep table layout consistent
+        const parentRow = cell.closest('tr');
+        if (parentRow) {
+          parentRow.style.height = '120px';
+          console.log(`${DEBUG_PREFIX} Set consistent row height for cell ${index + 1}`);
+        }
+        
+        cellsFixed++;
+        console.log(`${DEBUG_PREFIX} Applied scrollable styling to timeline cell ${index + 1}`);
+      } else {
+        console.log(`${DEBUG_PREFIX} Timeline cell ${index + 1} doesn't need modification (${assignmentCount} assignments)`);
+      }
+    });
+    
+    console.log(`${DEBUG_PREFIX} Fixed ${cellsFixed} timeline cells with 3+ assignments`);
+    
+    // Also try to find assignment containers more directly
+    const assignmentElements = document.querySelectorAll('[data-assignment-id]');
+    console.log(`${DEBUG_PREFIX} Found ${assignmentElements.length} elements with data-assignment-id`);
+    
+    // Legacy fallback: expand row heights to show all assignments
+    const timelineRows = document.querySelectorAll('.timeline-records tr, .timeline-table tr, tr');
+    console.log(`${DEBUG_PREFIX} Found ${timelineRows.length} timeline rows`);
+    
+    let processedRows = 0;
+    let rowsWithAssignments = 0;
+    
+    timelineRows.forEach((row, index) => {
+      console.log(`${DEBUG_PREFIX} Processing row ${index + 1}/${timelineRows.length}`);
+      
+      // Check if this row has cells with assignment content
+      const cells = row.querySelectorAll('td');
+      console.log(`${DEBUG_PREFIX} Row ${index + 1} has ${cells.length} cells`);
+      
+      let hasAssignments = false;
+      let cellsWithAssignments = 0;
+      
+      cells.forEach((cell, cellIndex) => {
+        const hasAssignmentElements = cell.querySelector('[class*="assignment"], .homework, .test, .paper, .quiz, .classwork, [data-assignment-id]');
+        const text = cell.textContent || '';
+        const hasAssignmentText = (
+          text.includes('HOMEWORK') || 
+          text.includes('TEST') || 
+          text.includes('PAPER') || 
+          text.includes('QUIZ') ||  
+          text.includes('CLASSWORK') ||
+          text.includes('DUE') ||
+          text.includes('Homework') ||
+          text.includes('Classwork') ||
+          text.includes('Paper') ||
+          text.includes('Test') ||
+          text.includes('Quiz') ||
+          cell.querySelector('[data-assignment-id]') // Check for Veracross assignment elements
+        );
+        
+        console.log(`${DEBUG_PREFIX} Cell ${cellIndex + 1} analysis:`, {
+          hasElements: !!hasAssignmentElements,
+          hasDataId: !!cell.querySelector('[data-assignment-id]'),
+          hasText: hasAssignmentText,
+          textLength: text.length,
+          textSample: text.substring(0, 200)
+        });
+        
+        if (hasAssignmentElements || hasAssignmentText) {
+          hasAssignments = true;
+          cellsWithAssignments++;
+          console.log(`${DEBUG_PREFIX} Cell ${cellIndex + 1} in row ${index + 1} has assignments:`, {
+            hasElements: !!hasAssignmentElements,
+            hasText: hasAssignmentText,
+            textSample: text.substring(0, 100)
+          });
+          
+          // Ensure cell can expand
+          cell.style.height = 'auto';
+          cell.style.minHeight = '120px';
+          cell.style.verticalAlign = 'top';
+          cell.style.padding = '8px';
+        }
+      });
+      
+      // If row has assignments, ensure it can expand
+      if (hasAssignments) {
+        rowsWithAssignments++;
+        row.style.height = 'auto';
+        row.style.minHeight = '120px';
+        console.log(`${DEBUG_PREFIX} Row ${index + 1} expanded - has ${cellsWithAssignments} cells with assignments`);
+      }
+      
+      processedRows++;
+    });
+    
+    console.log(`${DEBUG_PREFIX} Clipping fix complete:`, {
+      totalRows: timelineRows.length,
+      processedRows,
+      rowsWithAssignments,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   // ———————————————— Feature 1: Homework checklist ————————————————
   async function applyChecklist() {
     
@@ -69,10 +216,14 @@ const DEFAULTS = {
   }
 
   function applyChecklistToDocument(doc, checked) {
+    console.log(`${DEBUG_PREFIX} Applying checklist to document...`);
+    console.log(`${DEBUG_PREFIX} Document:`, doc === document ? 'main document' : 'other document');
+    console.log(`${DEBUG_PREFIX} Checked assignments count:`, Object.keys(checked).length);
     
     // Clear any existing checkboxes first to prevent duplicates
     const existingCheckboxes = doc.querySelectorAll('.vch-task-wrap');
     if (existingCheckboxes.length > 0) {
+      console.log(`${DEBUG_PREFIX} Removing ${existingCheckboxes.length} existing checkboxes`);
       existingCheckboxes.forEach(cb => cb.remove());
     }
     
@@ -248,11 +399,13 @@ const DEFAULTS = {
     }
 
     function scan() {
+      console.log(`${DEBUG_PREFIX} Starting checklist scan...`);
       let totalFound = 0;
       let totalDecorated = 0;
       
-      selectors.forEach(sel => {
+      selectors.forEach((sel, index) => {
         const elements = doc.querySelectorAll(sel);
+        console.log(`${DEBUG_PREFIX} Selector ${index + 1}/${selectors.length} (${sel}): found ${elements.length} elements`);
         
         elements.forEach(node => {
           // Skip if already decorated
@@ -271,16 +424,26 @@ const DEFAULTS = {
         });
       });
       
+      console.log(`${DEBUG_PREFIX} Checklist scan complete:`, {
+        totalFound,
+        totalDecorated,
+        timestamp: new Date().toISOString()
+      });
+      
       if (totalFound === 0) {
+        console.log(`${DEBUG_PREFIX} No assignment elements found, trying fallback search...`);
         
         // Try to find any elements that might contain assignments
         const allElements = doc.querySelectorAll('*');
+        console.log(`${DEBUG_PREFIX} Scanning all ${allElements.length} elements for assignment content...`);
         
         // Look for elements with assignment-related text
         const assignmentElements = Array.from(allElements).filter(el => {
           const text = el.textContent || '';
           return text.includes('Homework') || text.includes('Test') || text.includes('Paper') || text.includes('Classwork');
         });
+        
+        console.log(`${DEBUG_PREFIX} Found ${assignmentElements.length} elements with assignment-related text`);
       }
     }
 
@@ -372,28 +535,111 @@ const DEFAULTS = {
   
   // ———————————————— Init ————————————————
   (async function init() {
+    console.log(`${DEBUG_PREFIX} ========== EXTENSION INITIALIZING ==========`);
+    console.log(`${DEBUG_PREFIX} URL:`, location.href);
+    console.log(`${DEBUG_PREFIX} Hostname:`, location.hostname);
+    console.log(`${DEBUG_PREFIX} Pathname:`, location.pathname);
+    console.log(`${DEBUG_PREFIX} User Agent:`, navigator.userAgent);
+    console.log(`${DEBUG_PREFIX} Document ready state:`, document.readyState);
     
-    const settings = await loadSettings();
-    
-    maybeRedirectHome(settings);
+    try {
+      const settings = await loadSettings();
+      console.log(`${DEBUG_PREFIX} Extension settings loaded successfully`);
+      
+      console.log(`${DEBUG_PREFIX} Checking for home redirect...`);
+      maybeRedirectHome(settings);
 
-    if (settings.enableChecklist) {
+      console.log(`${DEBUG_PREFIX} Applying initial clipping fixes...`);
+      // Fix clipping issues first
+      fixClippingIssues();
       
-      // Apply checklist directly to the current page
-      // This works on all Veracross pages without iframe communication issues
-      const checked = (await getStorage("vc_checked_assignments")) || {};
-      
-      // Wait for DOM to be ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-          applyChecklistToDocument(document, checked);
-        });
-      } else {
-        applyChecklistToDocument(document, checked);
+      // For Veracross timeline, wait for the timeline to be rendered
+      if (location.hostname.includes('veracross') || location.hostname.includes('portals')) {
+        console.log(`${DEBUG_PREFIX} Detected Veracross environment - setting up timeline monitoring`);
+        
+        let timelineCheckCount = 0;
+        const maxChecks = 50; // Prevent infinite polling
+        
+        // Wait for timeline to be created
+        const waitForTimeline = () => {
+          timelineCheckCount++;
+          const timeline = document.querySelector('.timeline-records, .timeline-table');
+          console.log(`${DEBUG_PREFIX} Timeline check ${timelineCheckCount}/${maxChecks} - Found:`, !!timeline);
+          
+          if (timeline) {
+            console.log(`${DEBUG_PREFIX} Timeline found! Setting up delayed fixes...`);
+            // Apply fixes when timeline is found
+            setTimeout(() => {
+              console.log(`${DEBUG_PREFIX} Applying clipping fix (500ms delay)`);
+              fixClippingIssues();
+            }, 500);
+            setTimeout(() => {
+              console.log(`${DEBUG_PREFIX} Applying clipping fix (1000ms delay)`);
+              fixClippingIssues();
+            }, 1000);
+            setTimeout(() => {
+              console.log(`${DEBUG_PREFIX} Applying clipping fix (2000ms delay)`);
+              fixClippingIssues();
+            }, 2000);
+          } else if (timelineCheckCount < maxChecks) {
+            console.log(`${DEBUG_PREFIX} Timeline not found yet, retrying in 100ms... (${timelineCheckCount}/${maxChecks})`);
+            setTimeout(waitForTimeline, 100);
+          } else {
+            console.log(`${DEBUG_PREFIX} Timeline not found after ${maxChecks} attempts, stopping search`);
+          }
+        };
+        waitForTimeline();
       }
       
-    } 
-    
-    if (settings.enableEstimator) applyEstimator();
+      // Monitor for dynamic content changes and reapply fixes
+      console.log(`${DEBUG_PREFIX} Setting up mutation observer...`);
+      const clipObserver = new MutationObserver((mutations) => {
+        console.log(`${DEBUG_PREFIX} DOM mutations detected (${mutations.length} mutations), reapplying fixes...`);
+        fixClippingIssues();
+      });
+      clipObserver.observe(document.documentElement, { childList: true, subtree: true });
+      console.log(`${DEBUG_PREFIX} Mutation observer active`);
+
+      if (settings.enableChecklist) {
+        console.log(`${DEBUG_PREFIX} Checklist feature is ENABLED - applying checklist`);
+      } else {
+        console.log(`${DEBUG_PREFIX} Checklist feature is DISABLED`);
+      }
+      if (settings.enableChecklist) {
+        console.log(`${DEBUG_PREFIX} Checklist feature is ENABLED - applying checklist`);
+        
+        // Apply checklist directly to the current page
+        // This works on all Veracross pages without iframe communication issues
+        const checked = (await getStorage("vc_checked_assignments")) || {};
+        console.log(`${DEBUG_PREFIX} Retrieved checked assignments:`, Object.keys(checked).length, 'items');
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+          console.log(`${DEBUG_PREFIX} DOM still loading, waiting for DOMContentLoaded...`);
+          document.addEventListener('DOMContentLoaded', () => {
+            console.log(`${DEBUG_PREFIX} DOMContentLoaded fired, applying checklist`);
+            applyChecklistToDocument(document, checked);
+          });
+        } else {
+          console.log(`${DEBUG_PREFIX} DOM ready, applying checklist immediately`);
+          applyChecklistToDocument(document, checked);
+        }
+      } else {
+        console.log(`${DEBUG_PREFIX} Checklist feature is DISABLED`);
+      }
+      
+      if (settings.enableEstimator) {
+        console.log(`${DEBUG_PREFIX} Grade estimator feature is ENABLED`);
+        applyEstimator();
+      } else {
+        console.log(`${DEBUG_PREFIX} Grade estimator feature is DISABLED`);
+      }
+      
+      console.log(`${DEBUG_PREFIX} ========== EXTENSION INITIALIZATION COMPLETE ==========`);
+      
+    } catch (error) {
+      console.error(`${DEBUG_PREFIX} INITIALIZATION ERROR:`, error);
+      console.error(`${DEBUG_PREFIX} Error stack:`, error.stack);
+    }
     
   })();

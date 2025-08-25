@@ -22,7 +22,7 @@
   background: white;
   transition: all 0.2s ease;
   position: relative;
-  flex-shrink: 0;
+  flex-shrink: 0; 
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   pointer-events: auto;
   z-index: 10;
@@ -242,6 +242,79 @@
     height: 14px;
     margin-right: 4px;
   }
+}
+
+/* Clean scrollable approach for timeline-cell divs with multiple assignments */
+.timeline-cell {
+  vertical-align: top !important;
+}
+
+/* Scrollable styling for timeline cells with 3+ assignments */
+.timeline-cell.scrollable {
+  height: 120px !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  vertical-align: top !important;
+  padding: 4px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 4px !important;
+}
+
+/* Custom scrollbar for timeline cells */
+.timeline-cell.scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 2px;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Ensure consistent row heights */
+tr:has(.timeline-cell.scrollable) {
+  height: 120px !important;
+}
+
+/* Keep assignments nicely spaced in scrollable cells */
+.timeline-cell.scrollable .assignment {
+  margin-bottom: 4px !important;
+}
+
+.timeline-cell.scrollable .assignment:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Simple fix for assignment cell overflow - expand row height to show all assignments */
+.timeline-records tr,
+.timeline-records-inner tr,
+.timeline-table tr,
+tr:has(td[class*="assignment"]),
+tr:has(td:has([class*="assignment"])) {
+  height: auto !important;
+  min-height: 120px !important;
+}
+
+.timeline-records td,
+.timeline-records-inner td,
+.timeline-table td,
+td[data-date],
+td[class*="timeline"],
+td[class*="assignment"],
+td[class*="day"] {
+  height: auto !important;
+  min-height: 120px !important;
+  vertical-align: top !important;
+  padding: 8px !important;
 }
 
 /* Dark mode support */
