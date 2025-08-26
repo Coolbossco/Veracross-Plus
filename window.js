@@ -1,5 +1,5 @@
 const WINDOW_DEFAULTS = {
-  enableChecklist: true
+  enableChecklist: false
 };
 
 function load() {

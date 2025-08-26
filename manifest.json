@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Veracross Plus",
     "description": "Veracross Plus adds features to the service Veracross.com that are frequently requested",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "permissions": ["storage"],
     "host_permissions": [
       "*://*.veracross.com/*",
