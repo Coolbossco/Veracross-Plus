@@ -1,0 +1,41 @@
+{
+  "name": "veracross-plus",
+  "version": "0.1.1",
+  "description": "Enhanced Veracross portal experience with homework checklists, grade estimation, and navigation improvements",
+  "scripts": {
+    "build": "npm run build:chrome && npm run build:firefox",
+    "build:chrome": "npm run clean:chrome && npm run copy:chrome && npm run package:chrome",
+    "build:firefox": "npm run clean:firefox && npm run copy:firefox && npm run package:firefox",
+    "clean": "npm run clean:chrome && npm run clean:firefox",
+    "clean:chrome": "rm -rf dist/chrome",
+    "clean:firefox": "rm -rf dist/firefox",
+    "copy:chrome": "mkdir -p dist/chrome && cp manifest-chrome.json dist/chrome/manifest.json && cp *.js *.css *.html dist/chrome/",
+    "copy:firefox": "mkdir -p dist/firefox && cp manifest-firefox.json dist/firefox/manifest.json && cp *.js *.css *.html dist/firefox/",
+    "package:chrome": "cd dist/chrome && zip -r ../veracross-plus-chrome.zip .",
+    "package:firefox": "cd dist/firefox && zip -r ../veracross-plus-firefox.zip .",
+    "dev:chrome": "npm run copy:chrome",
+    "dev:firefox": "npm run copy:firefox",
+    "watch": "npm run dev:chrome && npm run dev:firefox",
+    "validate": "npm run validate:chrome && npm run validate:firefox",
+    "validate:chrome": "echo 'Chrome extension validation would go here'",
+    "validate:firefox": "echo 'Firefox extension validation would go here'"
+  },
+  "keywords": [
+    "browser-extension",
+    "chrome-extension",
+    "firefox-addon",
+    "veracross",
+    "student-portal",
+    "productivity"
+  ],
+  "author": "Veracross Plus Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "files": [
+    "*.js",
+    "*.css", 
+    "*.html",
+    "manifest-*.json",
+    "dist/"
+  ]
+}

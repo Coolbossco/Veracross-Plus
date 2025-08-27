@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "name": "Veracross Plus",
+  "version": "0.1.1",
+  "description": "Enhanced Veracross portal experience with homework checklists, grade estimation, and navigation improvements",
+  "permissions": [
+    "storage",
+    "*://*.veracross.com/*",
+    "*://*.myveracross.com/*",
+    "*://portals.veracross.com/*",
+    "*://portals-embed.veracross.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.veracross.com/*",
+        "*://*.myveracross.com/*",
+        "*://portals.veracross.com/*",
+        "*://portals-embed.veracross.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "Veracross Plus"
+  },
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    "window.html"
+  ]
+}
