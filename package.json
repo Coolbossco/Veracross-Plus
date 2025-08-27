@@ -1,6 +1,6 @@
 {
   "name": "veracross-plus",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Enhanced Veracross portal experience with homework checklists, grade estimation, and navigation improvements",
   "scripts": {
     "build": "npm run build:chrome && npm run build:firefox",
@@ -9,8 +9,8 @@
     "clean": "npm run clean:chrome && npm run clean:firefox",
     "clean:chrome": "rm -rf dist/chrome",
     "clean:firefox": "rm -rf dist/firefox",
-    "copy:chrome": "mkdir -p dist/chrome && cp manifest-chrome.json dist/chrome/manifest.json && cp *.js *.css *.html dist/chrome/",
-    "copy:firefox": "mkdir -p dist/firefox && cp manifest-firefox.json dist/firefox/manifest.json && cp *.js *.css *.html dist/firefox/",
+    "copy:chrome": "mkdir -p dist/chrome && cp manifest-chrome.json dist/chrome/manifest.json && cp *.js *.css *.html dist/chrome/ && cp -r icons dist/chrome/",
+    "copy:firefox": "mkdir -p dist/firefox && cp manifest-firefox.json dist/firefox/manifest.json && cp *.js *.css *.html dist/firefox/ && cp -r icons dist/firefox/",
     "package:chrome": "cd dist/chrome && zip -r ../veracross-plus-chrome.zip .",
     "package:firefox": "cd dist/firefox && zip -r ../veracross-plus-firefox.zip .",
     "dev:chrome": "npm run copy:chrome",

@@ -18,12 +18,14 @@ echo "🟡 Building Chrome version..."
 mkdir -p dist/chrome
 cp manifest-chrome.json dist/chrome/manifest.json
 cp *.js *.css *.html dist/chrome/ 2>/dev/null || true
+cp -r icons dist/chrome/ 2>/dev/null || true
 
 # Build Firefox version  
 echo "🔥 Building Firefox version..."
 mkdir -p dist/firefox
 cp manifest-firefox.json dist/firefox/manifest.json
 cp *.js *.css *.html dist/firefox/ 2>/dev/null || true
+cp -r icons dist/firefox/ 2>/dev/null || true
 
 # Create ZIP packages
 echo "📦 Creating distribution packages..."

@@ -20,6 +20,7 @@ copy manifest-chrome.json dist\chrome\manifest.json >nul 2>&1
 copy *.js dist\chrome\ >nul 2>&1
 copy *.css dist\chrome\ >nul 2>&1  
 copy *.html dist\chrome\ >nul 2>&1
+xcopy icons dist\chrome\icons\ /E /I >nul 2>&1
 
 REM Build Firefox version
 echo 🔥 Building Firefox version...
@@ -28,6 +29,7 @@ copy manifest-firefox.json dist\firefox\manifest.json >nul 2>&1
 copy *.js dist\firefox\ >nul 2>&1
 copy *.css dist\firefox\ >nul 2>&1
 copy *.html dist\firefox\ >nul 2>&1
+xcopy icons dist\firefox\icons\ /E /I >nul 2>&1
 
 REM Create ZIP packages (requires PowerShell on Windows)
 echo 📦 Creating distribution packages...
