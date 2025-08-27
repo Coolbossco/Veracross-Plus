@@ -1,9 +1,14 @@
+// Firefox compatibility: Create browser namespace polyfill
+const browser = chrome || browser;
+
 const WINDOW_DEFAULTS = {
   enableChecklist: false
 };
 
 function load() {
+  console.log('[Veracross Plus] Loading window settings...');
   chrome.storage.sync.get(WINDOW_DEFAULTS, vals => {
+    console.log('[Veracross Plus] Settings loaded:', vals);
     Object.entries(vals).forEach(([k,v]) => {
       const el = document.getElementById(k);
       if (!el) return;
@@ -20,6 +25,7 @@ function save() {
       out[k] = (el.type === "checkbox") ? el.checked : el.value.trim();
     }
   });
+  console.log('[Veracross Plus] Saving settings:', out);
   chrome.storage.sync.set(out);
 }
 

@@ -5,6 +5,7 @@
   "description": "Veracross Plus adds features to the service Veracross.com that are frequently requested",
   "permissions": [
     "storage",
+    "tabs",
     "*://*.veracross.com/*",
     "*://*.myveracross.com/*",
     "*://portals.veracross.com/*",
