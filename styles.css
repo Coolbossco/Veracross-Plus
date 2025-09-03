@@ -2,337 +2,343 @@
 
 /* Reset and base styles */
 .vch-task-wrap {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 6px;
-  vertical-align: middle;
-  position: relative;
-  z-index: 1;
-  padding: 1px 0;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+    vertical-align: middle;
+    position: relative;
+    z-index: 1;
+    padding: 1px 0;
 }
 
 /* Enhanced checkbox styling - much smaller */
 .vch-checkbox {
-  width: 12px;
-  height: 12px;
-  margin: 0;
-  cursor: pointer;
-  border: 1px solid #e0e0e0;
-  border-radius: 2px;
-  background: white;
-  transition: all 0.2s ease;
-  position: relative;
-  flex-shrink: 0; 
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  pointer-events: auto;
-  z-index: 10;
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    cursor: pointer;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    background: white;
+    transition: all 0.2s ease;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+    z-index: 10;
 }
 
 .vch-checkbox:hover {
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1), 0 1px 3px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+    border-color: #4a90e2;
+    box-shadow:
+        0 0 0 2px rgba(74, 144, 226, 0.1),
+        0 1px 3px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
 }
 
 .vch-checkbox:checked {
-  background: #4a90e2 !important;
-  border-color: #4a90e2 !important;
+    background: #4a90e2 !important;
+    border-color: #4a90e2 !important;
 }
 
 .vch-checkbox:checked::after {
-  content: '✓' !important;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white !important;
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 1;
+    content: "✓" !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white !important;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
 }
 
 /* Assignment type indicator bars - smaller */
 .vch-task-wrap::before {
-  content: '';
-  width: 2px;
-  height: 14px;
-  margin-right: 4px;
-  border-radius: 1px;
-  flex-shrink: 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
+    content: "";
+    width: 2px;
+    height: 14px;
+    margin-right: 4px;
+    border-radius: 1px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
 }
 
 .vch-task-wrap[data-type="homework"]::before {
-  background: linear-gradient(135deg, #4caf50, #45a049);
+    background: linear-gradient(135deg, #4caf50, #45a049);
 }
 
 .vch-task-wrap[data-type="classwork"]::before {
-  background: linear-gradient(135deg, #607d8b, #546e7a);
+    background: linear-gradient(135deg, #607d8b, #546e7a);
 }
 
 .vch-task-wrap[data-type="paper"]::before {
-  background: linear-gradient(135deg, #ff9800, #f57c00);
+    background: linear-gradient(135deg, #ff9800, #f57c00);
 }
 
 .vch-task-wrap[data-type="test"]::before {
-  background: linear-gradient(135deg, #f44336, #d32f2f);
+    background: linear-gradient(135deg, #f44336, #d32f2f);
 }
 
 .vch-task-wrap[data-type="quiz"]::before {
-  background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
 }
 
 /* Completed assignment styling - more specific and forceful */
 .vch-done {
-  opacity: 0.7 !important;
-  text-decoration: line-through !important;
-  color: #666 !important;
+    opacity: 0.7 !important;
+    text-decoration: line-through !important;
+    color: #666 !important;
 }
 
 /* Make sure the checkbox shows as checked when completed - very specific */
 .vch-done .vch-checkbox,
 .vch-done input.vch-checkbox {
-  background: #4caf50 !important;
-  border-color: #4caf50 !important;
+    background: #4caf50 !important;
+    border-color: #4caf50 !important;
 }
 
 .vch-done .vch-checkbox::after,
 .vch-done input.vch-checkbox::after {
-  content: '✓' !important;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white !important;
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 1;
+    content: "✓" !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white !important;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
 }
 
 .vch-done .vch-task-wrap::before {
-  opacity: 0.6;
+    opacity: 0.6;
 }
 
 /* Better integration with Veracross assignment boxes - more compact */
 .vch-task-wrap {
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 2px;
-  padding: 1px 2px;
-  margin: 0px 1px 0px 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  pointer-events: auto;
-  z-index: 5;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 2px;
+    padding: 1px 2px;
+    margin: 0px 1px 0px 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    pointer-events: auto;
+    z-index: 5;
 }
 
 .vch-task-wrap:hover {
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
 }
 
 /* Ensure completed assignments show proper visual feedback - very specific */
 .vch-done {
-  opacity: 0.7 !important;
-  text-decoration: line-through !important;
-  color: #666 !important;
+    opacity: 0.7 !important;
+    text-decoration: line-through !important;
+    color: #666 !important;
 }
 
 /* Style the assignment text when completed - very specific */
-.vch-done h1, .vch-done h2, .vch-done h3, .vch-done h4, .vch-done h5, .vch-done h6,
-.vch-done p, .vch-done span, .vch-done div, .vch-done a {
-  text-decoration: line-through !important;
-  color: #666 !important;
-  opacity: 0.7 !important;
+.vch-done h1,
+.vch-done h2,
+.vch-done h3,
+.vch-done h4,
+.vch-done h5,
+.vch-done h6,
+.vch-done p,
+.vch-done span,
+.vch-done div,
+.vch-done a {
+    text-decoration: line-through !important;
+    color: #666 !important;
+    opacity: 0.7 !important;
 }
 
 /* Make sure the checkbox shows as checked when completed - very specific */
 .vch-done .vch-checkbox,
 .vch-done input.vch-checkbox {
-  background: #4caf50 !important;
-  border-color: #4caf50 !important;
+    background: #4caf50 !important;
+    border-color: #4caf50 !important;
 }
 
 .vch-done .vch-checkbox::after,
 .vch-done input.vch-checkbox::after {
-  content: '✓' !important;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white !important;
-  font-size: 10px;
-  font-weight: bold;
-  line-height: 1;
+    content: "✓" !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white !important;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
 }
 
 /* Enhanced grade panel */
 .vch-grade-panel {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 9999;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
-  padding: 16px 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 14px;
-  min-width: 200px;
-  transition: all 0.3s ease;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+        Arial, sans-serif;
+    font-size: 14px;
+    min-width: 200px;
+    transition: all 0.3s ease;
 }
 
 .vch-grade-panel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
 
 .vch-grade-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 
 .vch-grade-row strong {
-  color: #333;
-  font-weight: 600;
+    color: #333;
+    font-weight: 600;
 }
 
 .vch-grade-value {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  color: #4a90e2;
-  font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: #4a90e2;
+    font-size: 16px;
 }
 
 .vch-grade-note {
-  opacity: 0.6;
-  font-size: 12px;
-  text-align: center;
-  color: #666;
-  font-style: italic;
+    opacity: 0.6;
+    font-size: 12px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
 }
 
 /* Mobile-friendly adjustments */
 @media (max-width: 768px) {
-  .vch-grade-panel {
-    right: 16px;
-    bottom: 16px;
-    padding: 12px 16px;
-    min-width: 180px;
-  }
-  
-  .vch-task-wrap {
-    margin-right: 2px;
-    padding: 1px 2px;
-  }
-  
-  .vch-checkbox {
-    width: 10px;
-    height: 10px;
-  }
-  
-  .vch-task-wrap::before {
-    width: 1px;
-    height: 12px;
-    margin-right: 2px;
-  }
+    .vch-grade-panel {
+        right: 16px;
+        bottom: 16px;
+        padding: 12px 16px;
+        min-width: 180px;
+    }
+
+    .vch-task-wrap {
+        margin-right: 2px;
+        padding: 1px 2px;
+    }
+
+    .vch-checkbox {
+        width: 10px;
+        height: 10px;
+    }
+
+    .vch-task-wrap::before {
+        width: 1px;
+        height: 12px;
+        margin-right: 2px;
+    }
 }
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  .vch-grade-panel {
-    background: rgba(30, 30, 30, 0.95);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e0e0e0;
-  }
-  
-  .vch-grade-row strong {
-    color: #e0e0e0;
-  }
-  
-  .vch-checkbox {
-    background: #2a2a2a;
-    border-color: #555;
-  }
-  
-  .vch-checkbox:hover {
-    border-color: #4a90e2;
-  }
-  
-  .vch-task-wrap {
-    background: rgba(50, 50, 50, 0.8);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .vch-task-wrap:hover {
-    background: rgba(60, 60, 60, 0.95);
-  }
+    .vch-grade-panel {
+        background: rgba(30, 30, 30, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+    }
+
+    .vch-grade-row strong {
+        color: #e0e0e0;
+    }
+
+    .vch-checkbox {
+        background: #2a2a2a;
+        border-color: #555;
+    }
+
+    .vch-checkbox:hover {
+        border-color: #4a90e2;
+    }
+
+    .vch-task-wrap {
+        background: rgba(50, 50, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .vch-task-wrap:hover {
+        background: rgba(60, 60, 60, 0.95);
+    }
 }
 
 /* Fix for scrollable cells - ensure proper background and scrollbar styling */
 .timeline-cell.scrollable {
-  background: #FFFFDC !important; /* Light yellow background to match timeline cells */
-  background-clip: content-box !important; /* Ensure background covers the entire scrollable area */
-  min-height: 100% !important; /* Ensure minimum height covers scrollable area */
+    background-clip: content-box !important; /* Ensure background covers the entire scrollable area */
+    min-height: 100% !important; /* Ensure minimum height covers scrollable area */
 }
 
 /* Fix scrollbar styling to prevent white bits */
 .timeline-cell.scrollable::-webkit-scrollbar {
-  width: 8px;
-  background: transparent;
+    width: 8px;
+    background: transparent;
 }
 
 .timeline-cell.scrollable::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 .timeline-cell.scrollable::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .timeline-cell.scrollable::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.5);
 }
 
-/* Ensure scrollable cells have proper background - don't inherit */
-.timeline-cell.scrollable {
-  background: #FFFFDC !important; /* Light yellow background */
-}
+/* Ensure scrollable cells inherit background from parent column */
 
 /* Fix the white bar issue by ensuring background covers full scrollable area */
 .timeline-cell.scrollable {
-  background: #FFFFDC !important;
-  background-clip: content-box !important;
-  min-height: 100% !important;
-  position: relative !important;
+    background-clip: content-box !important;
+    min-height: 100% !important;
+    position: relative !important;
 }
 
 /* Ensure the background extends to cover the entire scrollable region */
 .timeline-cell.scrollable::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  background: #FFFFDC !important;
-  z-index: -1;
-  pointer-events: none;
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: inherit !important;
+    z-index: -1;
+    pointer-events: none;
 }
 
 /* Comprehensive fix for white bars in scrollable cells */
-.timeline-cell.scrollable,
 .timeline-cell.scrollable::before,
 .timeline-cell.scrollable::after {
-  background: #FFFFDC !important;
+    background: inherit !important;
 }
 
 /* Target specific elements that might cause white bars */
@@ -342,14 +348,14 @@
 .timeline-cell.scrollable .paper,
 .timeline-cell.scrollable .quiz,
 .timeline-cell.scrollable .classwork {
-  background: #FFFFDC !important;
+    background: white !important;
 }
 
 /* Fix for any pseudo-elements or borders that might show white */
 .timeline-cell.scrollable {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 /* Ensure no white backgrounds from any child elements */
@@ -363,5 +369,5 @@
 .timeline-cell.scrollable .quiz,
 .timeline-cell.scrollable .classwork,
 .timeline-cell.scrollable [data-assignment-id] {
-  background: white !important;
+    background: white !important;
 }
