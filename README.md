@@ -131,6 +131,7 @@ All features work identically in both browsers:
 - ✅ Homework Checkboxes
 - ✅ Grade Estimator
 - ✅ Home Page Redirect
+- ✅ Custom Assignments
 - ✅ Custom Popup Window
 - ✅ Settings Persistence
 - ✅ Veracross Domain Injection
@@ -184,6 +185,57 @@ Update versions in these files:
 - `manifest-firefox.json`
 
 Keep all version numbers synchronized.
+
+## Custom Assignments Feature
+
+The Custom Assignments feature allows users to create and manage their own assignments and reminders within the Veracross timeline.
+
+### Feature Overview
+
+**Custom Assignments** can be:
+1. **New Assignments**: Custom assignments that appear in a dedicated row at the top of the timeline
+2. **Past Due Reminders**: Reminders for overdue assignments that appear in the past due section
+
+### How It Works
+
+1. **Enable the Feature**: Toggle "Custom Assignments" in the extension popup
+2. **Add Assignments**: Click "Add Custom Assignment" to create new assignments
+3. **Assignment Types**:
+   - Regular assignments appear in a blue-highlighted row at the top
+   - Past due reminders appear in a yellow-highlighted past due row
+4. **Management**: Edit or delete assignments from the popup interface
+
+### Assignment Properties
+
+Each custom assignment includes:
+- **Title**: The assignment name (required)
+- **Description**: Optional details about the assignment
+- **Due Date**: When the assignment is due (required)
+- **Class/Subject**: Optional class or subject name
+- **Past Due Flag**: Whether this is a past due reminder
+
+### Visual Design
+
+**Regular Custom Assignments**:
+- Appear in a dedicated row with blue styling (`#f8f9fa` background, `#007bff` border)
+- Individual assignments have light blue backgrounds (`#e3f2fd`)
+- Hover effects for better interactivity
+
+**Past Due Reminders**:
+- Appear in a yellow-highlighted row (`#fff3cd` background, `#856404` border)
+- Individual reminders have light red backgrounds (`#f8d7da`)
+- Show original due date for reference
+
+### Technical Implementation
+
+**Storage**: Custom assignments are stored in Chrome sync storage as `customAssignments` array
+
+**Injection Logic**:
+- Regular assignments: Injected at the top of the timeline table
+- Past due reminders: Injected into existing or created past due row
+- Date matching: Assignments appear in appropriate timeline columns
+
+**Integration**: Works seamlessly with existing checkbox system for task completion tracking
 
 ---
 
