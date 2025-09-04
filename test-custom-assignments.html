@@ -263,9 +263,6 @@
                 <button class="test-btn" onclick="testAddCustomAssignment()">
                     Add Test Custom Assignment
                 </button>
-                <button class="test-btn" onclick="testAddPastDueReminder()">
-                    Add Past Due Reminder
-                </button>
                 <button class="test-btn" onclick="testShowAllAssignments()">
                     Show All Custom Assignments
                 </button>
@@ -320,7 +317,6 @@
                                 }
                             },
                             set: function (data, callback) {
-                                console.log("Mock storage.set:", data);
                                 if (callback) callback();
                             },
                         },
@@ -350,15 +346,6 @@
                         false,
                     );
                 }
-            }
-
-            function testAddPastDueReminder() {
-                updateStatus("Testing past due reminder creation...", "info");
-                createTestAssignment(
-                    "Past Due Test Assignment",
-                    "This assignment is past due",
-                    true,
-                );
             }
 
             function testShowAllAssignments() {
@@ -403,14 +390,13 @@
                 }
             }
 
-            function createTestAssignment(title, description, isPastDue) {
+            function createTestAssignment(title, description) {
                 const assignment = {
                     id: "test-" + Date.now(),
                     title: title,
                     description: description,
                     dueDate: new Date().toISOString().split("T")[0],
                     class: "Test Class",
-                    isPastDue: isPastDue,
                     createdAt: new Date().toISOString(),
                 };
 
@@ -423,7 +409,7 @@
                             { customAssignments: assignments },
                             () => {
                                 updateStatus(
-                                    `Created ${isPastDue ? "past due reminder" : "custom assignment"}: ${title}`,
+                                    `Created custom assignment: ${title}`,
                                     "success",
                                 );
 
@@ -477,25 +463,7 @@
         <!-- Load the extension content script for testing -->
         <script>
             // Try to load the extension content script
-            console.log(
-                "Test page loaded. Waiting for Veracross Plus extension...",
-            );
-
-            // Add some debugging info
-            window.addEventListener("load", () => {
-                console.log("Available elements for timeline injection:");
-                console.log(
-                    "- .timeline-header-y-inner:",
-                    document.querySelector(".timeline-header-y-inner"),
-                );
-                console.log(
-                    "- .timeline-row[data-row-id]:",
-                    document.querySelectorAll(".timeline-row[data-row-id]"),
-                );
-                console.log(
-                    "- Timeline structure ready for custom assignments",
-                );
-            });
+            // Test page loaded. Waiting for Veracross Plus extension...
         </script>
     </body>
 </html>

@@ -5,8 +5,6 @@
 const browser = chrome || browser;
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log('[Veracross Plus] Popup launcher starting...');
-  
   // Close the standard popup immediately
   window.close();
 
@@ -32,24 +30,18 @@ document.addEventListener("DOMContentLoaded", () => {
     height: windowHeight,
     focused: true,
     left: Math.max(0, left),
-    top: Math.max(0, top)
+    top: Math.max(0, top),
   };
-
-  console.log('[Veracross Plus] Creating popup window with options:', windowCreateOptions);
 
   // Create a custom popup window with rounded corners
   if (chrome.windows && chrome.windows.create) {
     chrome.windows.create(windowCreateOptions, (createdWindow) => {
       if (chrome.runtime.lastError) {
-        console.error("[Veracross Plus] Error creating popup window:", chrome.runtime.lastError);
         // Fallback: try to open in a new tab if window creation fails
         chrome.tabs.create({ url: chrome.runtime.getURL("window.html") });
-      } else {
-        console.log('[Veracross Plus] Popup window created successfully:', createdWindow);
       }
     });
   } else {
-    console.error('[Veracross Plus] chrome.windows.create not available, falling back to tab');
     // Fallback for browsers that don't support window creation
     chrome.tabs.create({ url: chrome.runtime.getURL("window.html") });
   }

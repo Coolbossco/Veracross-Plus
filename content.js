@@ -1,9 +1,6 @@
 // Veracross Plus — content script (MVP)
 // Adds: (1) homework checkboxes (2) exact % estimator (3) optional home redirect
 
-// Debug logging prefix for easy identification
-const DEBUG_PREFIX = "[Veracross Plus]";
-
 // Add global error handling to catch any JavaScript errors
 
 const DEFAULTS = {
@@ -395,10 +392,7 @@ function applyChecklistToDocument(doc, checked) {
 
         await setStorage({ vc_checked_assignments: compact });
       } catch (error) {
-        console.error(
-          "Veracross Plus: Error in checkbox change handler:",
-          error,
-        );
+        // Silent error handling
       }
     });
 
@@ -535,21 +529,62 @@ function maybeRedirectHome(settings) {
 
 // ———————————————— Feature 4: Custom Assignments ————————————————
 let customAssignmentsInjected = false;
+let injectionInProgress = false;
+let instantUpdateInProgress = false;
+let modalOpenInProgress = false;
 
 // Add global event handler to prevent native Veracross modals for custom assignments
 document.addEventListener(
   "click",
   (e) => {
-    // Only block native handlers if clicking on assignment but not checkboxes
+    // Check if clicking on our custom assignment
     const assignmentDiv = e.target.closest('[data-vch-custom="true"]');
-    if (
-      assignmentDiv &&
-      !e.target.classList.contains("vch-checkbox") &&
-      e.target.tagName !== "INPUT" &&
-      !e.target.closest(".vch-task-wrap")
-    ) {
-      // Only prevent default to stop native Veracross, but allow our handlers
-      e.preventDefault();
+    if (assignmentDiv) {
+      // Don't show modal if clicking on checkbox - let checkbox function normally
+      if (e.target.type === "checkbox" || e.target.closest(".vch-task-wrap")) {
+        return;
+      }
+
+      // Don't interfere with Details button clicks - let them handle themselves
+      if (e.target.classList.contains("vch-assignment-details")) {
+        return;
+      }
+
+      // Only prevent default for timeline assignments (not assignments page)
+      const isTimelineAssignment = assignmentDiv.closest(
+        ".timeline-records, .timeline-row, .timeline-cell",
+      );
+      if (isTimelineAssignment) {
+        // Always prevent native Veracross preview system from interfering for timeline
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+
+      // Show details modal when clicking on assignment (but not checkbox or details button)
+      if (modalOpenInProgress || instantUpdateInProgress) {
+        return;
+      }
+
+      const existingModals = document.querySelectorAll(".vch-assignment-modal");
+      if (existingModals.length === 0) {
+        modalOpenInProgress = true;
+        // Get assignment ID and show our modal
+        const assignmentId = assignmentDiv.getAttribute(
+          "data-custom-assignment-id",
+        );
+        if (assignmentId) {
+          // Find assignment data and show details
+          getStorage("customAssignments").then((customAssignments) => {
+            const assignment = (customAssignments || []).find(
+              (a) => a.id === assignmentId,
+            );
+            if (assignment) {
+              showCustomAssignmentDetails(assignment);
+            }
+          });
+        }
+      }
     }
   },
   true,
@@ -560,31 +595,93 @@ async function applyCustomAssignments(settings) {
     return;
   }
 
-  console.log(`${DEBUG_PREFIX} Custom assignments feature is ENABLED`);
+  if (injectionInProgress) {
+    return;
+  }
+
+  injectionInProgress = true;
+
+  // Check if we're in an iframe context
+  const isInIframe = window !== window.top;
+  const isTimelineIframe =
+    isInIframe &&
+    (location.href.includes("planner") ||
+      document.querySelector("#planner") ||
+      document.querySelector(".timeline-header-y-inner"));
+
+  // Only run assignment functionality in the timeline iframe context
+  if (!isTimelineIframe && isInIframe) {
+    return;
+  }
+
+  // If we're in the main page (not iframe), only add the floating button if on assignments page
+  if (!isInIframe) {
+    addFloatingAssignmentButton();
+
+    // Set up message listener for button hide/show commands from iframe
+    window.addEventListener("message", function (event) {
+      if (event.data && event.data.type === "VCH_HIDE_BUTTON") {
+        const floatingBtn = document.querySelector(".vch-floating-button");
+        if (floatingBtn) {
+          floatingBtn.style.visibility = "hidden";
+          floatingBtn.style.opacity = "0";
+          floatingBtn.style.pointerEvents = "none";
+          floatingBtn.style.transform = "scale(0.8)";
+        }
+      } else if (event.data && event.data.type === "VCH_SHOW_BUTTON") {
+        const floatingBtn = document.querySelector(".vch-floating-button");
+        if (floatingBtn) {
+          floatingBtn.style.visibility = "visible";
+          floatingBtn.style.opacity = "0.9";
+          floatingBtn.style.pointerEvents = "auto";
+          floatingBtn.style.transform = "";
+        }
+      }
+    });
+
+    return;
+  }
+
+  // Set up message listener for cross-frame communication
+  window.addEventListener("message", async function (event) {
+    if (event.data && event.data.type === "VCH_REFRESH_ASSIGNMENTS") {
+      await instantAssignmentUpdate();
+    }
+  });
 
   // Add floating action button for new assignments
   addFloatingAssignmentButton();
 
-  // Add buttons to assignment detail popups
-  addAssignmentDetailButtons();
-
   // Load and inject existing custom assignments
   await loadAndInjectCustomAssignments();
 
-  // Watch for assignment popup changes (but not timeline changes)
-  watchAssignmentPopups();
+  injectionInProgress = false;
 }
 
 function addFloatingAssignmentButton() {
+  // Only show on assignments page, not everywhere
+  const isAssignmentsPage =
+    location.pathname.includes("upcoming-assignments") ||
+    location.pathname.includes("assignments");
+
+  if (!isAssignmentsPage) {
+    // Remove button if it exists and we're not on assignments page
+    const existingButton = document.querySelector(".vch-floating-button");
+    if (existingButton) {
+      existingButton.remove();
+    }
+    return;
+  }
+
   // Remove existing button if present
-  const existingButton = document.querySelector(".vch-floating-add-btn");
+  const existingButton = document.querySelector(".vch-floating-button");
   if (existingButton) {
     existingButton.remove();
   }
 
   // Create floating action button
   const floatingButton = document.createElement("div");
-  floatingButton.className = "vch-floating-add-btn";
+  floatingButton.className = "vch-floating-button";
   floatingButton.innerHTML = `
     <button class="vch-add-assignment-btn" title="Add Custom Assignment">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -600,9 +697,9 @@ function addFloatingAssignmentButton() {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    z-index: 1000;
+    z-index: 9999;
     opacity: 0.9;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.2s ease;
   `;
 
   const button = floatingButton.querySelector(".vch-add-assignment-btn");
@@ -635,184 +732,100 @@ function addFloatingAssignmentButton() {
     floatingButton.style.opacity = "0.9";
   });
 
-  button.addEventListener("click", () => {
-    showCustomAssignmentModal();
+  button.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if button is currently hidden (modal open)
+    const isHidden =
+      floatingButton.style.visibility === "hidden" ||
+      floatingButton.style.opacity === "0";
+    if (isHidden) {
+      return;
+    }
+
+    // Prevent rapid clicks and multiple modals
+    if (modalOpenInProgress) {
+      return;
+    }
+
+    const existingModals = document.querySelectorAll(".vch-assignment-modal");
+    if (existingModals.length === 0) {
+      modalOpenInProgress = true;
+      showCustomAssignmentModal();
+    }
   });
 
   document.body.appendChild(floatingButton);
 }
 
-function addAssignmentDetailButtons() {
-  // Watch for assignment detail popups
-  const observer = new MutationObserver(() => {
-    const assignmentPopups = document.querySelectorAll(
-      '[class*="assignment"]:not(.vch-enhanced)',
-    );
-    assignmentPopups.forEach((popup) => {
-      if (
-        popup.textContent &&
-        popup.textContent.includes("Due") &&
-        popup.querySelector("h1, h2, h3, .title") &&
-        !popup.querySelector(".vch-past-due-btn")
-      ) {
-        addPastDueButton(popup);
-        popup.classList.add("vch-enhanced");
-      }
-    });
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
-function addPastDueButton(popup) {
-  // Find a good place to insert the button
-  const titleElement =
-    popup.querySelector("h1, h2, h3, .title") || popup.firstElementChild;
-  if (!titleElement) return;
-
-  const buttonContainer = document.createElement("div");
-  buttonContainer.style.cssText = `
-    margin: 10px 0;
-    display: flex;
-    gap: 10px;
-  `;
-
-  const pastDueButton = document.createElement("button");
-  pastDueButton.className = "vch-past-due-btn";
-  pastDueButton.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"></circle>
-      <polyline points="12,6 12,12 16,14"></polyline>
-    </svg>
-    Create Past Due Reminder
-  `;
-
-  // Style to match Veracross buttons
-  pastDueButton.style.cssText = `
-    background: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background-color 0.2s ease;
-    font-family: inherit;
-  `;
-
-  pastDueButton.addEventListener("mouseover", () => {
-    pastDueButton.style.backgroundColor = "#c82333";
-  });
-
-  pastDueButton.addEventListener("mouseout", () => {
-    pastDueButton.style.backgroundColor = "#dc3545";
-  });
-
-  pastDueButton.addEventListener("click", () => {
-    createPastDueReminder(popup);
-  });
-
-  buttonContainer.appendChild(pastDueButton);
-  titleElement.parentNode.insertBefore(
-    buttonContainer,
-    titleElement.nextSibling,
-  );
-}
-
-function createPastDueReminder(popup) {
-  // Extract assignment details
-  const title = (
-    popup.querySelector("h1, h2, h3, .title")?.textContent || "Assignment"
-  ).trim();
-  const classInfo =
-    popup.querySelector('[class*="class"], [class*="course"]')?.textContent ||
-    "";
-  const description = popup.querySelector("p, .description")?.textContent || "";
-
-  showCustomAssignmentModal({
-    title: title + " (Past Due Reminder)",
-    description: description,
-    class: classInfo,
-    isPastDue: true,
-    originalDueDate: new Date().toISOString().split("T")[0], // Today's date as fallback
-  });
-}
-
 async function loadAndInjectCustomAssignments() {
   const customAssignments = (await getStorage("customAssignments")) || [];
-  if (customAssignments.length > 0 && !customAssignmentsInjected) {
-    // Check if we're on the right page type (timeline/planner page)
+
+  if (!customAssignmentsInjected || customAssignments.length > 0) {
+    // Check if we're on the right page type (timeline/planner page or assignments page)
     const isTimelinePage =
       location.pathname.includes("planner") ||
       location.pathname.includes("timeline") ||
-      document.querySelector("#planner");
+      document.querySelector("#planner") ||
+      document.querySelector(".timeline-header-y-inner") ||
+      document.querySelector(".timeline-records-inner");
 
-    if (!isTimelinePage) {
-      console.log(
-        `${DEBUG_PREFIX} Not on a timeline page, skipping custom assignments`,
-      );
-      return;
-    }
+    const isAssignmentsPage =
+      location.pathname.includes("upcoming-assignments") ||
+      location.pathname.includes("assignments");
 
-    // Wait for timeline to be fully loaded
-    const waitForTimeline = () => {
-      const timelineYHeader = document.querySelector(
-        ".timeline-header-y-inner",
-      );
-      const timelineRows = document.querySelectorAll(
-        ".timeline-row[data-row-id]",
-      );
+    if (isTimelinePage) {
+      // Wait for timeline to be fully loaded with more attempts
+      let attempts = 0;
+      const maxAttempts = 10;
 
-      if (timelineYHeader && timelineRows.length > 0) {
-        console.log(
-          `${DEBUG_PREFIX} Timeline detected, injecting custom assignments`,
+      const waitForTimeline = () => {
+        const timelineYHeader = document.querySelector(
+          ".timeline-header-y-inner",
         );
-        injectCustomAssignmentsSidebar(customAssignments);
-        customAssignmentsInjected = true;
-      } else {
-        console.log(`${DEBUG_PREFIX} Timeline not ready, retrying in 500ms`);
-        setTimeout(waitForTimeline, 500);
-      }
-    };
+        const timelineRows = document.querySelectorAll(
+          ".timeline-row[data-row-id]",
+        );
 
-    waitForTimeline();
-  }
-}
-
-function watchAssignmentPopups() {
-  const observer = new MutationObserver((mutations) => {
-    // Only watch for assignment popups, not timeline changes
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
-        if (
-          node.nodeType === 1 &&
-          node.querySelector &&
-          (node.querySelector('[class*="modal"], [class*="popup"]') ||
-            node.classList.contains("modal") ||
-            node.classList.contains("popup"))
-        ) {
-          addAssignmentDetailButtons();
+        if (timelineYHeader && timelineRows.length > 0) {
+          injectCustomAssignmentsSidebar(customAssignments);
+          customAssignmentsInjected = true;
+        } else {
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(waitForTimeline, 300);
+          } else {
+            // Timeline wait timed out
+          }
         }
-      });
-    });
-  });
+      };
 
-  observer.observe(document.body, { childList: true, subtree: true });
+      waitForTimeline();
+    } else if (isAssignmentsPage) {
+      injectCustomAssignmentsToAssignmentsPage(customAssignments);
+      customAssignmentsInjected = true;
+    }
+  }
 }
 
 function showCustomAssignmentModal(prefillData = {}) {
-  // Remove existing modal
-  const existingModal = document.querySelector(".vch-assignment-modal");
-  if (existingModal) {
-    existingModal.remove();
-  }
+  // Remove any existing modals first
+  const existingModals = document.querySelectorAll(".vch-assignment-modal");
+  existingModals.forEach((modal) => modal.remove());
+
+  // Clean up body overflow
+  document.body.style.overflow = "";
+
+  // Set flag to indicate modal is being opened
+  modalOpenInProgress = true;
+
+  const isEditing = !!prefillData.id;
 
   // Create modal
   const modal = document.createElement("div");
   modal.className = "vch-assignment-modal";
+  modal.setAttribute("data-vch-modal", "true");
   modal.style.cssText = `
     position: fixed;
     top: 0;
@@ -823,10 +836,17 @@ function showCustomAssignmentModal(prefillData = {}) {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: 10001;
+    overflow: hidden;
   `;
 
+  // Prevent body scrolling when modal is open
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+
   const modalContent = document.createElement("div");
+  modalContent.className = "vch-modal-content";
+  modalContent.setAttribute("data-vch-modal-content", "true");
   modalContent.style.cssText = `
     background: white;
     border-radius: 8px;
@@ -836,47 +856,41 @@ function showCustomAssignmentModal(prefillData = {}) {
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+    box-sizing: border-box;
+    margin: 20px;
   `;
 
   modalContent.innerHTML = `
-    <h3 style="margin: 0 0 20px 0; color: #333; font-size: 20px;">
-      ${prefillData.isPastDue ? "Create Past Due Reminder" : "Add Custom Assignment"}
+    <h3 style="margin: 0 0 20px 0; color: #333; font-size: 20px; word-wrap: break-word;">
+      ${isEditing ? "Edit Assignment" : "Add Custom Assignment"}
     </h3>
     <form id="vch-assignment-form">
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Assignment Title *</label>
-        <input type="text" id="vch-title" required style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" value="${prefillData.title || ""}">
+        <input type="text" id="vch-title" required style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" value="${prefillData.title || ""}">
       </div>
 
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Description</label>
-        <textarea id="vch-description" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical;" placeholder="Assignment details...">${prefillData.description || ""}</textarea>
+        <textarea id="vch-description" style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical; box-sizing: border-box;" placeholder="Assignment details...">${prefillData.description || ""}</textarea>
       </div>
 
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Due Date *</label>
-        <input type="date" id="vch-due-date" required style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" value="${prefillData.dueDate || ""}">
+        <input type="date" id="vch-due-date" required style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" value="${prefillData.dueDate || ""}">
       </div>
 
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Class/Subject</label>
-        <input type="text" id="vch-class" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" placeholder="e.g., Mathematics, English" value="${prefillData.class || ""}">
+        <input type="text" id="vch-class" style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="e.g., Mathematics, English" value="${prefillData.class || ""}">
       </div>
 
-      ${
-        prefillData.isPastDue
-          ? `
-        <div style="margin-bottom: 16px;">
-          <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Original Due Date</label>
-          <input type="date" id="vch-original-date" style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" value="${prefillData.originalDueDate || ""}">
-        </div>
-      `
-          : ""
-      }
 
-      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-        <button type="button" id="vch-cancel" style="padding: 10px 20px; background: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer; font-size: 14px;">Cancel</button>
-        <button type="submit" style="padding: 10px 20px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">Save Assignment</button>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; flex-wrap: wrap;">
+        <button type="button" id="vch-cancel" style="padding: 10px 20px; background: #f8f9fa; color: #6c757d; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer; font-size: 14px; flex-shrink: 0; font-family: inherit; text-transform: none; font-weight: normal; letter-spacing: normal;">Cancel</button>
+        <button type="submit" id="vch-submit" style="padding: 10px 20px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; flex-shrink: 0; font-family: inherit; text-transform: none; font-weight: normal; letter-spacing: normal; text-shadow: none; font-variant: normal;"></button>
       </div>
     </form>
   `;
@@ -884,15 +898,69 @@ function showCustomAssignmentModal(prefillData = {}) {
   modal.appendChild(modalContent);
   document.body.appendChild(modal);
 
+  // Immediately mark as protected to prevent any interference
+  modal.classList.add("vch-protected");
+  modalContent.classList.add("vch-protected");
+
+  // Set button text cleanly
+  const submitButton = modalContent.querySelector("#vch-submit");
+  if (submitButton) {
+    submitButton.textContent = isEditing
+      ? "Update Assignment"
+      : "Save Assignment";
+  }
+
+  // Prevent multiple modals by adding a flag
+  modal.setAttribute("data-modal-active", "true");
+
+  // Hide floating button completely while modal is open
+  const floatingBtn = document.querySelector(".vch-floating-button");
+  if (floatingBtn) {
+    floatingBtn.style.visibility = "hidden";
+    floatingBtn.style.opacity = "0";
+    floatingBtn.style.pointerEvents = "none";
+    floatingBtn.style.transform = "scale(0.8)";
+  }
+
   // Event handlers
+  const closeModal = () => {
+    // Show floating button using postMessage if in iframe
+    if (window !== window.top) {
+      try {
+        window.top.postMessage({ type: "VCH_SHOW_BUTTON" }, "*");
+      } catch (e) {
+        // Silent error handling
+      }
+    } else {
+      // If not in iframe, show directly
+      const floatingBtn = document.querySelector(".vch-floating-button");
+      if (floatingBtn) {
+        floatingBtn.style.visibility = "visible";
+        floatingBtn.style.opacity = "0.9";
+        floatingBtn.style.pointerEvents = "auto";
+        floatingBtn.style.transform = "";
+      }
+    }
+    modal.remove();
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
+    // Reset the flag to allow new modals
+    modalOpenInProgress = false;
+  };
+
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
-      modal.remove();
+      closeModal();
     }
   });
 
+  // Reset flag after modal is fully created and visible
+  setTimeout(() => {
+    modalOpenInProgress = false;
+  }, 100);
+
   document.getElementById("vch-cancel").addEventListener("click", () => {
-    modal.remove();
+    closeModal();
   });
 
   document
@@ -901,49 +969,745 @@ function showCustomAssignmentModal(prefillData = {}) {
       e.preventDefault();
 
       const assignment = {
-        id: generateId(),
+        id: prefillData.id || generateId(),
         title: document.getElementById("vch-title").value,
         description: document.getElementById("vch-description").value,
         dueDate: document.getElementById("vch-due-date").value,
         class: document.getElementById("vch-class").value,
-        isPastDue: prefillData.isPastDue || false,
-        originalDueDate: document.getElementById("vch-original-date")?.value,
-        createdAt: new Date().toISOString(),
+        createdAt: prefillData.createdAt || new Date().toISOString(),
       };
 
       await saveCustomAssignment(assignment);
-      modal.remove();
 
-      // Refresh both sidebar and timeline
-      customAssignmentsInjected = false;
-
-      // Clear existing custom assignment elements
-      const existingSidebarRow = document.querySelector(
-        ".vch-custom-class-row",
-      );
-      if (existingSidebarRow) {
-        existingSidebarRow.remove();
+      // Instantly update UI before closing modal
+      const isInIframe = window !== window.top;
+      if (isInIframe) {
+        // We're in the iframe, directly refresh
+        await instantAssignmentUpdate();
+      } else {
+        // We're in the main page, send message to iframe
+        const iframe = document.querySelector("iframe.old-portals-iframe");
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(
+            {
+              type: "VCH_REFRESH_ASSIGNMENTS",
+              assignment: assignment,
+            },
+            "*",
+          );
+        }
       }
 
-      const existingTimelineRow = document.querySelector(
-        ".vch-custom-timeline-row",
-      );
-      if (existingTimelineRow) {
-        existingTimelineRow.remove();
-      }
-
-      setTimeout(() => {
-        loadAndInjectCustomAssignments();
-      }, 100);
+      closeModal();
     });
+}
+
+async function refreshCustomAssignmentsWithRetry(retries = 3) {
+  try {
+    await refreshCustomAssignments();
+
+    // Quick verification that assignments are visible
+    setTimeout(async () => {
+      const customAssignments = (await getStorage("customAssignments")) || [];
+      const assignmentElements = document.querySelectorAll(
+        "[data-custom-assignment-id]",
+      );
+
+      if (
+        customAssignments.length > 0 &&
+        assignmentElements.length === 0 &&
+        retries > 0
+      ) {
+        await refreshCustomAssignmentsWithRetry(retries - 1);
+      } else if (assignmentElements.length > 0) {
+        // Success - assignments are now visible
+      } else if (customAssignments.length === 0) {
+        // No assignments in storage to display
+      } else {
+        // No more retries left
+      }
+    }, 500);
+  } catch (error) {
+    if (retries > 0) {
+      setTimeout(() => refreshCustomAssignmentsWithRetry(retries - 1), 1000);
+    }
+  }
+}
+
+async function refreshCustomAssignments() {
+  if (injectionInProgress || instantUpdateInProgress) {
+    return;
+  }
+
+  injectionInProgress = true;
+
+  // Get fresh data from storage
+  const customAssignments = (await getStorage("customAssignments")) || [];
+
+  // Reset injection state completely
+  customAssignmentsInjected = false;
+
+  // Remove all existing custom assignment elements with more thorough cleanup
+  const elementsToRemove = document.querySelectorAll(
+    ".vch-custom-class-row, .vch-custom-timeline-row, .vch-custom-assignment, .vch-custom-assignments-section, [data-vch-custom='true'], [data-custom-assignment-id]",
+  );
+
+  elementsToRemove.forEach((el) => {
+    // Clean up any observers
+    if (el._vchObserver) {
+      el._vchObserver.disconnect();
+    }
+    el.remove();
+  });
+
+  // Quick DOM cleanup - no delay needed for instant updates
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  // Check if we're still on a supported page (use same logic as initial detection)
+
+  const isTimelinePage =
+    location.pathname.includes("planner") ||
+    location.pathname.includes("timeline") ||
+    document.querySelector("#planner") ||
+    document.querySelector(".timeline-header-y-inner") ||
+    document.querySelector(".timeline-records-inner");
+
+  const isAssignmentsPage =
+    location.pathname.includes("upcoming-assignments") ||
+    location.pathname.includes("assignments");
+
+  if (isTimelinePage) {
+    // Use the more robust injection method that waits for elements
+    await loadAndInjectCustomAssignments();
+  } else if (isAssignmentsPage) {
+    injectCustomAssignmentsToAssignmentsPage(customAssignments);
+    customAssignmentsInjected = true;
+  }
+
+  injectionInProgress = false;
+}
+
+function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
+  try {
+    if (!customAssignments || customAssignments.length === 0) {
+      return;
+    }
+
+    // Find the assignments container
+    let assignmentsContainer = document.querySelector(
+      ".assignment-center-column, .upcoming-assignment, .assignment-list, .content-2-columns .x-column-inner",
+    );
+
+    if (!assignmentsContainer) {
+      const alternativeSelectors = [
+        "main",
+        ".main",
+        ".main-content",
+        ".content-area",
+        ".content-2-columns",
+        ".x-column-inner",
+        ".assignment-center-column",
+        ".upcoming-assignment",
+        ".assignment-list",
+        ".content-2-columns .x-column-inner",
+        "[class*='content']:not([class*='vch']):not(button)",
+        "[class*='assignment']:not([class*='vch']):not(button)",
+        "section:not([class*='vch'])",
+        "article:not([class*='vch'])",
+      ];
+
+      for (const selector of alternativeSelectors) {
+        const container = document.querySelector(selector);
+        if (
+          container &&
+          !container.closest(".vch-floating-add-btn") &&
+          !container.classList.contains("vch-floating-add-btn") &&
+          !container.classList.contains("vch-add-assignment-btn")
+        ) {
+          // Use this container and continue with injection
+          assignmentsContainer = container;
+          break;
+        }
+      }
+
+      // Final fallback: try to find any existing assignment-like elements and inject near them
+      if (!assignmentsContainer) {
+        const existingAssignments = document.querySelectorAll(
+          '[class*="assignment"], [class*="due"], .row, .item, .card',
+        );
+
+        if (existingAssignments.length > 0) {
+          // Filter out elements that are inside the floating button or other unwanted containers
+          const validAssignments = Array.from(existingAssignments).filter(
+            (el) => {
+              return (
+                !el.closest(".vch-floating-add-btn") &&
+                !el.closest(".vch-assignment-modal") &&
+                !el.closest("button") &&
+                !el.classList.contains("vch-add-assignment-btn")
+              );
+            },
+          );
+
+          if (validAssignments.length > 0) {
+            // Find the parent container of the first valid assignment-like element
+            let parentContainer = validAssignments[0].parentElement;
+            while (parentContainer && parentContainer.tagName !== "BODY") {
+              // Look for a good parent that's not too specific and not the floating button
+              if (
+                !parentContainer.closest(".vch-floating-add-btn") &&
+                !parentContainer.classList.contains("vch-floating-add-btn") &&
+                (parentContainer.children.length > 1 ||
+                  parentContainer.classList.contains("content") ||
+                  parentContainer.classList.contains("main") ||
+                  parentContainer.tagName === "MAIN")
+              ) {
+                assignmentsContainer = parentContainer;
+                break;
+              }
+              parentContainer = parentContainer.parentElement;
+            }
+          }
+        }
+      }
+
+      // If we still don't have a container, try to find the main page content
+      if (!assignmentsContainer) {
+        // Look for common page structure elements
+        const mainContentSelectors = [
+          "main",
+          ".main",
+          "#main",
+          ".page-content",
+          ".main-content",
+          ".content",
+          "[role='main']",
+          "body > div:not(.vch-floating-add-btn)",
+          "body > *:not(script):not(style):not(.vch-floating-add-btn)",
+        ];
+
+        for (const selector of mainContentSelectors) {
+          const element = document.querySelector(selector);
+          if (element && !element.closest(".vch-floating-add-btn")) {
+            assignmentsContainer = element;
+            break;
+          }
+        }
+      }
+
+      // Final fallback: create a container in body but not as last child (avoid button area)
+      if (!assignmentsContainer) {
+        assignmentsContainer = document.createElement("div");
+        assignmentsContainer.style.cssText = "margin: 20px; padding: 0;";
+        // Insert as first child of body to avoid floating button area
+        document.body.insertBefore(
+          assignmentsContainer,
+          document.body.firstChild,
+        );
+      }
+    }
+
+    // Remove existing custom assignments section
+    const existingSection = assignmentsContainer.querySelector(
+      ".vch-custom-assignments-section",
+    );
+    if (existingSection) {
+      existingSection.remove();
+    }
+
+    // Create custom assignments section with original styling
+    const customSection = document.createElement("div");
+    customSection.className = "vch-custom-assignments-section";
+    customSection.innerHTML = `
+    <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9;">
+      <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">
+        📚 Custom Assignments (${customAssignments.length})
+      </h3>
+      <div class="vch-custom-assignments-list"></div>
+    </div>
+  `;
+
+    const customList = customSection.querySelector(
+      ".vch-custom-assignments-list",
+    );
+
+    // Sort assignments by due date
+    const sortedAssignments = [...customAssignments].sort(
+      (a, b) => new Date(a.dueDate) - new Date(b.dueDate),
+    );
+
+    // Create assignment elements
+    sortedAssignments.forEach((assignment) => {
+      const assignmentEl = document.createElement("div");
+      assignmentEl.className = "vch-custom-assignment";
+      assignmentEl.setAttribute("data-custom-assignment-id", assignment.id);
+      assignmentEl.setAttribute("data-vch-custom", "true");
+
+      const dueDate = new Date(assignment.dueDate);
+      const formattedDate = dueDate.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+
+      assignmentEl.innerHTML = `
+      <div style="padding: 8px 12px; margin: 5px 0; border-left: 4px solid #007cba; background-color: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="font-weight: bold; color: #333; margin-bottom: 2px;">
+              ${escapeHtml(assignment.title)}
+            </div>
+            <div style="font-size: 12px; color: #666;">
+              Due: ${formattedDate}
+            </div>
+            ${assignment.description ? `<div style="font-size: 12px; color: #888; margin-top: 4px;">${escapeHtml(assignment.description)}</div>` : ""}
+          </div>
+          <div style="margin-left: 10px;">
+            <button class="vch-assignment-details" data-assignment-id="${assignment.id}" style="padding: 4px 8px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">
+              Details
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+      customList.appendChild(assignmentEl);
+    });
+
+    // Insert at the top of the assignments container
+    assignmentsContainer.insertBefore(
+      customSection,
+      assignmentsContainer.firstChild,
+    );
+
+    // Add click handlers for details buttons
+    customSection.addEventListener("click", (e) => {
+      if (e.target.classList.contains("vch-assignment-details")) {
+        const assignmentId = e.target.getAttribute("data-assignment-id");
+        const assignment = customAssignments.find((a) => a.id === assignmentId);
+        if (assignment) {
+          showCustomAssignmentDetails(assignment);
+        }
+      }
+    });
+  } catch (error) {
+    // Silent error handling
+  }
 }
 
 async function saveCustomAssignment(assignment) {
   const customAssignments = (await getStorage("customAssignments")) || [];
-  customAssignments.push(assignment);
-  await setStorage({ customAssignments });
 
-  console.log(`${DEBUG_PREFIX} Saved custom assignment:`, assignment.title);
+  // If assignment has an ID, update existing; otherwise add new
+  const existingIndex = customAssignments.findIndex(
+    (a) => a.id === assignment.id,
+  );
+  if (existingIndex >= 0) {
+    customAssignments[existingIndex] = assignment;
+  } else {
+    customAssignments.push(assignment);
+  }
+
+  await setStorage({ customAssignments });
+}
+
+async function immediatelyInjectNewAssignment(assignment) {
+  await instantAssignmentUpdate();
+}
+
+async function instantAssignmentUpdate() {
+  if (injectionInProgress || instantUpdateInProgress) {
+    return;
+  }
+
+  instantUpdateInProgress = true;
+
+  // Check if we're in the correct context (timeline iframe)
+  const isInIframe = window !== window.top;
+  const isTimelineIframe =
+    isInIframe &&
+    (location.href.includes("planner") ||
+      document.querySelector("#planner") ||
+      document.querySelector(".timeline-header-y-inner"));
+
+  if (!isTimelineIframe) {
+    instantUpdateInProgress = false;
+    return;
+  }
+
+  try {
+    const customAssignments = (await getStorage("customAssignments")) || [];
+
+    // Check if timeline elements exist
+    const timelineElementsExist = !!(
+      document.querySelector(".timeline-row") ||
+      document.querySelector(".timeline-cell") ||
+      document.querySelector(".timeline-header-y-inner") ||
+      document.querySelector(".timeline-records-inner") ||
+      document.querySelector("#planner")
+    );
+
+    if (!timelineElementsExist) {
+      instantUpdateInProgress = false;
+      return;
+    }
+
+    // Update existing elements without removing them first (no flicker)
+    const existingSidebar = document.querySelector(
+      ".vch-custom-assignments-sidebar",
+    );
+    const existingTimelineRow = document.querySelector(
+      ".vch-custom-timeline-row",
+    );
+
+    // Update sidebar content instantly
+    if (existingSidebar) {
+      updateSidebarContent(existingSidebar, customAssignments);
+    }
+
+    // Update timeline row content instantly
+    if (existingTimelineRow) {
+      updateTimelineRowContent(existingTimelineRow, customAssignments);
+    }
+
+    // Only create new elements if neither exists (initial load scenario)
+    if (!existingSidebar && !existingTimelineRow) {
+      injectCustomAssignmentsSidebar(customAssignments);
+      injectCustomAssignmentsTimeline(customAssignments);
+    }
+
+    // Add persistence check - verify timeline row still exists after a brief delay
+    setTimeout(() => {
+      const timelineRowCheck = document.querySelector(
+        ".vch-custom-timeline-row",
+      );
+      if (!timelineRowCheck && customAssignments.length > 0) {
+        injectCustomAssignmentsTimeline(customAssignments);
+      }
+    }, 50);
+
+    customAssignmentsInjected = true;
+    instantUpdateInProgress = false;
+  } catch (error) {
+    instantUpdateInProgress = false;
+    // Fallback to standard refresh
+    setTimeout(async () => {
+      await immediatelyRefreshAssignments();
+    }, 10);
+  }
+}
+
+async function immediatelyRefreshAssignments() {
+  if (injectionInProgress || instantUpdateInProgress) {
+    return;
+  }
+
+  // Check if we're in the correct context (timeline iframe)
+  const isInIframe = window !== window.top;
+  const isTimelineIframe =
+    isInIframe &&
+    (location.href.includes("planner") ||
+      document.querySelector("#planner") ||
+      document.querySelector(".timeline-header-y-inner"));
+
+  if (!isTimelineIframe) {
+    return;
+  }
+
+  try {
+    const customAssignments = (await getStorage("customAssignments")) || [];
+
+    // Check if timeline elements exist
+    const timelineElementsExist = !!(
+      document.querySelector(".timeline-row") ||
+      document.querySelector(".timeline-cell") ||
+      document.querySelector(".timeline-header-y-inner") ||
+      document.querySelector(".timeline-records-inner") ||
+      document.querySelector("#planner")
+    );
+
+    if (!timelineElementsExist) {
+      return;
+    }
+
+    // Always try to update existing elements first, only create if none exist
+    const existingSidebar = document.querySelector(
+      ".vch-custom-assignments-sidebar",
+    );
+    const existingTimelineRow = document.querySelector(
+      ".vch-custom-timeline-row",
+    );
+
+    // Update sidebar content
+    if (existingSidebar) {
+      updateSidebarContent(existingSidebar, customAssignments);
+    }
+
+    // Update timeline row content
+    if (existingTimelineRow) {
+      updateTimelineRowContent(existingTimelineRow, customAssignments);
+    }
+
+    // Only create new elements if neither exists (initial load scenario)
+    if (!existingSidebar && !existingTimelineRow) {
+      injectCustomAssignmentsSidebar(customAssignments);
+      injectCustomAssignmentsTimeline(customAssignments);
+    }
+
+    customAssignmentsInjected = true;
+  } catch (error) {
+    // Fallback to the retry mechanism if immediate refresh fails
+    setTimeout(async () => {
+      await refreshCustomAssignmentsWithRetry(3);
+    }, 10);
+  }
+}
+
+function updateSidebarContent(sidebar, customAssignments) {
+  const assignmentsList = sidebar.querySelector(".vch-assignments-list");
+  if (!assignmentsList) return;
+
+  // Clear and rebuild the assignments list
+  assignmentsList.innerHTML = "";
+
+  if (customAssignments.length === 0) {
+    assignmentsList.innerHTML = `<div style="text-align: center; color: #666; font-style: italic; padding: 20px;">No custom assignments</div>`;
+    return;
+  }
+
+  // Group assignments by date
+  const groupedAssignments = {};
+  customAssignments.forEach((assignment) => {
+    const dateKey = assignment.dueDate;
+    if (!groupedAssignments[dateKey]) {
+      groupedAssignments[dateKey] = [];
+    }
+    groupedAssignments[dateKey].push(assignment);
+  });
+
+  // Sort dates and create sections
+  const sortedDates = Object.keys(groupedAssignments).sort();
+  sortedDates.forEach((date) => {
+    const dateSection = document.createElement("div");
+    dateSection.className = "vch-date-section";
+
+    const dateHeader = document.createElement("h4");
+    dateHeader.textContent = formatDate(date);
+    dateHeader.style.cssText = `
+      margin: 12px 0 6px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+    dateSection.appendChild(dateHeader);
+
+    groupedAssignments[date].forEach((assignment) => {
+      const assignmentElement = createCustomAssignmentElement(assignment);
+      dateSection.appendChild(assignmentElement);
+    });
+
+    assignmentsList.appendChild(dateSection);
+  });
+
+  // Update the count in the header
+  const header = sidebar.querySelector("h3");
+  if (header) {
+    header.innerHTML = `📚 Custom Assignments (${customAssignments.length})`;
+  }
+}
+
+function updateTimelineRowContent(timelineRow, customAssignments) {
+  // Get timeline cells
+  const timelineCells = timelineRow.querySelectorAll(".timeline-cell");
+
+  // Create a map of existing assignments by ID for comparison
+  const existingAssignments = new Map();
+  timelineRow.querySelectorAll(".vch-custom-assignment").forEach((el) => {
+    const id = el.getAttribute("data-custom-assignment-id");
+    if (id) {
+      existingAssignments.set(id, el);
+    }
+  });
+
+  // Track which assignments we've processed
+  const processedIds = new Set();
+
+  customAssignments.forEach((assignment, index) => {
+    // Parse date in local timezone to avoid UTC shift issues
+    const dateParts = assignment.dueDate.split("-");
+    const assignmentDate = new Date(
+      parseInt(dateParts[0], 10), // year
+      parseInt(dateParts[1], 10) - 1, // month (0-based)
+      parseInt(dateParts[2], 10), // day
+    );
+
+    const columnIndex = getColumnIndexForDate(assignmentDate);
+
+    processedIds.add(assignment.id);
+
+    // If assignment already exists in the right place, skip it
+    const existingElement = existingAssignments.get(assignment.id);
+    if (
+      existingElement &&
+      columnIndex >= 0 &&
+      columnIndex < timelineCells.length
+    ) {
+      const existingCell = existingElement.closest(".timeline-cell");
+      const targetCell = columnIndex >= 0 ? timelineCells[columnIndex] : null;
+
+      if (existingCell === targetCell) {
+        return;
+      } else {
+        // Move it to the correct cell
+        existingElement.remove();
+      }
+    }
+
+    if (columnIndex >= 0 && columnIndex < timelineCells.length) {
+      const cell = timelineCells[columnIndex];
+      const assignmentElement = createTimelineAssignmentElement(assignment);
+
+      cell.appendChild(assignmentElement);
+    }
+  });
+
+  // Remove any assignments that are no longer in the customAssignments array
+  existingAssignments.forEach((element, id) => {
+    if (!processedIds.has(id)) {
+      element.remove();
+    }
+  });
+}
+
+function getColumnIndexForDate(assignmentDate) {
+  // Use the exact same selector as the working initial load code
+  const headerCells = document.querySelectorAll(
+    ".timeline-header-x-inner .timeline-cell",
+  );
+
+  // Parse assignment date components in local timezone
+  const assignmentYear = assignmentDate.getFullYear();
+  const assignmentMonth = assignmentDate.getMonth();
+  const assignmentDay = assignmentDate.getDate();
+
+  for (let i = 0; i < headerCells.length; i++) {
+    const headerCell = headerCells[i];
+
+    // Extract header text using the same logic as getCustomAssignmentsForDate
+    let headerText = headerCell.querySelector("h4")?.textContent?.trim();
+
+    // If h4 doesn't exist or doesn't contain a date, try other selectors
+    if (!headerText || !headerText.includes(",")) {
+      headerText = headerCell.querySelector("div")?.textContent?.trim();
+      if (!headerText || !headerText.includes(",")) {
+        headerText = headerCell.textContent?.trim();
+      }
+    }
+
+    // Additional cleanup for header text
+    if (headerText) {
+      headerText = headerText.replace(/\s+/g, " ").trim();
+    }
+
+    // Skip invalid headers
+    if (
+      !headerText ||
+      !headerText.includes(",") ||
+      headerText.includes("ASSIGNMENTS DUE") ||
+      headerText.match(/^\d+\s+ASSIGNMENTS DUE/)
+    ) {
+      continue;
+    }
+
+    // Parse the date from header text using the same logic as parseHeaderDate
+    const headerDate = parseHeaderDate(headerText);
+    if (!headerDate) {
+      continue;
+    }
+
+    // Direct date comparison - now that parseHeaderDate handles years correctly
+    const matches =
+      headerDate.getFullYear() === assignmentYear &&
+      headerDate.getMonth() === assignmentMonth &&
+      headerDate.getDate() === assignmentDay;
+
+    if (matches) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function parseColumnDateFormat(dateFormat) {
+  // Parse date_format like "Wednesday, Sep 03" to YYYY-MM-DD
+  const dateMatch = dateFormat.match(/(\w+),?\s+(\w+)\s+(\d+)/);
+  if (dateMatch) {
+    const [, , monthName, day] = dateMatch;
+    const monthMap = {
+      Jan: 0,
+      Feb: 1,
+      Mar: 2,
+      Apr: 3,
+      May: 4,
+      Jun: 5,
+      Jul: 6,
+      Aug: 7,
+      Sep: 8,
+      Oct: 9,
+      Nov: 10,
+      Dec: 11,
+      January: 0,
+      February: 1,
+      March: 2,
+      April: 3,
+      May: 4,
+      June: 5,
+      July: 6,
+      August: 7,
+      September: 8,
+      October: 9,
+      November: 10,
+      December: 11,
+    };
+
+    const monthNumber =
+      monthMap[monthName] || monthMap[monthName.substring(0, 3)];
+    if (monthNumber !== undefined) {
+      const currentYear = new Date().getFullYear();
+      const date = new Date(currentYear, monthNumber, parseInt(day));
+      return date.toISOString().split("T")[0];
+    }
+  }
+  return null;
+}
+
+async function deleteCustomAssignment(assignmentId) {
+  const customAssignments = (await getStorage("customAssignments")) || [];
+  const filteredAssignments = customAssignments.filter(
+    (a) => a.id !== assignmentId,
+  );
+  await setStorage({ customAssignments: filteredAssignments });
+
+  // Check if we're in iframe or main page and handle accordingly
+  const isInIframe = window !== window.top;
+  if (isInIframe) {
+    // We're in the iframe, directly refresh
+    await instantAssignmentUpdate();
+  } else {
+    // We're in the main page, send message to iframe
+    const iframe = document.querySelector("iframe.old-portals-iframe");
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(
+        {
+          type: "VCH_REFRESH_ASSIGNMENTS",
+        },
+        "*",
+      );
+    }
+  }
 }
 
 function generateId() {
@@ -952,16 +1716,8 @@ function generateId() {
 
 function injectCustomAssignmentsSidebar(customAssignments) {
   try {
-    console.log(
-      `${DEBUG_PREFIX} Injecting ${customAssignments.length} custom assignments into sidebar`,
-    );
-
     // Validate that customAssignments is an array
     if (!Array.isArray(customAssignments)) {
-      console.error(
-        `${DEBUG_PREFIX} customAssignments is not an array:`,
-        customAssignments,
-      );
       return;
     }
 
@@ -969,9 +1725,6 @@ function injectCustomAssignmentsSidebar(customAssignments) {
     const timelineYHeader = document.querySelector(".timeline-header-y-inner");
 
     if (!timelineYHeader) {
-      console.log(
-        `${DEBUG_PREFIX} Timeline Y-axis header not found, trying alternative selectors`,
-      );
       // Try to find other possible containers
       const alternativeContainers = [
         ".timeline-header-y",
@@ -986,24 +1739,14 @@ function injectCustomAssignmentsSidebar(customAssignments) {
       for (const selector of alternativeContainers) {
         container = document.querySelector(selector);
         if (container) {
-          console.log(
-            `${DEBUG_PREFIX} Found alternative container: ${selector}`,
-          );
           break;
         }
       }
 
       if (container) {
         injectCustomAssignmentsSidebarToContainer(container, customAssignments);
-      } else {
-        console.log(
-          `${DEBUG_PREFIX} No suitable container found for custom assignments. Available containers:`,
-          Array.from(
-            document.querySelectorAll(
-              '.timeline-header-y, .timeline-header-y-inner, [class*="timeline"]',
-            ),
-          ).map((el) => el.className),
-        );
+        // Always inject timeline row when sidebar is injected to maintain alignment
+        injectCustomAssignmentsTimeline(customAssignments);
       }
       return;
     }
@@ -1014,7 +1757,7 @@ function injectCustomAssignmentsSidebar(customAssignments) {
     );
     injectCustomAssignmentsTimeline(customAssignments);
   } catch (error) {
-    console.error(`${DEBUG_PREFIX} Error injecting custom assignments:`, error);
+    // Error injecting custom assignments
   }
 }
 
@@ -1024,15 +1767,10 @@ function injectCustomAssignmentsSidebarToContainer(
 ) {
   // Validate inputs
   if (!container || !container.querySelector) {
-    console.error(`${DEBUG_PREFIX} Invalid container provided:`, container);
     return;
   }
 
   if (!Array.isArray(customAssignments)) {
-    console.error(
-      `${DEBUG_PREFIX} customAssignments is not an array:`,
-      customAssignments,
-    );
     return;
   }
 
@@ -1048,17 +1786,30 @@ function injectCustomAssignmentsSidebarToContainer(
 
   // Create custom assignments timeline row that matches Veracross structure
   const customRow = document.createElement("div");
-  customRow.className = "timeline-row vch-custom-class-row";
-  customRow.setAttribute("data-row-id", "custom-assignments");
 
-  // Get height from existing timeline rows to match exactly
+  // Copy exact structure and styling from native rows
   const firstExistingRow = document.querySelector(
     ".timeline-header-y-inner .timeline-row[data-row-id]:not(.vch-custom-class-row)",
   );
   if (firstExistingRow) {
+    // Copy all classes and add our custom identifier
+    customRow.className = firstExistingRow.className + " vch-custom-class-row";
+    customRow.setAttribute("data-row-id", "custom-assignments");
+
+    // Copy all positioning and layout styles
     const computedStyle = window.getComputedStyle(firstExistingRow);
     customRow.style.height = computedStyle.height;
+    customRow.style.margin = computedStyle.margin;
+    customRow.style.padding = computedStyle.padding;
+    customRow.style.border = computedStyle.border;
+    customRow.style.position = computedStyle.position;
+    customRow.style.left = computedStyle.left;
+    customRow.style.right = computedStyle.right;
+    customRow.style.display = computedStyle.display;
+    customRow.style.boxSizing = computedStyle.boxSizing;
   } else {
+    customRow.className = "timeline-row vch-custom-class-row";
+    customRow.setAttribute("data-row-id", "custom-assignments");
     customRow.style.cssText = `
       height: auto;
       min-height: 60px;
@@ -1067,11 +1818,50 @@ function injectCustomAssignmentsSidebarToContainer(
 
   // Create timeline cell to match Veracross structure
   const timelineCell = document.createElement("div");
-  timelineCell.className = "timeline-cell";
+
+  // Copy cell styling from native cells
+  if (firstExistingRow) {
+    const firstExistingCell = firstExistingRow.querySelector(".timeline-cell");
+    if (firstExistingCell) {
+      timelineCell.className = firstExistingCell.className;
+      const cellStyle = window.getComputedStyle(firstExistingCell);
+      timelineCell.style.margin = cellStyle.margin;
+      timelineCell.style.padding = cellStyle.padding;
+      timelineCell.style.border = cellStyle.border;
+      timelineCell.style.position = cellStyle.position;
+      timelineCell.style.textAlign = cellStyle.textAlign;
+      timelineCell.style.verticalAlign = cellStyle.verticalAlign;
+    } else {
+      timelineCell.className = "timeline-cell";
+    }
+  } else {
+    timelineCell.className = "timeline-cell";
+  }
 
   // Create expand/collapse title link (matching Veracross structure)
   const titleLink = document.createElement("a");
-  titleLink.className = "title";
+
+  // Copy title link styling from native rows
+  if (firstExistingRow) {
+    const nativeTitleLink = firstExistingRow.querySelector("a.title");
+    if (nativeTitleLink) {
+      titleLink.className = nativeTitleLink.className;
+      const titleStyle = window.getComputedStyle(nativeTitleLink);
+      titleLink.style.margin = titleStyle.margin;
+      titleLink.style.padding = titleStyle.padding;
+      titleLink.style.fontSize = titleStyle.fontSize;
+      titleLink.style.fontWeight = titleStyle.fontWeight;
+      titleLink.style.color = titleStyle.color;
+      titleLink.style.textDecoration = titleStyle.textDecoration;
+      titleLink.style.display = titleStyle.display;
+      titleLink.style.textAlign = titleStyle.textAlign;
+    } else {
+      titleLink.className = "title";
+    }
+  } else {
+    titleLink.className = "title";
+  }
+
   titleLink.href = "#";
   titleLink.setAttribute("title", "Custom Assignments");
   titleLink.setAttribute("data-toggle-row", "true");
@@ -1082,7 +1872,26 @@ function injectCustomAssignmentsSidebarToContainer(
 
   // Create subtitle (teacher info)
   const subtitle = document.createElement("p");
-  subtitle.className = "subtitle";
+
+  // Copy subtitle styling from native rows
+  if (firstExistingRow) {
+    const nativeSubtitle = firstExistingRow.querySelector("p.subtitle");
+    if (nativeSubtitle) {
+      subtitle.className = nativeSubtitle.className;
+      const subtitleStyle = window.getComputedStyle(nativeSubtitle);
+      subtitle.style.margin = subtitleStyle.margin;
+      subtitle.style.padding = subtitleStyle.padding;
+      subtitle.style.fontSize = subtitleStyle.fontSize;
+      subtitle.style.fontWeight = subtitleStyle.fontWeight;
+      subtitle.style.color = subtitleStyle.color;
+      subtitle.style.fontStyle = subtitleStyle.fontStyle;
+    } else {
+      subtitle.className = "subtitle";
+    }
+  } else {
+    subtitle.className = "subtitle";
+  }
+
   subtitle.textContent = "Student Created";
 
   // Create tools section with view all link
@@ -1096,7 +1905,6 @@ function injectCustomAssignmentsSidebarToContainer(
   viewAllLink.addEventListener("click", (e) => {
     e.preventDefault();
     // Could implement a modal or detailed view here
-    console.log("View all custom assignments clicked");
   });
 
   tools.appendChild(viewAllLink);
@@ -1159,19 +1967,39 @@ function injectCustomAssignmentsSidebarToContainer(
   } else {
     container.appendChild(customRow);
   }
-
-  console.log(
-    `${DEBUG_PREFIX} Added custom assignments row with ${customAssignments.length} assignments`,
-  );
 }
 
 function injectCustomAssignmentsTimeline(customAssignments) {
   try {
     // Find the timeline records container (main grid)
-    const timelineRecords = document.querySelector(".timeline-records-inner");
+    let timelineRecords = document.querySelector(".timeline-records-inner");
+
+    // Try alternative selectors if main one doesn't work
     if (!timelineRecords) {
-      console.log(`${DEBUG_PREFIX} Timeline records container not found`);
-      return;
+      const alternativeSelectors = [
+        ".timeline-records",
+        ".timeline-content",
+        ".timeline-table .timeline-body",
+        "[class*='timeline'][class*='record']",
+        ".timeline-container .timeline-rows",
+      ];
+
+      for (const selector of alternativeSelectors) {
+        timelineRecords = document.querySelector(selector);
+        if (timelineRecords) {
+          break;
+        }
+      }
+    }
+
+    if (!timelineRecords) {
+      // Last resort - find any element that might contain timeline rows
+      const allTimelineRows = document.querySelectorAll(".timeline-row");
+      if (allTimelineRows.length > 0) {
+        timelineRecords = allTimelineRows[0].parentElement;
+      } else {
+        return;
+      }
     }
 
     // Remove existing custom assignments timeline row
@@ -1182,10 +2010,45 @@ function injectCustomAssignmentsTimeline(customAssignments) {
       existingTimelineRow.remove();
     }
 
+    // Always create timeline row to maintain alignment, even if empty
+
     // Create custom assignments timeline row
     const timelineRow = document.createElement("div");
-    timelineRow.className = "timeline-row vch-custom-timeline-row";
-    timelineRow.setAttribute("data-vch-custom-row", "custom-assignments");
+
+    // Copy positioning and layout styles from existing timeline rows
+    const firstNativeRow = timelineRecords.querySelector(
+      ".timeline-row:not(.vch-custom-timeline-row)",
+    );
+    if (firstNativeRow) {
+      // Copy all classes from native row, then add our custom classes
+      timelineRow.className =
+        firstNativeRow.className + " vch-custom-timeline-row";
+      timelineRow.setAttribute("data-vch-custom-row", "custom-assignments");
+
+      // Copy ALL computed styles from native row
+      const nativeStyle = window.getComputedStyle(firstNativeRow);
+
+      // Copy positioning and layout
+      timelineRow.style.cssText = "";
+      timelineRow.style.margin = nativeStyle.margin;
+      timelineRow.style.padding = nativeStyle.padding;
+      timelineRow.style.border = nativeStyle.border;
+      timelineRow.style.position = nativeStyle.position;
+      timelineRow.style.left = nativeStyle.left;
+      timelineRow.style.right = nativeStyle.right;
+      timelineRow.style.top = nativeStyle.top;
+      timelineRow.style.bottom = nativeStyle.bottom;
+      timelineRow.style.width = nativeStyle.width;
+      timelineRow.style.height = nativeStyle.height;
+      timelineRow.style.display = nativeStyle.display;
+      timelineRow.style.boxSizing = nativeStyle.boxSizing;
+      timelineRow.style.transform = nativeStyle.transform;
+      timelineRow.style.textIndent = nativeStyle.textIndent;
+    } else {
+      // Fallback if no native row found
+      timelineRow.className = "timeline-row vch-custom-timeline-row";
+      timelineRow.setAttribute("data-vch-custom-row", "custom-assignments");
+    }
 
     // Add comprehensive event blocking to prevent native Veracross interference
     timelineRow.addEventListener(
@@ -1280,6 +2143,8 @@ function injectCustomAssignmentsTimeline(customAssignments) {
     timelineRow.style.minHeight = "90px";
     timelineRow.style.maxHeight = "90px";
 
+    // Remove the fixed positioning - let native styles handle it
+
     // Get timeline columns (dates) to create matching cells
     const headerColumns = document.querySelectorAll(
       ".timeline-header-x-inner .timeline-cell",
@@ -1290,43 +2155,122 @@ function injectCustomAssignmentsTimeline(customAssignments) {
       .querySelector(".timeline-row:not(.vch-custom-timeline-row)")
       ?.querySelectorAll(".timeline-cell");
 
+    // Check if any column represents today for row-level highlighting
+    let hasTodayColumn = false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     // Create timeline cells for each date column
+    let dateColumnCount = 0;
     headerColumns.forEach((headerCell, index) => {
-      const timelineCell = document.createElement("div");
-      timelineCell.className = "timeline-cell";
+      try {
+        // Check if this header contains date information
+        const headerText =
+          headerCell.querySelector("h4")?.textContent?.trim() ||
+          headerCell.querySelector("div")?.textContent?.trim() ||
+          headerCell.textContent?.trim();
 
-      // Match the styling of existing cells
-      if (firstRowCells && firstRowCells[index]) {
-        const existingCell = firstRowCells[index];
-        const computedStyle = window.getComputedStyle(existingCell);
-        timelineCell.style.width = computedStyle.width;
-        timelineCell.style.minWidth = computedStyle.minWidth;
-        timelineCell.style.maxWidth = computedStyle.maxWidth;
-      }
+        // Stop processing if we encounter non-date headers (like "X ASSIGNMENTS DUE")
+        if (
+          !headerText ||
+          headerText.includes("ASSIGNMENTS DUE") ||
+          headerText.match(/^\d+\s+ASSIGNMENTS DUE/) ||
+          (!headerText.includes(",") &&
+            headerText.length > 0 &&
+            !headerText.match(/^\s*$/))
+        ) {
+          return;
+        }
 
-      // Check if this is a divider column (weekend)
-      if (headerCell.classList.contains("divider")) {
-        timelineCell.classList.add("divider");
-        timelineCell.style.height = "90px"; // Fixed height for divider cells
-      }
+        dateColumnCount++;
 
-      // Add custom assignments to appropriate date cells
-      const assignmentsForThisDate = getCustomAssignmentsForDate(
-        customAssignments,
-        headerCell,
-        index,
-      );
+        const timelineCell = document.createElement("div");
+        timelineCell.className = "timeline-cell";
 
-      assignmentsForThisDate.forEach((assignment) => {
-        const assignmentElement = createTimelineAssignmentElement(
-          assignment,
-          timelineRow,
+        // Copy ALL styling from corresponding native cell
+        if (firstRowCells && firstRowCells[index]) {
+          const existingCell = firstRowCells[index];
+          const computedStyle = window.getComputedStyle(existingCell);
+
+          // Copy all positioning and appearance properties
+          timelineCell.style.cssText = "";
+          timelineCell.className =
+            existingCell.className + " vch-custom-timeline-cell";
+          timelineCell.style.width = computedStyle.width;
+          timelineCell.style.minWidth = computedStyle.minWidth;
+          timelineCell.style.maxWidth = computedStyle.maxWidth;
+          timelineCell.style.height = computedStyle.height;
+          timelineCell.style.margin = computedStyle.margin;
+          timelineCell.style.padding = computedStyle.padding;
+          timelineCell.style.border = computedStyle.border;
+          timelineCell.style.borderLeft = computedStyle.borderLeft;
+          timelineCell.style.borderRight = computedStyle.borderRight;
+          timelineCell.style.borderTop = computedStyle.borderTop;
+          timelineCell.style.borderBottom = computedStyle.borderBottom;
+          timelineCell.style.backgroundColor = computedStyle.backgroundColor;
+          timelineCell.style.position = computedStyle.position;
+          timelineCell.style.left = computedStyle.left;
+          timelineCell.style.right = computedStyle.right;
+          timelineCell.style.top = computedStyle.top;
+          timelineCell.style.bottom = computedStyle.bottom;
+          timelineCell.style.display = computedStyle.display;
+          timelineCell.style.boxSizing = computedStyle.boxSizing;
+          timelineCell.style.verticalAlign = computedStyle.verticalAlign;
+          timelineCell.style.textAlign = computedStyle.textAlign;
+          timelineCell.style.textIndent = computedStyle.textIndent;
+          timelineCell.style.transform = computedStyle.transform;
+
+          // Current day highlighting is already copied via backgroundColor above
+          // Just ensure we preserve any special classes
+          if (existingCell.classList.contains("today")) {
+            timelineCell.classList.add("today");
+          }
+          if (existingCell.classList.contains("current")) {
+            timelineCell.classList.add("current");
+          }
+          if (existingCell.classList.contains("active")) {
+            timelineCell.classList.add("active");
+          }
+
+          // If this cell is marked as today, mark the row as having today
+          if (timelineCell.classList.contains("today")) {
+            hasTodayColumn = true;
+          }
+        }
+
+        // Check if this is a weekend divider cell
+        if (headerCell.classList.contains("divider")) {
+          timelineCell.classList.add("divider");
+        }
+
+        // Find assignments for this date
+        const matchingAssignments = getCustomAssignmentsForDate(
+          customAssignments,
+          headerCell,
+          index,
         );
-        timelineCell.appendChild(assignmentElement);
-      });
 
-      timelineRow.appendChild(timelineCell);
+        matchingAssignments.forEach((assignment) => {
+          const assignmentEl = createTimelineAssignmentElement(
+            assignment,
+            timelineRow,
+          );
+          timelineCell.appendChild(assignmentEl);
+        });
+
+        // Empty cells are left empty for clean interface
+
+        timelineRow.appendChild(timelineCell);
+      } catch (error) {
+        // Skip problematic cells silently
+      }
     });
+
+    // If row contains today's date, add today class to entire row
+    if (hasTodayColumn) {
+      timelineRow.classList.add("today");
+      timelineRow.style.backgroundColor = "#fffee0";
+    }
 
     // Insert the timeline row at the top
     if (timelineRecords.firstChild) {
@@ -1334,10 +2278,8 @@ function injectCustomAssignmentsTimeline(customAssignments) {
     } else {
       timelineRecords.appendChild(timelineRow);
     }
-
-    console.log(`${DEBUG_PREFIX} Added custom assignments timeline row`);
   } catch (error) {
-    console.error(`${DEBUG_PREFIX} Error injecting timeline row:`, error);
+    // Silent error handling
   }
 }
 
@@ -1346,50 +2288,134 @@ function getCustomAssignmentsForDate(
   headerCell,
   columnIndex,
 ) {
-  // Extract date from header cell
-  const headerText = headerCell.querySelector("h4")?.textContent;
-  if (!headerText) return [];
+  // Extract date from header cell - try multiple selectors
+  let headerText = headerCell.querySelector("h4")?.textContent?.trim();
+
+  // If h4 doesn't exist or doesn't contain a date, try other selectors
+  if (!headerText || !headerText.includes(",")) {
+    headerText = headerCell.querySelector("div")?.textContent?.trim();
+    if (!headerText || !headerText.includes(",")) {
+      headerText = headerCell.textContent?.trim();
+    }
+  }
+
+  // Additional cleanup for header text
+  if (headerText) {
+    headerText = headerText.replace(/\s+/g, " ").trim();
+  }
+
+  // More specific checks for valid date headers
+  if (
+    !headerText ||
+    !headerText.includes(",") ||
+    headerText.includes("ASSIGNMENTS DUE") ||
+    headerText.match(/^\d+\s+ASSIGNMENTS DUE/)
+  ) {
+    return [];
+  }
 
   // Parse the date from header text (e.g., "Wednesday, Sep 03")
   const headerDate = parseHeaderDate(headerText);
-  if (!headerDate) return [];
+  if (!headerDate) {
+    return [];
+  }
 
   // Find assignments due on this date
-  return customAssignments.filter((assignment) => {
-    if (!assignment.dueDate) return false;
+  const matchingAssignments = customAssignments.filter((assignment) => {
+    if (!assignment.dueDate) {
+      return false;
+    }
 
-    const assignmentDate = new Date(assignment.dueDate);
-    return (
+    // Parse assignment date in local timezone to avoid UTC shift issues
+    const dateParts = assignment.dueDate.split("-");
+    if (dateParts.length !== 3) {
+      return false;
+    }
+
+    const assignmentYear = parseInt(dateParts[0], 10);
+    const assignmentMonth = parseInt(dateParts[1], 10) - 1; // month (0-based)
+    const assignmentDay = parseInt(dateParts[2], 10);
+
+    // Create date in local timezone to avoid UTC shift
+    const assignmentDate = new Date(
+      assignmentYear,
+      assignmentMonth,
+      assignmentDay,
+    );
+
+    // Direct date comparison - parseHeaderDate now handles years correctly
+    const matches =
       assignmentDate.getFullYear() === headerDate.getFullYear() &&
       assignmentDate.getMonth() === headerDate.getMonth() &&
-      assignmentDate.getDate() === headerDate.getDate()
-    );
+      assignmentDate.getDate() === headerDate.getDate();
+
+    return matches;
   });
+
+  return matchingAssignments;
 }
 
 function parseHeaderDate(headerText) {
   try {
     // Parse dates like "Wednesday, Sep 03" or "Monday, Oct 06"
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
 
-    // Extract month and day from text like "Wednesday, Sep 03"
-    const parts = headerText.split(", ");
-    if (parts.length !== 2) return null;
+    // Clean up the header text and extract month and day
+    const cleanedText = headerText.replace(/\s+/g, " ").trim();
+    const parts = cleanedText.split(", ");
+    if (parts.length !== 2) {
+      return null;
+    }
 
     const datePart = parts[1]; // "Sep 03"
-    const dateStr = `${datePart}, ${currentYear}`; // "Sep 03, 2024"
 
-    const parsed = new Date(dateStr);
+    // Parse month and day separately to avoid timezone issues
+    const [monthStr, dayStr] = datePart.split(" ");
+    const monthMap = {
+      Jan: 0,
+      Feb: 1,
+      Mar: 2,
+      Apr: 3,
+      May: 4,
+      Jun: 5,
+      Jul: 6,
+      Aug: 7,
+      Sep: 8,
+      Oct: 9,
+      Nov: 10,
+      Dec: 11,
+    };
+
+    const month = monthMap[monthStr];
+    const day = parseInt(dayStr, 10);
+
+    if (month === undefined || isNaN(day)) {
+      return null;
+    }
+
+    // Smart year detection: if we're in late year (Nov/Dec) and seeing early months (Jan/Feb/Mar),
+    // it's probably next year. If we're in early year and seeing late months, it's probably last year.
+    let year = currentYear;
+
+    if (currentMonth >= 10 && month <= 2) {
+      // We're in Nov/Dec looking at Jan/Feb/Mar - probably next year
+      year = currentYear + 1;
+    } else if (currentMonth <= 2 && month >= 10) {
+      // We're in Jan/Feb/Mar looking at Nov/Dec - probably last year
+      year = currentYear - 1;
+    }
+
+    // Create date in local timezone to avoid timezone shift issues
+    const parsed = new Date(year, month, day);
 
     // Check if date is valid
-    if (isNaN(parsed.getTime())) return null;
+    if (isNaN(parsed.getTime())) {
+      return null;
+    }
 
     return parsed;
   } catch (error) {
-    console.warn(
-      `${DEBUG_PREFIX} Error parsing header date: ${headerText}`,
-      error,
-    );
     return null;
   }
 }
@@ -1398,29 +2424,54 @@ function createTimelineAssignmentElement(assignment, parentRow) {
   // Create assignment div that matches Veracross timeline structure exactly
   const assignmentDiv = document.createElement("div");
   assignmentDiv.className = "assignment vch-decorated vch-custom-assignment";
-  assignmentDiv.setAttribute("data-preview", "custom-assignment");
   assignmentDiv.setAttribute("data-custom-assignment-id", assignment.id);
   assignmentDiv.setAttribute("data-vch-custom", "true");
 
   // Create assignment type span matching native Veracross style exactly
   const typeSpan = document.createElement("span");
   typeSpan.className = "assignment-type";
-  const assignmentType = assignment.isPastDue ? "Homework" : "Custom";
-  const borderColor = assignment.isPastDue ? "#dc3545" : "#007bff";
+  const assignmentType = "Custom";
+  const borderColor = "#007bff";
   typeSpan.setAttribute("title", assignmentType);
   typeSpan.style.cssText = `border-left: 4px solid ${borderColor};`;
 
   // Create task wrap with checkbox exactly like native assignments
   const taskWrap = document.createElement("span");
   taskWrap.className = "vch-task-wrap";
-  taskWrap.setAttribute(
-    "data-type",
-    assignment.isPastDue ? "homework" : "custom",
-  );
+  taskWrap.setAttribute("data-type", "custom");
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.className = "vch-checkbox";
+
+  // Add change event handler for strikethrough effect
+  const assignmentId = `custom-${assignment.id}`;
+  checkbox.addEventListener("change", async (event) => {
+    try {
+      // Toggle the vch-done class on the assignment element
+      assignmentDiv.classList.toggle("vch-done", checkbox.checked);
+
+      // Store checkbox state in storage
+      const checked = (await getStorage("vc_checked_assignments")) || {};
+      checked[assignmentId] = checkbox.checked ? 1 : undefined;
+
+      // Remove undefined values and save
+      const compact = Object.fromEntries(
+        Object.entries(checked).filter(([, v]) => v),
+      );
+      await setStorage({ vc_checked_assignments: compact });
+    } catch (error) {
+      // Silent error handling
+    }
+  });
+
+  // Load initial checkbox state from storage
+  getStorage("vc_checked_assignments").then((checked) => {
+    if (checked && checked[assignmentId]) {
+      checkbox.checked = true;
+      assignmentDiv.classList.add("vch-done");
+    }
+  });
 
   taskWrap.appendChild(checkbox);
   typeSpan.appendChild(taskWrap);
@@ -1461,18 +2512,8 @@ function createTimelineAssignmentElement(assignment, parentRow) {
     }
   }, 0);
 
-  // Add click handler
-  assignmentDiv.addEventListener("click", (e) => {
-    // Don't show modal if clicking on checkbox or task wrap
-    if (
-      !e.target.classList.contains("vch-checkbox") &&
-      e.target.tagName !== "INPUT" &&
-      !e.target.closest(".vch-task-wrap")
-    ) {
-      e.stopPropagation();
-      showCustomAssignmentDetails(assignment);
-    }
-  });
+  // Click handling is now managed by the global event handler above
+  // No individual click listener needed since global handler will catch it
 
   return assignmentDiv;
 }
@@ -1503,6 +2544,11 @@ function showCustomAssignmentDetails(assignment) {
     transition: opacity 0.2s ease-out;
   `;
 
+  // Prevent body scrolling when modal is open
+  document.body.style.overflow = "hidden";
+
+  // Details modal should NOT hide the button - only hide for edit forms
+
   const popup = document.createElement("div");
   popup.style.cssText = `
     background: white;
@@ -1521,7 +2567,7 @@ function showCustomAssignmentDetails(assignment) {
   // Header
   const header = document.createElement("div");
   header.style.cssText = `
-    background: ${assignment.isPastDue ? "#856404" : "#2c3e50"};
+    background: #2c3e50;
     color: white;
     padding: 15px 20px;
     display: flex;
@@ -1536,9 +2582,7 @@ function showCustomAssignmentDetails(assignment) {
     font-size: 18px;
     font-weight: normal;
   `;
-  headerTitle.textContent = assignment.isPastDue
-    ? "PAST DUE REMINDER"
-    : "CUSTOM ASSIGNMENT";
+  headerTitle.textContent = "CUSTOM ASSIGNMENT";
 
   const closeBtn = document.createElement("button");
   closeBtn.innerHTML = "✕";
@@ -1564,11 +2608,16 @@ function showCustomAssignmentDetails(assignment) {
   };
 
   const closeModal = () => {
+    // Details modal doesn't need to restore button since it never hid it
+    // Restore body scrolling
+    document.body.style.overflow = "";
     modal.style.opacity = "0";
     popup.style.transform = "scale(0.9)";
     setTimeout(() => {
       modal.remove();
       document.removeEventListener("keydown", handleEscape);
+      // Reset the flag to allow new modals
+      modalOpenInProgress = false;
     }, 200);
   };
 
@@ -1664,20 +2713,105 @@ function showCustomAssignmentDetails(assignment) {
     content.appendChild(classInfo);
   }
 
-  // Original due date for past due assignments
-  if (assignment.isPastDue && assignment.originalDueDate) {
-    const originalDiv = document.createElement("div");
-    originalDiv.style.cssText = `
-      margin-top: 10px;
-      font-size: 12px;
-      color: #dc3545;
-    `;
-    originalDiv.textContent = `Originally due: ${new Date(assignment.originalDueDate).toLocaleDateString()}`;
-    content.appendChild(originalDiv);
-  }
+  // Action buttons
+  const actionButtons = document.createElement("div");
+  actionButtons.style.cssText = `
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  `;
+
+  const editBtn = document.createElement("button");
+  editBtn.innerHTML = "✏️ Edit";
+  editBtn.style.cssText = `
+    padding: 10px 18px;
+    background: #ffffff;
+    color: #007bff;
+    border: 2px solid #007bff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  `;
+  editBtn.addEventListener("mouseover", () => {
+    editBtn.style.background = "#007bff";
+    editBtn.style.color = "white";
+  });
+  editBtn.addEventListener("mouseout", () => {
+    editBtn.style.background = "#ffffff";
+    editBtn.style.color = "#007bff";
+  });
+  editBtn.addEventListener("click", () => {
+    closeModal();
+    // Hide button before opening edit modal since edit modal should hide it
+    if (window !== window.top) {
+      try {
+        window.top.postMessage({ type: "VCH_HIDE_BUTTON" }, "*");
+      } catch (e) {
+        // Silent error handling
+      }
+    } else {
+      const floatingBtn = document.querySelector(".vch-floating-button");
+      if (floatingBtn) {
+        floatingBtn.style.visibility = "hidden";
+        floatingBtn.style.opacity = "0";
+        floatingBtn.style.pointerEvents = "none";
+        floatingBtn.style.transform = "scale(0.8)";
+      }
+    }
+    showCustomAssignmentModal(assignment);
+  });
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.innerHTML = "🗑️ Delete";
+  deleteBtn.style.cssText = `
+    padding: 10px 18px;
+    background: #ffffff;
+    color: #dc3545;
+    border: 2px solid #dc3545;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  `;
+  deleteBtn.addEventListener("mouseover", () => {
+    deleteBtn.style.background = "#dc3545";
+    deleteBtn.style.color = "white";
+  });
+  deleteBtn.addEventListener("mouseout", () => {
+    deleteBtn.style.background = "#ffffff";
+    deleteBtn.style.color = "#dc3545";
+  });
+  deleteBtn.addEventListener("click", async () => {
+    showConfirmationModal(
+      `Delete Assignment`,
+      `Are you sure you want to delete "${assignment.title}"? This action cannot be undone.`,
+      "Delete",
+      "Cancel",
+      async () => {
+        await deleteCustomAssignment(assignment.id);
+        closeModal();
+      },
+    );
+  });
+
+  actionButtons.appendChild(editBtn);
+  actionButtons.appendChild(deleteBtn);
 
   content.insertBefore(title, content.firstChild);
   content.insertBefore(dueDateDiv, title.nextSibling);
+  content.appendChild(actionButtons);
 
   popup.appendChild(header);
   popup.appendChild(content);
@@ -1702,6 +2836,129 @@ function showCustomAssignmentDetails(assignment) {
   }, 10);
 }
 
+function showConfirmationModal(
+  title,
+  message,
+  confirmText,
+  cancelText,
+  onConfirm,
+) {
+  // Create confirmation modal
+  const confirmModal = document.createElement("div");
+  confirmModal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+
+  const confirmContent = document.createElement("div");
+  confirmContent.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    animation: confirmSlideIn 0.3s ease-out;
+  `;
+
+  confirmContent.innerHTML = `
+    <style>
+      @keyframes confirmSlideIn {
+        from { transform: scale(0.9) translateY(-20px); opacity: 0; }
+        to { transform: scale(1) translateY(0); opacity: 1; }
+      }
+    </style>
+    <div style="padding: 24px 24px 16px 24px;">
+      <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #333;">${title}</h3>
+      <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #666;">${message}</p>
+    </div>
+    <div style="display: flex; gap: 0; border-top: 1px solid #eee;">
+      <button id="confirm-cancel" style="
+        flex: 1;
+        padding: 16px;
+        background: none;
+        border: none;
+        font-size: 16px;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        border-right: 1px solid #eee;
+        transition: background-color 0.2s ease;
+      ">${cancelText}</button>
+      <button id="confirm-ok" style="
+        flex: 1;
+        padding: 16px;
+        background: none;
+        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        color: #dc3545;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      ">${confirmText}</button>
+    </div>
+  `;
+
+  confirmModal.appendChild(confirmContent);
+  document.body.appendChild(confirmModal);
+
+  // Add hover effects
+  const cancelBtn = confirmContent.querySelector("#confirm-cancel");
+  const okBtn = confirmContent.querySelector("#confirm-ok");
+
+  cancelBtn.addEventListener("mouseover", () => {
+    cancelBtn.style.backgroundColor = "#f8f9fa";
+  });
+  cancelBtn.addEventListener("mouseout", () => {
+    cancelBtn.style.backgroundColor = "transparent";
+  });
+
+  okBtn.addEventListener("mouseover", () => {
+    okBtn.style.backgroundColor = "#f8f9fa";
+  });
+  okBtn.addEventListener("mouseout", () => {
+    okBtn.style.backgroundColor = "transparent";
+  });
+
+  // Event handlers
+  const closeConfirmModal = () => {
+    confirmModal.remove();
+  };
+
+  cancelBtn.addEventListener("click", closeConfirmModal);
+
+  okBtn.addEventListener("click", () => {
+    closeConfirmModal();
+    if (onConfirm) onConfirm();
+  });
+
+  // Close on background click
+  confirmModal.addEventListener("click", (e) => {
+    if (e.target === confirmModal) {
+      closeConfirmModal();
+    }
+  });
+
+  // Close on escape key
+  const handleEscape = (e) => {
+    if (e.key === "Escape") {
+      closeConfirmModal();
+      document.removeEventListener("keydown", handleEscape);
+    }
+  };
+  document.addEventListener("keydown", handleEscape);
+}
+
 // Legacy functions - keeping for potential future use but not actively used
 
 function escapeHtml(text) {
@@ -1719,8 +2976,8 @@ function formatDate(dateString) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "refreshCustomAssignments") {
     setTimeout(() => {
-      loadAndInjectCustomAssignments();
-    }, 100);
+      instantAssignmentUpdate();
+    }, 10);
     sendResponse({ success: true });
   }
 });
@@ -1778,6 +3035,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       fixClippingIssues();
       // Also enhance scrolling for any new scrollable cells
       setTimeout(() => enhanceTimelineScrolling(), 100);
+
+      // Check if timeline structure changed and re-inject assignments if needed
+      const hasTimelineChanges = mutations.some((mutation) => {
+        return Array.from(mutation.addedNodes).some((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Don't re-inject if we're just adding our own custom elements
+            if (
+              node.matches &&
+              (node.matches("[data-vch-custom]") ||
+                node.querySelector("[data-vch-custom]") ||
+                node.matches(".vch-custom-timeline-row") ||
+                node.matches(".vch-custom-assignment"))
+            ) {
+              return false;
+            }
+            return (
+              node.matches &&
+              (node.matches(".timeline-row") ||
+                node.matches(".timeline-cell") ||
+                node.matches(".timeline-records-inner") ||
+                node.querySelector(
+                  ".timeline-row, .timeline-cell, .timeline-records-inner",
+                ))
+            );
+          }
+          return false;
+        });
+      });
+
+      if (
+        hasTimelineChanges &&
+        settings.enableCustomAssignments &&
+        !instantUpdateInProgress
+      ) {
+        setTimeout(async () => {
+          customAssignmentsInjected = false;
+          injectionInProgress = false;
+          await instantAssignmentUpdate();
+        }, 100);
+      }
     });
     clipObserver.observe(document.documentElement, {
       childList: true,
@@ -1825,8 +3122,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Apply custom assignments if enabled
     await applyCustomAssignments(settings);
+
+    // Set up URL change detection for single-page app navigation
+    let currentUrl = location.href;
+    const checkForUrlChange = () => {
+      if (location.href !== currentUrl) {
+        currentUrl = location.href;
+
+        // Reset injection state and re-apply assignments after navigation
+        customAssignmentsInjected = false;
+        setTimeout(async () => {
+          if (settings.enableCustomAssignments) {
+            customAssignmentsInjected = false;
+            injectionInProgress = false;
+            await instantAssignmentUpdate();
+          }
+        }, 100);
+      }
+
+      // Continue checking
+      setTimeout(checkForUrlChange, 1000);
+    };
+
+    // Start URL monitoring
+    setTimeout(checkForUrlChange, 1000);
+
+    // Also check for floating button visibility on URL changes
+    let lastUrl = location.href;
+    const checkButtonVisibility = () => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        // Re-evaluate if button should be shown on new page
+        setTimeout(() => {
+          addFloatingAssignmentButton();
+        }, 500);
+      }
+      setTimeout(checkButtonVisibility, 1000);
+    };
+    setTimeout(checkButtonVisibility, 1000);
   } catch (error) {
-    console.error(`${DEBUG_PREFIX} INITIALIZATION ERROR:`, error);
-    console.error(`${DEBUG_PREFIX} Error stack:`, error.stack);
+    // Silent error handling
   }
 })();
