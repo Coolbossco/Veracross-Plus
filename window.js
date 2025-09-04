@@ -2,39 +2,47 @@
 const browser = chrome || browser;
 
 const WINDOW_DEFAULTS = {
-  enableChecklist: false
+  enableChecklist: false,
+  enableCustomAssignments: false,
 };
 
 function load() {
-  console.log('[Veracross Plus] Loading window settings...');
-  chrome.storage.sync.get(WINDOW_DEFAULTS, vals => {
-    console.log('[Veracross Plus] Settings loaded:', vals);
-    Object.entries(vals).forEach(([k,v]) => {
+  chrome.storage.sync.get(WINDOW_DEFAULTS, (vals) => {
+    Object.entries(vals).forEach(([k, v]) => {
       const el = document.getElementById(k);
       if (!el) return;
-      if (el.type === "checkbox") el.checked = !!v; else el.value = v || "";
+      if (el.type === "checkbox") el.checked = !!v;
+      else el.value = v || "";
     });
   });
 }
 
 function save() {
   const out = {};
-  ["enableChecklist"].forEach(k => {
+  ["enableChecklist", "enableCustomAssignments"].forEach((k) => {
     const el = document.getElementById(k);
     if (el) {
-      out[k] = (el.type === "checkbox") ? el.checked : el.value.trim();
+      out[k] = el.type === "checkbox" ? el.checked : el.value.trim();
     }
   });
-  console.log('[Veracross Plus] Saving settings:', out);
   chrome.storage.sync.set(out);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   load();
+
   const checklistToggle = document.getElementById("enableChecklist");
   if (checklistToggle) {
     checklistToggle.addEventListener("change", save);
     checklistToggle.addEventListener("input", save);
+  }
+
+  const customAssignmentsToggle = document.getElementById(
+    "enableCustomAssignments",
+  );
+  if (customAssignmentsToggle) {
+    customAssignmentsToggle.addEventListener("change", save);
+    customAssignmentsToggle.addEventListener("input", save);
   }
 
   // Click outside to close functionality

@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Test Custom Assignments - Veracross Plus</title>
+        <style>
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                margin: 0;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+
+            .header {
+                background: #1976d2;
+                color: white;
+                padding: 20px;
+                text-align: center;
+            }
+
+            .timeline {
+                padding: 20px;
+            }
+
+            .timeline-table {
+                display: flex;
+                gap: 20px;
+            }
+
+            .timeline-header-y {
+                width: 300px;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                background: #fafafa;
+            }
+
+            .timeline-header-y-inner {
+                padding: 10px;
+            }
+
+            .timeline-row {
+                border-bottom: 1px solid #e0e0e0;
+                padding: 10px 0;
+            }
+
+            .timeline-row:last-child {
+                border-bottom: none;
+            }
+
+            .timeline-cell {
+                padding: 8px 12px;
+            }
+
+            .timeline-row .title {
+                color: #333;
+                text-decoration: none;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+            }
+
+            .timeline-row .title:hover {
+                color: #1976d2;
+            }
+
+            .timeline-row .subtitle {
+                color: #666;
+                font-size: 12px;
+                margin: 4px 0;
+            }
+
+            .timeline-row .tools {
+                margin-top: 8px;
+            }
+
+            .timeline-row .tools a {
+                font-size: 12px;
+                color: #1976d2;
+                text-decoration: none;
+            }
+
+            .timeline-row .tools a:hover {
+                text-decoration: underline;
+            }
+
+            .test-controls {
+                background: #f8f9fa;
+                border-top: 1px solid #e0e0e0;
+                padding: 20px;
+                text-align: center;
+            }
+
+            .test-btn {
+                background: #28a745;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin: 0 5px;
+                font-size: 14px;
+            }
+
+            .test-btn:hover {
+                background: #218838;
+            }
+
+            .test-btn.danger {
+                background: #dc3545;
+            }
+
+            .test-btn.danger:hover {
+                background: #c82333;
+            }
+
+            .status {
+                margin-top: 20px;
+                padding: 10px;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+            .status.success {
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+            }
+
+            .status.error {
+                background: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+            }
+
+            .status.info {
+                background: #d1ecf1;
+                color: #0c5460;
+                border: 1px solid #bee5eb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Veracross Plus - Custom Assignments Test</h1>
+                <p>
+                    This page simulates the Veracross timeline structure for
+                    testing custom assignments
+                </p>
+            </div>
+
+            <div class="timeline">
+                <h3>Timeline Structure (Classes Sidebar)</h3>
+                <div class="timeline-table">
+                    <div class="timeline-header-y">
+                        <div class="timeline-header-y-inner">
+                            <div class="timeline-row" data-row-id="4555">
+                                <div class="timeline-cell">
+                                    <a
+                                        class="title"
+                                        href="#"
+                                        title="Expand/Collapse this course"
+                                        data-toggle-row="true"
+                                    >
+                                        <span class="expand">▶</span>
+                                        <span
+                                            class="collapse"
+                                            style="display: none"
+                                            >▼</span
+                                        >
+                                        English, Grade 10
+                                    </a>
+                                    <p class="subtitle">Ms. Emily DiMatteo</p>
+                                    <div class="tools">
+                                        <a
+                                            href="#"
+                                            title="Open All Assignments and Grade Detail"
+                                            >view all assignments</a
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="timeline-row" data-row-id="4657">
+                                <div class="timeline-cell">
+                                    <a
+                                        class="title"
+                                        href="#"
+                                        title="Expand/Collapse this course"
+                                        data-toggle-row="true"
+                                    >
+                                        <span class="expand">▶</span>
+                                        <span
+                                            class="collapse"
+                                            style="display: none"
+                                            >▼</span
+                                        >
+                                        Algebra II
+                                    </a>
+                                    <p class="subtitle">Mr. Corey Flick</p>
+                                    <div class="tools">
+                                        <a
+                                            href="#"
+                                            title="Open All Assignments and Grade Detail"
+                                            >view all assignments</a
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="timeline-row" data-row-id="4652">
+                                <div class="timeline-cell">
+                                    <a
+                                        class="title"
+                                        href="#"
+                                        title="Expand/Collapse this course"
+                                        data-toggle-row="true"
+                                    >
+                                        <span class="expand">▶</span>
+                                        <span
+                                            class="collapse"
+                                            style="display: none"
+                                            >▼</span
+                                        >
+                                        Modern World History
+                                    </a>
+                                    <p class="subtitle">Mr. Nick Battista</p>
+                                    <div class="tools">
+                                        <a
+                                            href="#"
+                                            title="Open All Assignments and Grade Detail"
+                                            >view all assignments</a
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-controls">
+                <h3>Test Custom Assignments Feature</h3>
+                <p>
+                    Use these buttons to test the custom assignments
+                    functionality:
+                </p>
+
+                <button class="test-btn" onclick="testAddCustomAssignment()">
+                    Add Test Custom Assignment
+                </button>
+                <button class="test-btn" onclick="testShowAllAssignments()">
+                    Show All Custom Assignments
+                </button>
+                <button
+                    class="test-btn danger"
+                    onclick="testClearAllAssignments()"
+                >
+                    Clear All Custom Assignments
+                </button>
+
+                <div id="status" class="status info">
+                    Ready to test. Click the buttons above to interact with
+                    custom assignments.
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulate the Veracross environment -->
+        <script>
+            // Mock Veracross globals that the extension expects
+            window.Portals = {
+                client: "test",
+                currentUser: {
+                    username: "test@example.com",
+                    personPk: 12345,
+                },
+            };
+
+            // Mock Chrome extension APIs for testing
+            if (!window.chrome) {
+                window.chrome = {
+                    storage: {
+                        sync: {
+                            get: function (keys, callback) {
+                                const mockData = {
+                                    enableCustomAssignments: true,
+                                    customAssignments: [],
+                                };
+
+                                if (typeof keys === "string") {
+                                    const result = {};
+                                    result[keys] = mockData[keys];
+                                    callback(result);
+                                } else if (Array.isArray(keys)) {
+                                    const result = {};
+                                    keys.forEach((key) => {
+                                        result[key] = mockData[key];
+                                    });
+                                    callback(result);
+                                } else {
+                                    callback(mockData);
+                                }
+                            },
+                            set: function (data, callback) {
+                                if (callback) callback();
+                            },
+                        },
+                    },
+                };
+            }
+
+            // Test functions
+            function testAddCustomAssignment() {
+                updateStatus("Testing custom assignment creation...", "info");
+
+                // Simulate clicking the floating add button if it exists
+                const addBtn = document.querySelector(
+                    ".vch-add-assignment-btn",
+                );
+                if (addBtn) {
+                    addBtn.click();
+                    updateStatus(
+                        "Custom assignment modal should appear",
+                        "success",
+                    );
+                } else {
+                    // Create a test assignment directly
+                    createTestAssignment(
+                        "Custom Assignment Test",
+                        "This is a test custom assignment",
+                        false,
+                    );
+                }
+            }
+
+            function testShowAllAssignments() {
+                updateStatus("Testing show all assignments...", "info");
+
+                // Try to click the "view all assignments" link in custom assignments row
+                const viewAllLink = document.querySelector(
+                    ".vch-custom-class-row .tools a",
+                );
+                if (viewAllLink) {
+                    viewAllLink.click();
+                    updateStatus(
+                        "All custom assignments modal should appear",
+                        "success",
+                    );
+                } else {
+                    updateStatus(
+                        "No custom assignments found to display",
+                        "error",
+                    );
+                }
+            }
+
+            function testClearAllAssignments() {
+                updateStatus("Clearing all custom assignments...", "info");
+
+                // Remove custom assignments from storage and DOM
+                if (window.chrome && window.chrome.storage) {
+                    chrome.storage.sync.set({ customAssignments: [] }, () => {
+                        // Remove the custom assignments row from DOM
+                        const customRow = document.querySelector(
+                            ".vch-custom-class-row",
+                        );
+                        if (customRow) {
+                            customRow.remove();
+                        }
+                        updateStatus(
+                            "All custom assignments cleared",
+                            "success",
+                        );
+                    });
+                }
+            }
+
+            function createTestAssignment(title, description) {
+                const assignment = {
+                    id: "test-" + Date.now(),
+                    title: title,
+                    description: description,
+                    dueDate: new Date().toISOString().split("T")[0],
+                    class: "Test Class",
+                    createdAt: new Date().toISOString(),
+                };
+
+                // Save to mock storage
+                if (window.chrome && window.chrome.storage) {
+                    chrome.storage.sync.get(["customAssignments"], (result) => {
+                        const assignments = result.customAssignments || [];
+                        assignments.push(assignment);
+                        chrome.storage.sync.set(
+                            { customAssignments: assignments },
+                            () => {
+                                updateStatus(
+                                    `Created custom assignment: ${title}`,
+                                    "success",
+                                );
+
+                                // Trigger re-injection of assignments
+                                setTimeout(() => {
+                                    // Simulate the extension's injection logic
+                                    if (window.injectCustomAssignmentsSidebar) {
+                                        window.injectCustomAssignmentsSidebar(
+                                            assignments,
+                                        );
+                                    }
+                                }, 100);
+                            },
+                        );
+                    });
+                }
+            }
+
+            function updateStatus(message, type = "info") {
+                const statusEl = document.getElementById("status");
+                statusEl.textContent = message;
+                statusEl.className = "status " + type;
+            }
+
+            // Initialize test environment
+            document.addEventListener("DOMContentLoaded", function () {
+                updateStatus(
+                    "Test environment loaded. Extension should inject custom assignments here.",
+                    "info",
+                );
+
+                // Check if the extension is running
+                setTimeout(() => {
+                    const extensionElements =
+                        document.querySelectorAll('[class*="vch-"]');
+                    if (extensionElements.length > 0) {
+                        updateStatus(
+                            `Extension detected! Found ${extensionElements.length} extension elements.`,
+                            "success",
+                        );
+                    } else {
+                        updateStatus(
+                            "Extension not detected. Make sure Veracross Plus is loaded and custom assignments are enabled.",
+                            "error",
+                        );
+                    }
+                }, 2000);
+            });
+        </script>
+
+        <!-- Load the extension content script for testing -->
+        <script>
+            // Try to load the extension content script
+            // Test page loaded. Waiting for Veracross Plus extension...
+        </script>
+    </body>
+</html>

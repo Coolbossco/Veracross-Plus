@@ -131,6 +131,7 @@ All features work identically in both browsers:
 - ✅ Homework Checkboxes
 - ✅ Grade Estimator
 - ✅ Home Page Redirect
+- ✅ Custom Assignments
 - ✅ Custom Popup Window
 - ✅ Settings Persistence
 - ✅ Veracross Domain Injection
@@ -184,6 +185,50 @@ Update versions in these files:
 - `manifest-firefox.json`
 
 Keep all version numbers synchronized.
+
+## Custom Assignments Feature
+
+The Custom Assignments feature allows users to create and manage their own assignments within the Veracross timeline.
+
+### Feature Overview
+
+**Custom Assignments** can be:
+1. **New Assignments**: Custom assignments that appear in a dedicated row at the top of the timeline
+### How It Works
+
+1. **Enable the Feature**: Toggle "Custom Assignments" in the extension popup
+2. **Add Assignments**: Click "Add Custom Assignment" to create new assignments
+3. **Assignment Types**:
+   - Assignments appear in a blue-highlighted row at the top
+4. **Management**: Edit or delete assignments from the popup interface
+
+### Assignment Properties
+
+Each custom assignment includes:
+- **Title**: The assignment name (required)
+- **Description**: Optional details about the assignment
+- **Due Date**: When the assignment is due (required)
+- **Class/Subject**: Optional class or subject name
+
+
+### Visual Design
+
+**Regular Custom Assignments**:
+- Appear in a dedicated row with blue styling (`#f8f9fa` background, `#007bff` border)
+- Individual assignments have light blue backgrounds (`#e3f2fd`)
+- Hover effects for better interactivity
+
+
+
+### Technical Implementation
+
+**Storage**: Custom assignments are stored in Chrome sync storage as `customAssignments` array
+
+**Injection Logic**:
+- Regular assignments: Injected at the top of the timeline table
+- Date matching: Assignments appear in appropriate timeline columns
+
+**Integration**: Works seamlessly with existing checkbox system for task completion tracking
 
 ---
 
