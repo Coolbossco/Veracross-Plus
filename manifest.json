@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Veracross Plus",
-  "description": "Veracross Plus adds features to the service Veracross.com that are frequently requested, including custom assignments and homework checkboxes",
+  "description": "Version 0.2.0 update: Enhanced Veracross Plus with improved custom assignments functionality, refined homework checkboxes, and bug fixes for better stability and user experience",
   "version": "0.2.0",
 
   "permissions": ["storage", "activeTab"],
