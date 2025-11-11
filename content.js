@@ -235,6 +235,9 @@ function applyChecklistToDocument(doc, checked) {
     // Very specific - only elements with assignment-like text that aren't nested
     "[data-assignment-id]:not([class*='vch-decorated'])",
     ".assignment-row:not([class*='vch-decorated'])",
+    // Daily schedule page - assignment description cells specifically
+    ".daily-schedule table.assignments td.assignment-description:not([class*='vch-decorated'])",
+    ".schedule table.assignments td.assignment-description:not([class*='vch-decorated'])",
   ];
 
   const seen = new WeakSet();
@@ -266,10 +269,19 @@ function applyChecklistToDocument(doc, checked) {
     // Find the best place to insert the checkbox - prefer the first text node or link
     let insertTarget = node;
 
-    // Look for the first meaningful text element or link
-    const firstTextElement = node.querySelector("a, span, div, p") || node;
-    if (firstTextElement && firstTextElement !== node) {
-      insertTarget = firstTextElement;
+    // Special handling for daily schedule assignment tables
+    if (node.classList.contains("assignment-description")) {
+      // For daily schedule, insert before the link in the assignment-description cell
+      const link = node.querySelector("a");
+      if (link) {
+        insertTarget = link;
+      }
+    } else {
+      // Look for the first meaningful text element or link
+      const firstTextElement = node.querySelector("a, span, div, p") || node;
+      if (firstTextElement && firstTextElement !== node) {
+        insertTarget = firstTextElement;
+      }
     }
 
     // If the insert target already has a checkbox, skip this node
@@ -285,29 +297,54 @@ function applyChecklistToDocument(doc, checked) {
     let assignmentType = "homework"; // default
     let shouldSkip = false;
 
-    // Check for test-related assignments first - be more specific
-    if (
-      nodeText.includes("test") ||
-      nodeText.includes("exam") ||
-      (nodeText.includes("assessment") && !nodeText.includes("paper")) || // Only skip assessment if it's NOT a paper
-      nodeText.includes("quiz") ||
-      nodeText.includes("final") ||
-      nodeText.includes("midterm")
-    ) {
-      assignmentType = "test";
-      shouldSkip = true;
-    } else if (nodeText.includes("paper") || nodeText.includes("essay")) {
-      assignmentType = "paper";
-    } else if (
-      nodeText.includes("classwork") ||
-      nodeText.includes("class work")
-    ) {
-      assignmentType = "classwork";
-    } else if (
-      nodeText.includes("homework") ||
-      nodeText.includes("home work")
-    ) {
-      assignmentType = "homework";
+    // For daily schedule, check the assignment-type cell in the same row
+    if (node.classList.contains("assignment-description")) {
+      const row = node.closest("tr");
+      if (row) {
+        const typeCell = row.querySelector(".assignment-type");
+        if (typeCell) {
+          const typeText = typeCell.textContent.toLowerCase();
+          if (typeText.includes("homework")) {
+            assignmentType = "homework";
+          } else if (typeText.includes("classwork")) {
+            assignmentType = "classwork";
+          } else if (typeText.includes("paper") || typeText.includes("essay")) {
+            assignmentType = "paper";
+          } else if (
+            typeText.includes("test") ||
+            typeText.includes("exam") ||
+            typeText.includes("quiz")
+          ) {
+            assignmentType = "test";
+            shouldSkip = true;
+          }
+        }
+      }
+    } else {
+      // Check for test-related assignments first - be more specific
+      if (
+        nodeText.includes("test") ||
+        nodeText.includes("exam") ||
+        (nodeText.includes("assessment") && !nodeText.includes("paper")) || // Only skip assessment if it's NOT a paper
+        nodeText.includes("quiz") ||
+        nodeText.includes("final") ||
+        nodeText.includes("midterm")
+      ) {
+        assignmentType = "test";
+        shouldSkip = true;
+      } else if (nodeText.includes("paper") || nodeText.includes("essay")) {
+        assignmentType = "paper";
+      } else if (
+        nodeText.includes("classwork") ||
+        nodeText.includes("class work")
+      ) {
+        assignmentType = "classwork";
+      } else if (
+        nodeText.includes("homework") ||
+        nodeText.includes("home work")
+      ) {
+        assignmentType = "homework";
+      }
     }
 
     // Skip test assignments and any assignments that don't need checkboxes
@@ -315,23 +352,31 @@ function applyChecklistToDocument(doc, checked) {
       return;
     }
 
-    // Additional filtering: skip assignments that are just informational or don't need tracking
-    if (nodeText.includes("summer work") && !nodeText.includes("due")) {
-      return;
-    }
+    // For daily schedule assignments in tables, skip the additional filtering
+    // since they're always valid assignments from the schedule
+    const isDailyScheduleAssignment = node.classList.contains(
+      "assignment-description",
+    );
 
-    // Skip assignments that are just informational text without due dates or specific actions
-    if (
-      !nodeText.includes("due") &&
-      !nodeText.includes("homework") &&
-      !nodeText.includes("classwork") &&
-      !nodeText.includes("paper") &&
-      !nodeText.includes("assignment") &&
-      !nodeText.includes("bring") &&
-      !nodeText.includes("complete") &&
-      !nodeText.includes("finish")
-    ) {
-      return;
+    if (!isDailyScheduleAssignment) {
+      // Additional filtering: skip assignments that are just informational or don't need tracking
+      if (nodeText.includes("summer work") && !nodeText.includes("due")) {
+        return;
+      }
+
+      // Skip assignments that are just informational text without due dates or specific actions
+      if (
+        !nodeText.includes("due") &&
+        !nodeText.includes("homework") &&
+        !nodeText.includes("classwork") &&
+        !nodeText.includes("paper") &&
+        !nodeText.includes("assignment") &&
+        !nodeText.includes("bring") &&
+        !nodeText.includes("complete") &&
+        !nodeText.includes("finish")
+      ) {
+        return;
+      }
     }
 
     const wrap = document.createElement("span");
@@ -341,7 +386,104 @@ function applyChecklistToDocument(doc, checked) {
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "vch-checkbox";
-    cb.checked = !!checked[id];
+
+    // Parse date to determine if upcoming and force unchecked
+    let isChecked = !!checked[id];
+    let isInUpcomingSection = false;
+
+    // Method 1: Check for "Upcoming" header in surrounding elements
+    let currentNode = node;
+    for (let i = 0; i < 20 && currentNode; i++) {
+      const text = currentNode.textContent?.toLowerCase() || "";
+      // Look for "Upcoming" text that appears before our assignment
+      if (
+        text.includes("upcoming") &&
+        !text.includes("past") &&
+        !text.includes("completed")
+      ) {
+        const upcomingIndex = text.indexOf("upcoming");
+        const assignmentIndex = text.indexOf(nodeText);
+        if (
+          upcomingIndex >= 0 &&
+          (assignmentIndex < 0 || upcomingIndex < assignmentIndex)
+        ) {
+          isInUpcomingSection = true;
+          break;
+        }
+      }
+      currentNode =
+        currentNode.parentElement || currentNode.previousElementSibling;
+    }
+
+    // Method 2: Look for "Upcoming" in preceding DOM elements
+    if (!isInUpcomingSection) {
+      const allElements = document.querySelectorAll("*");
+      let foundUpcoming = false;
+      for (let element of allElements) {
+        const elementText = element.textContent?.trim().toLowerCase() || "";
+        if (
+          elementText === "upcoming" ||
+          (elementText.includes("upcoming") && elementText.length < 30)
+        ) {
+          foundUpcoming = true;
+        }
+        if (foundUpcoming && element.contains(node)) {
+          isInUpcomingSection = true;
+          break;
+        }
+      }
+    }
+
+    // Method 3: Improved date parsing with better regex
+    const dateMatch = nodeText.match(
+      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\s\u00A0]*(\d{1,2})\b/i,
+    );
+
+    if (dateMatch) {
+      const month = dateMatch[1].toLowerCase();
+      const day = parseInt(dateMatch[2], 10);
+      const monthNames = {
+        jan: 0,
+        feb: 1,
+        mar: 2,
+        apr: 3,
+        may: 4,
+        jun: 5,
+        jul: 6,
+        aug: 7,
+        sep: 8,
+        oct: 9,
+        nov: 10,
+        dec: 11,
+      };
+      const monthNum = monthNames[month];
+
+      if (monthNum !== undefined) {
+        const now = new Date();
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+        );
+        let dueDate = new Date(now.getFullYear(), monthNum, day);
+
+        // If date appears to be in the past, it's probably next year
+        if (dueDate < today) {
+          dueDate.setFullYear(now.getFullYear() + 1);
+        }
+
+        // Consider assignments due today or in the future as "upcoming"
+        const isUpcomingByDate = dueDate >= today;
+
+        if (isUpcomingByDate || isInUpcomingSection) {
+          isChecked = false;
+        }
+      }
+    } else if (isInUpcomingSection) {
+      // Force unchecked if in upcoming section even without date match
+      isChecked = false;
+    }
+    cb.checked = isChecked;
 
     if (cb.checked) {
       node.classList.add("vch-done");

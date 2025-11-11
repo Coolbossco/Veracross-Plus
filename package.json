@@ -1,7 +1,7 @@
 {
   "name": "veracross-plus",
-  "version": "0.1.2",
-  "description": "Enhanced Veracross portal experience with homework checklists, grade estimation, and navigation improvements",
+  "version": "0.2.1",
+  "description": "Enhanced Veracross portal experience with homework checklists on timeline and daily schedule pages, grade estimation, custom assignments, and navigation improvements",
   "scripts": {
     "build": "npm run build:chrome && npm run build:firefox",
     "build:chrome": "npm run clean:chrome && npm run copy:chrome && npm run package:chrome",
@@ -33,7 +33,7 @@
   "devDependencies": {},
   "files": [
     "*.js",
-    "*.css", 
+    "*.css",
     "*.html",
     "manifest-*.json",
     "dist/"

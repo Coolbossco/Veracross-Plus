@@ -128,7 +128,7 @@ npm run validate
 ## Features Supported
 
 All features work identically in both browsers:
-- ✅ Homework Checkboxes
+- ✅ Homework Checkboxes (Timeline & Daily Schedule)
 - ✅ Grade Estimator
 - ✅ Home Page Redirect
 - ✅ Custom Assignments
@@ -229,6 +229,70 @@ Each custom assignment includes:
 - Date matching: Assignments appear in appropriate timeline columns
 
 **Integration**: Works seamlessly with existing checkbox system for task completion tracking
+
+## Daily Schedule Page Checkboxes
+
+The extension now adds interactive checkboxes to assignments on the **Daily Schedule** page (`/student/student/daily-schedule`), in addition to the existing timeline view support.
+
+### Feature Overview
+
+**Daily Schedule Checkboxes** provide:
+1. **Visual Task Tracking**: Check off assignments as you complete them
+2. **Assignment Type Indicators**: Color-coded bars (green for homework, grey for classwork, orange for papers)
+3. **Persistent State**: Checkbox states are saved and synced across devices
+4. **Visual Feedback**: Completed assignments show with strikethrough and reduced opacity
+
+### How It Works
+
+1. **Automatic Injection**: Checkboxes automatically appear next to assignments in the daily schedule table
+2. **Type Detection**: The extension reads the assignment type tag (Homework, Classwork, Paper, etc.)
+3. **Smart Filtering**: Test and exam assignments are excluded from checkboxes
+4. **Click to Complete**: Click any checkbox to mark an assignment as complete
+5. **Persistent Storage**: Completion status is saved automatically
+
+### Visual Design
+
+**Assignment Types**:
+- **Homework**: Green indicator bar
+- **Classwork**: Grey indicator bar  
+- **Paper/Essay**: Orange indicator bar
+- **Test/Exam**: No checkbox (informational only)
+
+**Completed Assignments**:
+- Checkbox shows green checkmark
+- Assignment link has strikethrough effect
+- Text opacity reduced to 70%
+- Color-coded indicator bar slightly faded
+
+### Supported Pages
+
+The checkbox feature works on:
+- ✅ **Timeline View** (`/student/overview`)
+- ✅ **Daily Schedule** (`/student/student/daily-schedule`)
+- ✅ **Upcoming Assignments** (standard assignment pages)
+
+### Technical Details
+
+**DOM Targeting**:
+- Selects `td.assignment-description` cells within `table.assignments`
+- Injects checkbox before the assignment link
+- Preserves existing HTML structure and functionality
+
+**Checkbox Placement**:
+```
+[Type Badge] [✓ Checkbox] [Assignment Link]
+```
+
+**CSS Integration**:
+- Checkboxes are 12px × 12px for compact design
+- Proper vertical alignment with table cells
+- Hover effects for better interactivity
+- Responsive design for mobile devices
+
+**State Management**:
+- Checkbox state keyed by assignment URL and text hash
+- Stored in `chrome.storage.sync` under `vc_checked_assignments`
+- Syncs across all devices logged into the same browser account
 
 ---
 

@@ -791,3 +791,45 @@
     margin: 0;
     line-height: 1;
 }
+
+/* Daily Schedule Page Specific Styles */
+.daily-schedule table.assignments td.assignment-description,
+.schedule table.assignments td.assignment-description {
+    position: relative;
+}
+
+/* Ensure checkboxes in daily schedule tables are properly aligned */
+.daily-schedule table.assignments .vch-task-wrap,
+.schedule table.assignments .vch-task-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Make sure assignment links have proper spacing after checkbox */
+.daily-schedule table.assignments td.assignment-description a,
+.schedule table.assignments td.assignment-description a {
+    display: inline;
+    vertical-align: middle;
+}
+
+/* Ensure proper row height for assignment tables */
+.daily-schedule table.assignments tr,
+.schedule table.assignments tr {
+    min-height: 32px;
+}
+
+/* Better spacing for assignment description cells */
+.daily-schedule table.assignments td.assignment-description,
+.schedule table.assignments td.assignment-description {
+    padding: 8px;
+    vertical-align: middle;
+}
+
+/* Strikethrough effect for completed assignments in daily schedule */
+.daily-schedule table.assignments .vch-done a,
+.schedule table.assignments .vch-done a {
+    text-decoration: line-through;
+    opacity: 0.7;
+}

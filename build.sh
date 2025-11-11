@@ -20,7 +20,7 @@ cp manifest-chrome.json dist/chrome/manifest.json
 cp *.js *.css *.html dist/chrome/ 2>/dev/null || true
 cp -r icons dist/chrome/ 2>/dev/null || true
 
-# Build Firefox version  
+# Build Firefox version
 echo "🔥 Building Firefox version..."
 mkdir -p dist/firefox
 cp manifest-firefox.json dist/firefox/manifest.json

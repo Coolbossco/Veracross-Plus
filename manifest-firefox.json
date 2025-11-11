@@ -1,11 +1,10 @@
 {
   "manifest_version": 2,
   "name": "Veracross Plus",
-  "version": "0.1.2",
-  "description": "Veracross Plus adds features to the service Veracross.com that are frequently requested",
+  "version": "0.2.1",
+  "description": "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
   "permissions": [
     "storage",
-    "tabs",
     "*://*.veracross.com/*",
     "*://*.myveracross.com/*",
     "*://portals.veracross.com/*",
@@ -43,7 +42,5 @@
     }
   },
   "options_page": "options.html",
-  "web_accessible_resources": [
-    "window.html"
-  ]
+  "web_accessible_resources": ["window.html"]
 }
