@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique
+  passwordHash  String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+  settings      UserSettings?
+  assignments   CustomAssignment[]
+  checks        AssignmentCheck[]
+  auditEvents   AuditEvent[]
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  deviceId    String
+  userAgent   String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  refreshTokens RefreshToken[] @relation("SessionTokens")
+
+  @@index([userId])
+  @@unique([userId, deviceId])
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  session    Session? @relation("SessionTokens", fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  hash       String
+  revoked    Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model UserSettings {
+  id                   String   @id @default(cuid())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String   @unique
+  notificationsEnabled Boolean  @default(true)
+  syncEnabled          Boolean  @default(true)
+  preferences          Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model CustomAssignment {
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  title        String
+  description  String?
+  courseName   String?
+  dueDate      DateTime?
+  status       String   @default("pending")
+  externalId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, externalId])
+  @@index([userId])
+  @@unique([userId, title, dueDate])
+}
+
+model AssignmentCheck {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  assignmentId   String?
+  assignmentDate DateTime
+  status         String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, assignmentDate])
+  @@unique([userId, assignmentId])
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  type      String
+  context   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+

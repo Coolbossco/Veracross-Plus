@@ -11,6 +11,285 @@ const DEFAULTS = {
   homeUrl: "", // e.g., "/student/schedule/weekly" or a full URL
 };
 
+const LOCAL_CACHE_VERSION = "v1";
+const LOCAL_CACHE_KEYS = {
+  settings: `vc_local_cache_settings_${LOCAL_CACHE_VERSION}`,
+  customAssignments: `vc_local_cache_custom_assignments_${LOCAL_CACHE_VERSION}`,
+  checkedAssignments: `vc_local_cache_checked_assignments_${LOCAL_CACHE_VERSION}`,
+};
+const CUSTOM_ASSIGNMENTS_RETRY_DELAY_MS = 1000;
+const CUSTOM_ASSIGNMENTS_MAX_RETRIES = 3;
+const STORAGE_KEYS_ALLOW_UNAUTHENTICATED = new Set([
+  "customAssignments",
+  "vc_checked_assignments",
+]);
+
+function cloneData(value) {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (_error) {
+    return value;
+  }
+}
+
+function readLocalCacheEntry(localKey) {
+  if (!localKey) {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(localKey);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    return {
+      data: parsed.data,
+      updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : 0,
+    };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function writeLocalCacheEntry(localKey, value) {
+  if (!localKey) {
+    return;
+  }
+  try {
+    const payload = {
+      data: value,
+      updatedAt: Date.now(),
+    };
+    window.localStorage.setItem(localKey, JSON.stringify(payload));
+  } catch (_error) {}
+}
+
+function resolveLocalCacheKeyForStorageKey(storageKey) {
+  if (storageKey === "vc_checked_assignments") {
+    return LOCAL_CACHE_KEYS.checkedAssignments;
+  }
+  if (storageKey === "customAssignments") {
+    return LOCAL_CACHE_KEYS.customAssignments;
+  }
+  if (storageKey === "preferences" || storageKey === undefined) {
+    return LOCAL_CACHE_KEYS.settings;
+  }
+  return null;
+}
+
+function logDebug() {}
+
+let lastAuthStatus = { authenticated: false };
+let authCheckPromise = null;
+let lastAuthCheckTimestamp = 0;
+
+function isAuthenticated() {
+  return !!(lastAuthStatus && lastAuthStatus.authenticated);
+}
+
+function getDefaultForStorageKey(key) {
+  if (key === "customAssignments") {
+    return [];
+  }
+  if (key === "vc_checked_assignments") {
+    return {};
+  }
+  if (key === undefined || key === "preferences") {
+    return { ...DEFAULTS };
+  }
+  return undefined;
+}
+
+const DEFAULT_CACHE_TTL_MS = 2 * 60 * 1000;
+const CACHE_REFRESH_TTLS = {
+  [LOCAL_CACHE_KEYS.settings]: DEFAULT_CACHE_TTL_MS,
+  [LOCAL_CACHE_KEYS.customAssignments]: 60 * 1000,
+  [LOCAL_CACHE_KEYS.checkedAssignments]: 60 * 1000,
+};
+const BACKGROUND_SYNC_MIN_INTERVAL_MS = 60 * 1000;
+const AUTH_RECHECK_INTERVAL_MS = 60 * 1000;
+
+let lastBackgroundSyncTime = 0;
+let backgroundSyncPromise = null;
+let backgroundSyncTimeoutId = null;
+
+function cacheEntryNeedsRefresh(localKey) {
+  if (!localKey) {
+    return true;
+  }
+  const entry = readLocalCacheEntry(localKey);
+  if (!entry || !entry.updatedAt) {
+    return true;
+  }
+  const ttl = CACHE_REFRESH_TTLS[localKey] ?? DEFAULT_CACHE_TTL_MS;
+  return Date.now() - entry.updatedAt > ttl;
+}
+
+function scheduleBackgroundSync(delay = 0, options = {}) {
+  if (backgroundSyncTimeoutId !== null) {
+    return;
+  }
+  const { force = false } = options;
+  backgroundSyncTimeoutId = window.setTimeout(() => {
+    backgroundSyncTimeoutId = null;
+    runBackgroundSync({ force }).catch(() => {});
+  }, Math.max(0, delay));
+}
+
+async function runBackgroundSync({ force = false } = {}) {
+  if (backgroundSyncPromise) {
+    return backgroundSyncPromise;
+  }
+  const now = Date.now();
+  if (!force && now - lastBackgroundSyncTime < BACKGROUND_SYNC_MIN_INTERVAL_MS) {
+    return;
+  }
+
+  if (force || now - lastAuthCheckTimestamp > AUTH_RECHECK_INTERVAL_MS) {
+    await ensureAuthStatus({ silent: true, force: true });
+  }
+
+  if (!force && !lastAuthStatus.authenticated) {
+    return;
+  }
+
+  const needsSettings =
+    force || cacheEntryNeedsRefresh(LOCAL_CACHE_KEYS.settings);
+  const needsCustomAssignments =
+    force || cacheEntryNeedsRefresh(LOCAL_CACHE_KEYS.customAssignments);
+  const needsCheckedAssignments =
+    force || cacheEntryNeedsRefresh(LOCAL_CACHE_KEYS.checkedAssignments);
+
+  if (!needsSettings && !needsCustomAssignments && !needsCheckedAssignments) {
+    lastBackgroundSyncTime = now;
+    return;
+  }
+
+  backgroundSyncPromise = (async () => {
+    try {
+      if (window.RemoteSyncClient) {
+        try {
+          await window.RemoteSyncClient.ensureInitialized();
+        } catch (_error) {
+          if (!force) {
+            return;
+          }
+        }
+
+        const status = window.RemoteSyncClient.getStatus?.();
+        if (!force && status && !status.authenticated) {
+          return;
+        }
+      }
+
+      if (needsSettings) {
+        try {
+          await loadSettings({ preferCache: false });
+        } catch (_error) {}
+      }
+
+      if (needsCustomAssignments) {
+        try {
+          await getStorage("customAssignments", {
+            preferCache: false,
+            forceRemote: true,
+          });
+        } catch (_error) {}
+      }
+
+      if (needsCheckedAssignments) {
+        try {
+          await getStorage("vc_checked_assignments", {
+            preferCache: false,
+            forceRemote: true,
+          });
+        } catch (_error) {}
+      }
+    } finally {
+      lastBackgroundSyncTime = Date.now();
+      backgroundSyncPromise = null;
+    }
+  })();
+
+  return backgroundSyncPromise;
+}
+
+function resetBackgroundSyncState() {
+  lastBackgroundSyncTime = 0;
+  if (backgroundSyncTimeoutId !== null) {
+    clearTimeout(backgroundSyncTimeoutId);
+    backgroundSyncTimeoutId = null;
+  }
+  backgroundSyncPromise = null;
+}
+
+function clearLocalCaches() {
+  Object.values(LOCAL_CACHE_KEYS).forEach((key) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (_error) {}
+  });
+  try {
+    const syncKeys = [
+      "customAssignments",
+      "vc_checked_assignments",
+      ...Object.keys(DEFAULTS),
+    ];
+    chrome.storage?.sync?.remove(syncKeys, () => {});
+  } catch (_error) {}
+  logDebug("Local caches cleared");
+  lastAuthStatus = { authenticated: false };
+  resetBackgroundSyncState();
+}
+
+async function ensureAuthStatus(options = {}) {
+  const { force = false, silent = false } = options;
+  if (!window.RemoteSyncClient || !window.RemoteSyncClient.checkAuthStatus) {
+    lastAuthStatus = { authenticated: false };
+    return lastAuthStatus;
+  }
+
+  if (authCheckPromise && !force) {
+    return authCheckPromise;
+  }
+
+  authCheckPromise = (async () => {
+    try {
+      logDebug("ensureAuthStatus: checking authentication");
+      const result =
+        (await window.RemoteSyncClient.checkAuthStatus({ timeout: 4000 })) ||
+        { authenticated: false };
+      lastAuthStatus = result;
+      lastAuthCheckTimestamp = Date.now();
+      logDebug("ensureAuthStatus: result", result);
+      if (!lastAuthStatus.authenticated) {
+        clearLocalCaches();
+      }
+      return lastAuthStatus;
+    } catch (error) {
+      if (!silent) {
+        // Auth check failed silently
+      }
+      lastAuthStatus = {
+        authenticated: false,
+        error,
+      };
+      lastAuthCheckTimestamp = Date.now();
+      return lastAuthStatus;
+    } finally {
+      authCheckPromise = null;
+    }
+  })();
+
+  return authCheckPromise;
+}
+
 // Small stable hash for keys
 function hash(str) {
   let h = 2166136261 >>> 0;
@@ -21,36 +300,156 @@ function hash(str) {
   return (h >>> 0).toString(36);
 }
 
-function loadSettings() {
+async function loadSettings(options = {}) {
+  const defaults = { ...DEFAULTS };
+  const { preferCache = true, forceRemote = false } = options;
+
+  if (!isAuthenticated()) {
+    logDebug("loadSettings: returning defaults (not authenticated)");
+    return defaults;
+  }
+
+  if (preferCache && !forceRemote) {
+    const cached = readLocalCacheEntry(LOCAL_CACHE_KEYS.settings);
+    if (cached && cached.data && typeof cached.data === "object") {
+      return { ...defaults, ...cloneData(cached.data) };
+    }
+  }
+
+  try {
+    if (window.RemoteSyncClient) {
+      await window.RemoteSyncClient.ensureInitialized();
+      if (!forceRemote && preferCache && window.RemoteSyncClient.getLocalCacheSnapshot) {
+        const snapshot = window.RemoteSyncClient.getLocalCacheSnapshot();
+        if (snapshot && typeof snapshot === "object") {
+          writeLocalCacheEntry(LOCAL_CACHE_KEYS.settings, snapshot);
+          return { ...defaults, ...cloneData(snapshot) };
+        }
+      }
+      const remoteSettings = await window.RemoteSyncClient.get();
+      if (remoteSettings && typeof remoteSettings === "object") {
+        const preferences = remoteSettings.preferences || {};
+        writeLocalCacheEntry(LOCAL_CACHE_KEYS.settings, preferences);
+        return { ...defaults, ...preferences };
+      }
+    }
+  } catch (_error) {}
+
   return new Promise((resolve) => {
-    chrome.storage.sync.get(DEFAULTS, (result) => {
+    chrome.storage.sync.get(defaults, (result) => {
+      writeLocalCacheEntry(LOCAL_CACHE_KEYS.settings, result);
       resolve(result);
     });
   });
 }
 
-function saveSettings(changes) {
+async function saveSettings(changes) {
+  if (!isAuthenticated()) {
+    logDebug("saveSettings: skipped (not authenticated)");
+    return;
+  }
+
+  const merged = { ...(await loadSettings({ preferCache: true })), ...changes };
+  writeLocalCacheEntry(LOCAL_CACHE_KEYS.settings, merged);
+  try {
+    if (window.RemoteSyncClient) {
+      await window.RemoteSyncClient.ensureInitialized();
+      await window.RemoteSyncClient.set({ preferences: merged });
+      return;
+    }
+  } catch (_error) {}
+
   return new Promise((resolve) => {
-    chrome.storage.sync.set(changes, () => {
-      resolve();
-    });
+    chrome.storage.sync.set(merged, () => resolve());
   });
 }
 
-function getStorage(key) {
+async function getStorage(key, options = {}) {
+  const { preferCache = true, forceRemote = false } = options;
+  const localKey = resolveLocalCacheKeyForStorageKey(key);
+  const isAuth = isAuthenticated();
+  const allowUnoauthedAccess =
+    key && STORAGE_KEYS_ALLOW_UNAUTHENTICATED.has(key);
+
+  if (!isAuth && !allowUnoauthedAccess) {
+    const fallback = getDefaultForStorageKey(key);
+    logDebug("getStorage: returning default", { key, hasDefault: fallback !== undefined });
+    return cloneData(fallback);
+  }
+
+  if (preferCache && !forceRemote && localKey) {
+    const cached = readLocalCacheEntry(localKey);
+    if (cached && cached.data !== undefined) {
+      return cloneData(cached.data);
+    }
+  }
+
+  try {
+    if (isAuth && window.RemoteSyncClient) {
+      await window.RemoteSyncClient.ensureInitialized();
+      if (preferCache && !forceRemote && window.RemoteSyncClient.getLocalCacheSnapshot) {
+        const snapshot = window.RemoteSyncClient.getLocalCacheSnapshot(key);
+        if (snapshot !== null && snapshot !== undefined) {
+          if (localKey) {
+            writeLocalCacheEntry(localKey, snapshot);
+          }
+          return cloneData(snapshot);
+        }
+      }
+      const value = await window.RemoteSyncClient.get(key);
+      if (localKey && value !== undefined) {
+        writeLocalCacheEntry(localKey, value);
+      }
+      return cloneData(value);
+    }
+  } catch (_error) {}
+
   return new Promise((resolve) =>
     chrome.storage.sync.get(key, (obj) => {
-      resolve(obj[key]);
+      const value = obj[key];
+      if (localKey && value !== undefined) {
+        writeLocalCacheEntry(localKey, value);
+      }
+      resolve(cloneData(value));
     }),
   );
 }
 
-function setStorage(obj) {
+async function setStorage(obj) {
+  if (!obj || typeof obj !== "object") {
+    return;
+  }
+
+  if (!isAuthenticated()) {
+    logDebug("setStorage: skipped (not authenticated)");
+    return;
+  }
+
+  const entries = Object.entries(obj);
+  for (const [key, value] of entries) {
+    const localKey = resolveLocalCacheKeyForStorageKey(key);
+    if (localKey) {
+      writeLocalCacheEntry(localKey, value);
+    }
+  }
+
+  try {
+    if (window.RemoteSyncClient) {
+      await window.RemoteSyncClient.ensureInitialized();
+      await window.RemoteSyncClient.set(obj);
+      return;
+    }
+  } catch (_error) {}
+
   return new Promise((resolve) =>
     chrome.storage.sync.set(obj, () => {
       resolve();
     }),
   );
+}
+
+if (window.RemoteSyncClient) {
+  window.RemoteSyncClient.ensureInitialized();
 }
 
 // ———————————————— Fix clipping issues ————————————————
@@ -242,21 +641,61 @@ function applyChecklistToDocument(doc, checked) {
 
   const seen = new WeakSet();
 
-  function keyForNode(node) {
+  function keyForNode(node, checked) {
     const stable = node.getAttribute?.("data-assignment-id");
-    if (stable) return `${location.host}|${stable}`;
+    if (stable) {
+      const key = `${location.host}|${stable}`;
+      return { id: key, preferredId: key, variants: [key] };
+    }
+
+    const link = node.querySelector?.("a[href*='/assignment/']");
+    if (link) {
+      const href = link.getAttribute("href") || "";
+      const match = href.match(/assignment\/(\d+)/i);
+      if (match) {
+        const assignmentNum = match[1];
+        const host = location.host || "";
+        const variants = [];
+        if (host) {
+          variants.push(`${host}|${assignmentNum}`);
+        }
+        variants.push(assignmentNum);
+        if (/portals\.veracross\.com$/i.test(host)) {
+          variants.push(`portals-embed.veracross.com|${assignmentNum}`);
+        }
+        const uniqueVariants = [...new Set(variants.filter(Boolean))];
+        const preferredId =
+          uniqueVariants.find((value) => value.includes("portals-embed")) ||
+          uniqueVariants[0] ||
+          `${host}|${assignmentNum}`;
+        const activeId =
+          uniqueVariants.find((value) => checked && checked[value]) ||
+          preferredId;
+        return {
+          id: activeId,
+          preferredId,
+          variants: uniqueVariants.length ? uniqueVariants : [preferredId],
+        };
+      }
+    }
+
     const text = node.textContent?.trim().replace(/\s+/g, " ") || "";
     const nearDate = node
       .closest("tr,li,div")
       ?.textContent?.match(/\b(?:\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2})\b/);
-    return `${location.host}|${hash(text + (nearDate?.[0] || ""))}`;
+    const fallback = `${location.host}|${hash(text + (nearDate?.[0] || ""))}`;
+    return { id: fallback, preferredId: fallback, variants: [fallback] };
   }
 
   function decorate(node) {
     if (seen.has(node)) return;
     seen.add(node);
 
-    const id = keyForNode(node);
+    const keyInfo = keyForNode(node, checked);
+    const variants = keyInfo.variants;
+    const activeVariant =
+      variants.find((variant) => checked && checked[variant]) || null;
+    const storageKey = activeVariant || keyInfo.preferredId || keyInfo.id;
 
     // Check if this node already has a checkbox to avoid duplicates
     if (node.querySelector(".vch-task-wrap")) {
@@ -387,106 +826,118 @@ function applyChecklistToDocument(doc, checked) {
     cb.type = "checkbox";
     cb.className = "vch-checkbox";
 
+    const hasStoredVariant =
+      !!activeVariant && !!(checked && checked[activeVariant]);
+    const keyAliases = variants.filter(Boolean);
+
+    const hasStoredCheck = hasStoredVariant;
     // Parse date to determine if upcoming and force unchecked
-    let isChecked = !!checked[id];
+    let isChecked = hasStoredCheck;
     let isInUpcomingSection = false;
 
-    // Method 1: Check for "Upcoming" header in surrounding elements
-    let currentNode = node;
-    for (let i = 0; i < 20 && currentNode; i++) {
-      const text = currentNode.textContent?.toLowerCase() || "";
-      // Look for "Upcoming" text that appears before our assignment
-      if (
-        text.includes("upcoming") &&
-        !text.includes("past") &&
-        !text.includes("completed")
-      ) {
-        const upcomingIndex = text.indexOf("upcoming");
-        const assignmentIndex = text.indexOf(nodeText);
+    if (!hasStoredCheck) {
+      // Method 1: Check for "Upcoming" header in surrounding elements
+      let currentNode = node;
+      for (let i = 0; i < 20 && currentNode; i++) {
+        const text = currentNode.textContent?.toLowerCase() || "";
+        // Look for "Upcoming" text that appears before our assignment
         if (
-          upcomingIndex >= 0 &&
-          (assignmentIndex < 0 || upcomingIndex < assignmentIndex)
+          text.includes("upcoming") &&
+          !text.includes("past") &&
+          !text.includes("completed")
         ) {
-          isInUpcomingSection = true;
-          break;
+          const upcomingIndex = text.indexOf("upcoming");
+          const assignmentIndex = text.indexOf(nodeText);
+          if (
+            upcomingIndex >= 0 &&
+            (assignmentIndex < 0 || upcomingIndex < assignmentIndex)
+          ) {
+            isInUpcomingSection = true;
+            break;
+          }
+        }
+        currentNode =
+          currentNode.parentElement || currentNode.previousElementSibling;
+      }
+
+      // Method 2: Look for "Upcoming" in preceding DOM elements
+      if (!isInUpcomingSection) {
+        const allElements = document.querySelectorAll("*");
+        let foundUpcoming = false;
+        for (let element of allElements) {
+          const elementText = element.textContent?.trim().toLowerCase() || "";
+          if (
+            elementText === "upcoming" ||
+            (elementText.includes("upcoming") && elementText.length < 30)
+          ) {
+            foundUpcoming = true;
+          }
+          if (foundUpcoming && element.contains(node)) {
+            isInUpcomingSection = true;
+            break;
+          }
         }
       }
-      currentNode =
-        currentNode.parentElement || currentNode.previousElementSibling;
-    }
 
-    // Method 2: Look for "Upcoming" in preceding DOM elements
-    if (!isInUpcomingSection) {
-      const allElements = document.querySelectorAll("*");
-      let foundUpcoming = false;
-      for (let element of allElements) {
-        const elementText = element.textContent?.trim().toLowerCase() || "";
-        if (
-          elementText === "upcoming" ||
-          (elementText.includes("upcoming") && elementText.length < 30)
-        ) {
-          foundUpcoming = true;
+      // Method 3: Improved date parsing with better regex
+      const dateMatch = nodeText.match(
+        /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\s\u00A0]*(\d{1,2})\b/i,
+      );
+
+      if (dateMatch) {
+        const month = dateMatch[1].toLowerCase();
+        const day = parseInt(dateMatch[2], 10);
+        const monthNames = {
+          jan: 0,
+          feb: 1,
+          mar: 2,
+          apr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          aug: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dec: 11,
+        };
+        const monthNum = monthNames[month];
+
+        if (monthNum !== undefined) {
+          const now = new Date();
+          const today = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+          );
+          let dueDate = new Date(now.getFullYear(), monthNum, day);
+
+          // If date appears to be in the past, it's probably next year
+          if (dueDate < today) {
+            dueDate.setFullYear(now.getFullYear() + 1);
+          }
+
+          // Consider assignments due today or in the future as "upcoming"
+          const isUpcomingByDate = dueDate >= today;
+
+          if (isUpcomingByDate || isInUpcomingSection) {
+            isChecked = false;
+          }
         }
-        if (foundUpcoming && element.contains(node)) {
-          isInUpcomingSection = true;
-          break;
-        }
+      } else if (isInUpcomingSection) {
+        // Force unchecked if in upcoming section even without date match
+        isChecked = false;
       }
-    }
-
-    // Method 3: Improved date parsing with better regex
-    const dateMatch = nodeText.match(
-      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\s\u00A0]*(\d{1,2})\b/i,
-    );
-
-    if (dateMatch) {
-      const month = dateMatch[1].toLowerCase();
-      const day = parseInt(dateMatch[2], 10);
-      const monthNames = {
-        jan: 0,
-        feb: 1,
-        mar: 2,
-        apr: 3,
-        may: 4,
-        jun: 5,
-        jul: 6,
-        aug: 7,
-        sep: 8,
-        oct: 9,
-        nov: 10,
-        dec: 11,
-      };
-      const monthNum = monthNames[month];
-
-      if (monthNum !== undefined) {
-        const now = new Date();
-        const today = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-        );
-        let dueDate = new Date(now.getFullYear(), monthNum, day);
-
-        // If date appears to be in the past, it's probably next year
-        if (dueDate < today) {
-          dueDate.setFullYear(now.getFullYear() + 1);
-        }
-
-        // Consider assignments due today or in the future as "upcoming"
-        const isUpcomingByDate = dueDate >= today;
-
-        if (isUpcomingByDate || isInUpcomingSection) {
-          isChecked = false;
-        }
-      }
-    } else if (isInUpcomingSection) {
-      // Force unchecked if in upcoming section even without date match
-      isChecked = false;
     }
     cb.checked = isChecked;
 
     if (cb.checked) {
       node.classList.add("vch-done");
+    }
+    if (hasStoredCheck) {
+      // Remote check restored
+    } else if (isInUpcomingSection) {
+      // Auto-check skipped for upcoming section
     }
 
     // Prevent clicks on the checkbox from propagating to parent elements
@@ -523,7 +974,16 @@ function applyChecklistToDocument(doc, checked) {
     // Add error handling to the change event
     cb.addEventListener("change", async (event) => {
       try {
-        checked[id] = cb.checked ? 1 : undefined;
+        if (cb.checked) {
+          checked[storageKey] = 1;
+          keyAliases.forEach((alias) => {
+            if (alias !== storageKey) {
+              delete checked[alias];
+            }
+          });
+        } else {
+          delete checked[storageKey];
+        }
 
         node.classList.toggle("vch-done", cb.checked);
 
@@ -670,10 +1130,51 @@ function maybeRedirectHome(settings) {
 }
 
 // ———————————————— Feature 4: Custom Assignments ————————————————
+function logCustomAssignments(message, details) {
+  try {
+    if (details === undefined) {
+      console.debug("[VCH CustomAssignments]", message);
+    } else {
+      console.debug("[VCH CustomAssignments]", message, details);
+    }
+  } catch (_error) {}
+}
+
 let customAssignmentsInjected = false;
 let injectionInProgress = false;
 let instantUpdateInProgress = false;
 let modalOpenInProgress = false;
+let customAssignmentsSettingsRefreshTimer = null;
+let storageChangeListenerAttached = false;
+let customAssignmentsRetryTimeoutId = null;
+let customAssignmentsRetryAttempts = 0;
+
+function normalizeCustomAssignmentsData(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    Array.isArray(value.data)
+  ) {
+    return value.data;
+  }
+  return [];
+}
+
+function removeCustomAssignmentElements() {
+  const elementsToRemove = document.querySelectorAll(
+    ".vch-custom-class-row, .vch-custom-timeline-row, .vch-custom-assignment, .vch-custom-assignments-section, [data-vch-custom='true'], [data-custom-assignment-id]",
+  );
+
+  elementsToRemove.forEach((el) => {
+    if (el._vchObserver) {
+      el._vchObserver.disconnect();
+    }
+    el.remove();
+  });
+}
 
 // Add global event handler to prevent native Veracross modals for custom assignments
 document.addEventListener(
@@ -717,8 +1218,11 @@ document.addEventListener(
         );
         if (assignmentId) {
           // Find assignment data and show details
-          getStorage("customAssignments").then((customAssignments) => {
-            const assignment = (customAssignments || []).find(
+        getStorage("customAssignments").then((customAssignments) => {
+          const normalizedAssignments = normalizeCustomAssignmentsData(
+            customAssignments,
+          );
+          const assignment = normalizedAssignments.find(
               (a) => a.id === assignmentId,
             );
             if (assignment) {
@@ -733,31 +1237,82 @@ document.addEventListener(
 );
 
 async function applyCustomAssignments(settings) {
+  if (!settings || typeof settings !== "object") {
+    logCustomAssignments("applyCustomAssignments received invalid settings");
+    return;
+  }
+
+  const isInIframe = window !== window.top;
+  logCustomAssignments("applyCustomAssignments invoked", {
+    enabled: !!settings.enableCustomAssignments,
+    authenticated: !!lastAuthStatus?.authenticated,
+    inIframe: isInIframe,
+  });
+
   if (!settings.enableCustomAssignments) {
+    logCustomAssignments("applyCustomAssignments skipped: feature disabled", {
+      authenticated: !!lastAuthStatus?.authenticated,
+    });
+
+    if (
+      lastAuthStatus?.authenticated &&
+      !customAssignmentsSettingsRefreshTimer
+    ) {
+      customAssignmentsSettingsRefreshTimer = window.setTimeout(async () => {
+        try {
+          logCustomAssignments("Re-fetching settings to verify toggle state");
+          const refreshedSettings = await loadSettings({
+            preferCache: false,
+            forceRemote: true,
+          });
+          logCustomAssignments("Settings refreshed", {
+            enableCustomAssignments: !!refreshedSettings.enableCustomAssignments,
+          });
+          if (refreshedSettings.enableCustomAssignments) {
+            await applyCustomAssignments(refreshedSettings);
+          }
+        } catch (error) {
+          logCustomAssignments("Failed to refresh settings", {
+            message: error?.message,
+          });
+        } finally {
+          customAssignmentsSettingsRefreshTimer = null;
+        }
+      }, 500);
+    }
+
     return;
   }
 
   if (injectionInProgress) {
+    logCustomAssignments("applyCustomAssignments skipped: injection already in progress");
     return;
   }
 
   injectionInProgress = true;
 
-  // Check if we're in an iframe context
-  const isInIframe = window !== window.top;
+  const normalizedHref = location.href.toLowerCase();
   const isTimelineIframe =
     isInIframe &&
-    (location.href.includes("planner") ||
+    (normalizedHref.includes("planner") ||
+      normalizedHref.includes("timeline") ||
+      normalizedHref.includes("calendar") ||
       document.querySelector("#planner") ||
-      document.querySelector(".timeline-header-y-inner"));
+      document.querySelector(".timeline-header-y-inner") ||
+      document.querySelector(".timeline-records-inner"));
 
   // Only run assignment functionality in the timeline iframe context
   if (!isTimelineIframe && isInIframe) {
+    logCustomAssignments("applyCustomAssignments aborted: iframe without timeline context", {
+      href: normalizedHref,
+    });
+    injectionInProgress = false;
     return;
   }
 
   // If we're in the main page (not iframe), only add the floating button if on assignments page
   if (!isInIframe) {
+    logCustomAssignments("applyCustomAssignments running on main page");
     addFloatingAssignmentButton();
 
     // Set up message listener for button hide/show commands from iframe
@@ -781,13 +1336,18 @@ async function applyCustomAssignments(settings) {
       }
     });
 
+    injectionInProgress = false;
     return;
   }
 
   // Set up message listener for cross-frame communication
   window.addEventListener("message", async function (event) {
     if (event.data && event.data.type === "VCH_REFRESH_ASSIGNMENTS") {
+      logCustomAssignments("Received refresh request via postMessage");
       await instantAssignmentUpdate();
+      if (lastAuthStatus.authenticated) {
+        scheduleBackgroundSync(1500);
+      }
     }
   });
 
@@ -797,6 +1357,7 @@ async function applyCustomAssignments(settings) {
   // Load and inject existing custom assignments
   await loadAndInjectCustomAssignments();
 
+  logCustomAssignments("applyCustomAssignments finished initial load");
   injectionInProgress = false;
 }
 
@@ -902,22 +1463,60 @@ function addFloatingAssignmentButton() {
 }
 
 async function loadAndInjectCustomAssignments() {
-  const customAssignments = (await getStorage("customAssignments")) || [];
+  const rawCustomAssignments = (await getStorage("customAssignments")) || [];
+  const customAssignments = normalizeCustomAssignmentsData(rawCustomAssignments);
+  const normalizedPath = location.pathname.toLowerCase();
+  logCustomAssignments("loadAndInjectCustomAssignments invoked", {
+    count: customAssignments.length,
+    alreadyInjected: customAssignmentsInjected,
+    path: normalizedPath,
+  });
+
+  if (customAssignments.length === 0) {
+    removeCustomAssignmentElements();
+    customAssignmentsInjected = false;
+    if (customAssignmentsRetryAttempts >= CUSTOM_ASSIGNMENTS_MAX_RETRIES) {
+      logCustomAssignments(
+        "No custom assignments after max retries; awaiting new data",
+      );
+      return;
+    }
+    if (!customAssignmentsRetryTimeoutId) {
+      logCustomAssignments("No custom assignments available yet; scheduling retry");
+      customAssignmentsRetryTimeoutId = window.setTimeout(() => {
+        customAssignmentsRetryTimeoutId = null;
+        refreshCustomAssignmentsWithRetry(2);
+      }, CUSTOM_ASSIGNMENTS_RETRY_DELAY_MS);
+      customAssignmentsRetryAttempts += 1;
+    }
+    return;
+  }
+
+  if (customAssignmentsRetryTimeoutId) {
+    window.clearTimeout(customAssignmentsRetryTimeoutId);
+    customAssignmentsRetryTimeoutId = null;
+  }
+  customAssignmentsRetryAttempts = 0;
 
   if (!customAssignmentsInjected || customAssignments.length > 0) {
-    // Check if we're on the right page type (timeline/planner page or assignments page)
+    // Normalize for consistent matching across routes
+    // Check if we're on the right page type (timeline/planner/calendar page or assignments page)
     const isTimelinePage =
-      location.pathname.includes("planner") ||
-      location.pathname.includes("timeline") ||
+      normalizedPath.includes("planner") ||
+      normalizedPath.includes("timeline") ||
+      normalizedPath.includes("calendar") ||
       document.querySelector("#planner") ||
       document.querySelector(".timeline-header-y-inner") ||
       document.querySelector(".timeline-records-inner");
 
     const isAssignmentsPage =
-      location.pathname.includes("upcoming-assignments") ||
-      location.pathname.includes("assignments");
+      normalizedPath.includes("upcoming-assignments") ||
+      normalizedPath.includes("assignments");
 
     if (isTimelinePage) {
+      logCustomAssignments("Detected timeline context", {
+        assignments: customAssignments.length,
+      });
       // Wait for timeline to be fully loaded with more attempts
       let attempts = 0;
       const maxAttempts = 10;
@@ -931,22 +1530,38 @@ async function loadAndInjectCustomAssignments() {
         );
 
         if (timelineYHeader && timelineRows.length > 0) {
+          logCustomAssignments("Timeline ready, injecting custom assignments", {
+            attempts,
+            timelineRows: timelineRows.length,
+          });
           injectCustomAssignmentsSidebar(customAssignments);
-          customAssignmentsInjected = true;
+          customAssignmentsInjected = customAssignments.length > 0;
+          logCustomAssignments("Custom assignments injection state updated", {
+            injected: customAssignmentsInjected,
+          });
         } else {
           attempts++;
           if (attempts < maxAttempts) {
             setTimeout(waitForTimeline, 300);
           } else {
             // Timeline wait timed out
+            logCustomAssignments("Failed to detect timeline after retries", {
+              maxAttempts,
+            });
           }
         }
       };
 
       waitForTimeline();
     } else if (isAssignmentsPage) {
+      logCustomAssignments("Detected assignments page context", {
+        assignments: customAssignments.length,
+      });
       injectCustomAssignmentsToAssignmentsPage(customAssignments);
-      customAssignmentsInjected = true;
+      customAssignmentsInjected = customAssignments.length > 0;
+      logCustomAssignments("Assignments page injection state updated", {
+        injected: customAssignmentsInjected,
+      });
     }
   }
 }
@@ -1145,12 +1760,17 @@ function showCustomAssignmentModal(prefillData = {}) {
 }
 
 async function refreshCustomAssignmentsWithRetry(retries = 3) {
+  logCustomAssignments("refreshCustomAssignmentsWithRetry invoked", { retries });
   try {
     await refreshCustomAssignments();
 
     // Quick verification that assignments are visible
     setTimeout(async () => {
-      const customAssignments = (await getStorage("customAssignments")) || [];
+      const rawCustomAssignments =
+        (await getStorage("customAssignments")) || [];
+      const customAssignments = normalizeCustomAssignmentsData(
+        rawCustomAssignments,
+      );
       const assignmentElements = document.querySelectorAll(
         "[data-custom-assignment-id]",
       );
@@ -1160,47 +1780,61 @@ async function refreshCustomAssignmentsWithRetry(retries = 3) {
         assignmentElements.length === 0 &&
         retries > 0
       ) {
+        logCustomAssignments("Custom assignments missing after refresh, retrying", {
+          remainingRetries: retries - 1,
+        });
         await refreshCustomAssignmentsWithRetry(retries - 1);
       } else if (assignmentElements.length > 0) {
         // Success - assignments are now visible
+        logCustomAssignments("Custom assignments visible after refresh check", {
+          count: assignmentElements.length,
+        });
       } else if (customAssignments.length === 0) {
         // No assignments in storage to display
+        logCustomAssignments("No custom assignments stored after refresh check");
       } else {
         // No more retries left
+        logCustomAssignments("Exhausted retries; custom assignments still missing");
       }
     }, 500);
   } catch (error) {
     if (retries > 0) {
+      logCustomAssignments("refreshCustomAssignmentsWithRetry caught error", {
+        message: error?.message,
+        remainingRetries: retries - 1,
+      });
       setTimeout(() => refreshCustomAssignmentsWithRetry(retries - 1), 1000);
     }
   }
 }
 
 async function refreshCustomAssignments() {
+  logCustomAssignments("refreshCustomAssignments invoked", {
+    injectionInProgress,
+    instantUpdateInProgress,
+  });
   if (injectionInProgress || instantUpdateInProgress) {
+    logCustomAssignments("refreshCustomAssignments skipped: update in progress");
     return;
   }
 
   injectionInProgress = true;
+  logCustomAssignments("refreshCustomAssignments started");
 
   // Get fresh data from storage
-  const customAssignments = (await getStorage("customAssignments")) || [];
+  const rawCustomAssignments = (await getStorage("customAssignments")) || [];
+  const customAssignments = normalizeCustomAssignmentsData(
+    rawCustomAssignments,
+  );
+  logCustomAssignments("refreshCustomAssignments loaded data", {
+    assignments: customAssignments.length,
+  });
 
   // Reset injection state completely
   customAssignmentsInjected = false;
 
   // Remove all existing custom assignment elements with more thorough cleanup
-  const elementsToRemove = document.querySelectorAll(
-    ".vch-custom-class-row, .vch-custom-timeline-row, .vch-custom-assignment, .vch-custom-assignments-section, [data-vch-custom='true'], [data-custom-assignment-id]",
-  );
-
-  elementsToRemove.forEach((el) => {
-    // Clean up any observers
-    if (el._vchObserver) {
-      el._vchObserver.disconnect();
-    }
-    el.remove();
-  });
+  removeCustomAssignmentElements();
 
   // Quick DOM cleanup - no delay needed for instant updates
   await new Promise((resolve) => setTimeout(resolve, 10));
@@ -1220,13 +1854,18 @@ async function refreshCustomAssignments() {
 
   if (isTimelinePage) {
     // Use the more robust injection method that waits for elements
+    logCustomAssignments("refreshCustomAssignments reinjecting timeline view");
     await loadAndInjectCustomAssignments();
   } else if (isAssignmentsPage) {
     injectCustomAssignmentsToAssignmentsPage(customAssignments);
     customAssignmentsInjected = true;
+    logCustomAssignments("refreshCustomAssignments updated assignments page", {
+      assignments: customAssignments.length,
+    });
   }
 
   injectionInProgress = false;
+  logCustomAssignments("refreshCustomAssignments completed");
 }
 
 function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
@@ -1438,7 +2077,10 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
 }
 
 async function saveCustomAssignment(assignment) {
-  const customAssignments = (await getStorage("customAssignments")) || [];
+  const rawCustomAssignments = (await getStorage("customAssignments")) || [];
+  const customAssignments = normalizeCustomAssignmentsData(
+    rawCustomAssignments,
+  );
 
   // If assignment has an ID, update existing; otherwise add new
   const existingIndex = customAssignments.findIndex(
@@ -1458,7 +2100,12 @@ async function immediatelyInjectNewAssignment(assignment) {
 }
 
 async function instantAssignmentUpdate() {
+  logCustomAssignments("instantAssignmentUpdate invoked", {
+    injectionInProgress,
+    instantUpdateInProgress,
+  });
   if (injectionInProgress || instantUpdateInProgress) {
+    logCustomAssignments("instantAssignmentUpdate skipped: another update in progress");
     return;
   }
 
@@ -1474,11 +2121,18 @@ async function instantAssignmentUpdate() {
 
   if (!isTimelineIframe) {
     instantUpdateInProgress = false;
+    logCustomAssignments("instantAssignmentUpdate aborted: not in timeline iframe");
     return;
   }
 
   try {
-    const customAssignments = (await getStorage("customAssignments")) || [];
+    const rawCustomAssignments = (await getStorage("customAssignments")) || [];
+    const customAssignments = normalizeCustomAssignmentsData(
+      rawCustomAssignments,
+    );
+    logCustomAssignments("instantAssignmentUpdate data loaded", {
+      assignments: customAssignments.length,
+    });
 
     // Check if timeline elements exist
     const timelineElementsExist = !!(
@@ -1491,6 +2145,7 @@ async function instantAssignmentUpdate() {
 
     if (!timelineElementsExist) {
       instantUpdateInProgress = false;
+      logCustomAssignments("instantAssignmentUpdate aborted: timeline elements missing");
       return;
     }
 
@@ -1514,6 +2169,9 @@ async function instantAssignmentUpdate() {
 
     // Only create new elements if neither exists (initial load scenario)
     if (!existingSidebar && !existingTimelineRow) {
+      logCustomAssignments("instantAssignmentUpdate injecting fresh elements", {
+        assignments: customAssignments.length,
+      });
       injectCustomAssignmentsSidebar(customAssignments);
       injectCustomAssignmentsTimeline(customAssignments);
     }
@@ -1524,15 +2182,22 @@ async function instantAssignmentUpdate() {
         ".vch-custom-timeline-row",
       );
       if (!timelineRowCheck && customAssignments.length > 0) {
+        logCustomAssignments("Timeline row missing after update; reinjecting");
         injectCustomAssignmentsTimeline(customAssignments);
       }
     }, 50);
 
-    customAssignmentsInjected = true;
+    customAssignmentsInjected = customAssignments.length > 0;
     instantUpdateInProgress = false;
+    logCustomAssignments("instantAssignmentUpdate completed", {
+      assignments: customAssignments.length,
+    });
   } catch (error) {
     instantUpdateInProgress = false;
     // Fallback to standard refresh
+    logCustomAssignments("instantAssignmentUpdate failed, scheduling refresh", {
+      message: error?.message,
+    });
     setTimeout(async () => {
       await immediatelyRefreshAssignments();
     }, 10);
@@ -1540,7 +2205,12 @@ async function instantAssignmentUpdate() {
 }
 
 async function immediatelyRefreshAssignments() {
+  logCustomAssignments("immediatelyRefreshAssignments invoked", {
+    injectionInProgress,
+    instantUpdateInProgress,
+  });
   if (injectionInProgress || instantUpdateInProgress) {
+    logCustomAssignments("immediatelyRefreshAssignments skipped: update in progress");
     return;
   }
 
@@ -1553,11 +2223,18 @@ async function immediatelyRefreshAssignments() {
       document.querySelector(".timeline-header-y-inner"));
 
   if (!isTimelineIframe) {
+    logCustomAssignments("immediatelyRefreshAssignments aborted: not in timeline iframe");
     return;
   }
 
   try {
-    const customAssignments = (await getStorage("customAssignments")) || [];
+    const rawCustomAssignments = (await getStorage("customAssignments")) || [];
+    const customAssignments = normalizeCustomAssignmentsData(
+      rawCustomAssignments,
+    );
+    logCustomAssignments("immediatelyRefreshAssignments data loaded", {
+      assignments: customAssignments.length,
+    });
 
     // Check if timeline elements exist
     const timelineElementsExist = !!(
@@ -1569,6 +2246,7 @@ async function immediatelyRefreshAssignments() {
     );
 
     if (!timelineElementsExist) {
+      logCustomAssignments("immediatelyRefreshAssignments aborted: timeline elements missing");
       return;
     }
 
@@ -1592,12 +2270,21 @@ async function immediatelyRefreshAssignments() {
 
     // Only create new elements if neither exists (initial load scenario)
     if (!existingSidebar && !existingTimelineRow) {
+      logCustomAssignments("immediatelyRefreshAssignments injecting fresh elements", {
+        assignments: customAssignments.length,
+      });
       injectCustomAssignmentsSidebar(customAssignments);
       injectCustomAssignmentsTimeline(customAssignments);
     }
 
-    customAssignmentsInjected = true;
+    customAssignmentsInjected = customAssignments.length > 0;
+    logCustomAssignments("immediatelyRefreshAssignments completed", {
+      assignments: customAssignments.length,
+    });
   } catch (error) {
+    logCustomAssignments("immediatelyRefreshAssignments failed; scheduling retry", {
+      message: error?.message,
+    });
     // Fallback to the retry mechanism if immediate refresh fails
     setTimeout(async () => {
       await refreshCustomAssignmentsWithRetry(3);
@@ -1827,7 +2514,10 @@ function parseColumnDateFormat(dateFormat) {
 }
 
 async function deleteCustomAssignment(assignmentId) {
-  const customAssignments = (await getStorage("customAssignments")) || [];
+  const rawCustomAssignments = (await getStorage("customAssignments")) || [];
+  const customAssignments = normalizeCustomAssignmentsData(
+    rawCustomAssignments,
+  );
   const filteredAssignments = customAssignments.filter(
     (a) => a.id !== assignmentId,
   );
@@ -1858,8 +2548,12 @@ function generateId() {
 
 function injectCustomAssignmentsSidebar(customAssignments) {
   try {
+    logCustomAssignments("injectCustomAssignmentsSidebar called", {
+      assignments: Array.isArray(customAssignments) ? customAssignments.length : "invalid",
+    });
     // Validate that customAssignments is an array
     if (!Array.isArray(customAssignments)) {
+      logCustomAssignments("injectCustomAssignmentsSidebar aborted: assignments not array");
       return;
     }
 
@@ -1867,6 +2561,7 @@ function injectCustomAssignmentsSidebar(customAssignments) {
     const timelineYHeader = document.querySelector(".timeline-header-y-inner");
 
     if (!timelineYHeader) {
+      logCustomAssignments("Primary timeline sidebar not found, trying fallbacks");
       // Try to find other possible containers
       const alternativeContainers = [
         ".timeline-header-y",
@@ -1886,6 +2581,9 @@ function injectCustomAssignmentsSidebar(customAssignments) {
       }
 
       if (container) {
+        logCustomAssignments("Found alternative sidebar container", {
+          selector: container.className || "unknown",
+        });
         injectCustomAssignmentsSidebarToContainer(container, customAssignments);
         // Always inject timeline row when sidebar is injected to maintain alignment
         injectCustomAssignmentsTimeline(customAssignments);
@@ -1898,8 +2596,11 @@ function injectCustomAssignmentsSidebar(customAssignments) {
       customAssignments,
     );
     injectCustomAssignmentsTimeline(customAssignments);
+    logCustomAssignments("Sidebar and timeline injection triggered");
   } catch (error) {
-    // Error injecting custom assignments
+    logCustomAssignments("injectCustomAssignmentsSidebar threw error", {
+      message: error?.message,
+    });
   }
 }
 
@@ -1908,11 +2609,17 @@ function injectCustomAssignmentsSidebarToContainer(
   customAssignments,
 ) {
   // Validate inputs
+  logCustomAssignments("injectCustomAssignmentsSidebarToContainer invoked", {
+    hasContainer: !!container,
+    assignments: Array.isArray(customAssignments) ? customAssignments.length : "invalid",
+  });
   if (!container || !container.querySelector) {
+    logCustomAssignments("Sidebar container missing essential APIs");
     return;
   }
 
   if (!Array.isArray(customAssignments)) {
+    logCustomAssignments("Sidebar injection aborted: assignments not array");
     return;
   }
 
@@ -1924,6 +2631,7 @@ function injectCustomAssignmentsSidebarToContainer(
       existingRow._vchObserver.disconnect();
     }
     existingRow.remove();
+    logCustomAssignments("Removed existing custom assignments sidebar row");
   }
 
   // Create custom assignments timeline row that matches Veracross structure
@@ -2109,10 +2817,16 @@ function injectCustomAssignmentsSidebarToContainer(
   } else {
     container.appendChild(customRow);
   }
+  logCustomAssignments("Sidebar row inserted", {
+    assignmentCount: customAssignments.length,
+  });
 }
 
 function injectCustomAssignmentsTimeline(customAssignments) {
   try {
+    logCustomAssignments("injectCustomAssignmentsTimeline called", {
+      assignments: Array.isArray(customAssignments) ? customAssignments.length : "invalid",
+    });
     // Find the timeline records container (main grid)
     let timelineRecords = document.querySelector(".timeline-records-inner");
 
@@ -2129,6 +2843,9 @@ function injectCustomAssignmentsTimeline(customAssignments) {
       for (const selector of alternativeSelectors) {
         timelineRecords = document.querySelector(selector);
         if (timelineRecords) {
+          logCustomAssignments("Found timeline container via alternative selector", {
+            selector,
+          });
           break;
         }
       }
@@ -2139,7 +2856,9 @@ function injectCustomAssignmentsTimeline(customAssignments) {
       const allTimelineRows = document.querySelectorAll(".timeline-row");
       if (allTimelineRows.length > 0) {
         timelineRecords = allTimelineRows[0].parentElement;
+        logCustomAssignments("Using parent of existing timeline row as container");
       } else {
+        logCustomAssignments("Timeline container not found; skipping timeline injection");
         return;
       }
     }
@@ -2150,6 +2869,7 @@ function injectCustomAssignmentsTimeline(customAssignments) {
     );
     if (existingTimelineRow) {
       existingTimelineRow.remove();
+      logCustomAssignments("Removed existing custom timeline row");
     }
 
     // Always create timeline row to maintain alignment, even if empty
@@ -2217,6 +2937,7 @@ function injectCustomAssignmentsTimeline(customAssignments) {
 
     if (shouldStartClosed) {
       timelineRow.classList.add("closed");
+      logCustomAssignments("Custom timeline row initialized in closed state");
     }
 
     // Add mutation observer to watch for closed class changes on this row
@@ -2291,11 +3012,19 @@ function injectCustomAssignmentsTimeline(customAssignments) {
     const headerColumns = document.querySelectorAll(
       ".timeline-header-x-inner .timeline-cell",
     );
+    if (!headerColumns || headerColumns.length === 0) {
+      logCustomAssignments("Timeline header columns not found; aborting timeline injection");
+      return;
+    }
 
     // Get the width of existing cells to match exactly
     const firstRowCells = timelineRecords
       .querySelector(".timeline-row:not(.vch-custom-timeline-row)")
       ?.querySelectorAll(".timeline-cell");
+    if (!firstRowCells || firstRowCells.length === 0) {
+      logCustomAssignments("Reference timeline row cells missing; aborting timeline injection");
+      return;
+    }
 
     // Check if any column represents today for row-level highlighting
     let hasTodayColumn = false;
@@ -2420,8 +3149,13 @@ function injectCustomAssignmentsTimeline(customAssignments) {
     } else {
       timelineRecords.appendChild(timelineRow);
     }
+    logCustomAssignments("Timeline row inserted", {
+      assignmentCount: customAssignments.length,
+    });
   } catch (error) {
-    // Silent error handling
+    logCustomAssignments("injectCustomAssignmentsTimeline threw error", {
+      message: error?.message,
+    });
   }
 }
 
@@ -3119,6 +3853,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "refreshCustomAssignments") {
     setTimeout(() => {
       instantAssignmentUpdate();
+      if (lastAuthStatus.authenticated) {
+        scheduleBackgroundSync(1000, { force: true });
+      }
     }, 10);
     sendResponse({ success: true });
   }
@@ -3127,7 +3864,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ———————————————— Init ————————————————
 (async function init() {
   try {
+    const authStatus = await ensureAuthStatus({ silent: true });
     const settings = await loadSettings();
+    logCustomAssignments("Initial settings loaded", {
+      enableCustomAssignments: !!settings.enableCustomAssignments,
+      authenticated: !!authStatus?.authenticated,
+    });
+    if (authStatus?.authenticated) {
+      scheduleBackgroundSync(500);
+    }
 
     maybeRedirectHome(settings);
 
@@ -3265,6 +4010,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Apply custom assignments if enabled
     await applyCustomAssignments(settings);
 
+    if (!storageChangeListenerAttached && chrome?.storage?.onChanged) {
+      storageChangeListenerAttached = true;
+      chrome.storage.onChanged.addListener(async (changes, areaName) => {
+        if (areaName !== "sync") {
+          return;
+        }
+        if (!changes || !changes.customAssignments) {
+          return;
+        }
+
+        const newValue = changes.customAssignments.newValue;
+        const length = Array.isArray(newValue)
+          ? newValue.length
+          : Array.isArray(newValue?.data)
+          ? newValue.data.length
+          : 0;
+
+        logCustomAssignments("Detected storage change for custom assignments", {
+          length,
+          inIframe: window !== window.top,
+        });
+
+        if (customAssignmentsRetryTimeoutId) {
+          window.clearTimeout(customAssignmentsRetryTimeoutId);
+          customAssignmentsRetryTimeoutId = null;
+        }
+        customAssignmentsRetryAttempts = 0;
+
+        customAssignmentsInjected = false;
+
+        if (window !== window.top) {
+          await instantAssignmentUpdate();
+        } else {
+          const iframe = document.querySelector("iframe.old-portals-iframe");
+          if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(
+              { type: "VCH_REFRESH_ASSIGNMENTS" },
+              "*",
+            );
+          }
+        }
+      });
+    }
+
     // Set up URL change detection for single-page app navigation
     let currentUrl = location.href;
     const checkForUrlChange = () => {
@@ -3280,6 +4069,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             await instantAssignmentUpdate();
           }
         }, 100);
+        if (lastAuthStatus.authenticated) {
+          scheduleBackgroundSync(1500);
+        }
       }
 
       // Continue checking

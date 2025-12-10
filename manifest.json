@@ -9,7 +9,9 @@
     "*://*.veracross.com/*",
     "*://*.myveracross.com/*",
     "*://portals.veracross.com/*",
-    "*://portals-embed.veracross.com/*"
+    "*://portals-embed.veracross.com/*",
+    "https://api.veracross-plus.example.com/*",
+    "https://localhost:4000/*"
   ],
 
   "icons": {
@@ -27,7 +29,7 @@
         "*://portals.veracross.com/*",
         "*://portals-embed.veracross.com/*"
       ],
-      "js": ["content.js"],
+      "js": ["remoteSyncClient.js", "content.js"],
       "css": ["styles.css"],
       "run_at": "document_end",
       "all_frames": true
