@@ -3,22 +3,21 @@
   "name": "Veracross Plus",
   "description": "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
   "version": "0.2.1",
-
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "*://*.veracross.com/*",
     "*://*.myveracross.com/*",
     "*://portals.veracross.com/*",
     "*://portals-embed.veracross.com/*"
   ],
-
   "icons": {
     "16": "icons/16.png",
     "32": "icons/32.png",
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-
   "content_scripts": [
     {
       "matches": [
@@ -27,13 +26,16 @@
         "*://portals.veracross.com/*",
         "*://portals-embed.veracross.com/*"
       ],
-      "js": ["content.js"],
-      "css": ["styles.css"],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
       "run_at": "document_end",
       "all_frames": true
     }
   ],
-
   "action": {
     "default_popup": "popup.html",
     "default_title": "Veracross Plus",
@@ -43,6 +45,5 @@
       "32": "icons/32.png"
     }
   },
-
   "options_page": "options.html"
 }

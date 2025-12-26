@@ -1,0 +1,835 @@
+/* Veracross Plus - Enhanced Styling */
+
+/* Reset and base styles */
+.vch-task-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 6px;
+    vertical-align: middle;
+    position: relative;
+    z-index: 1;
+    padding: 1px 0;
+}
+
+/* Enhanced checkbox styling - much smaller */
+.vch-checkbox {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    cursor: pointer;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    background: white;
+    transition: all 0.2s ease;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.vch-checkbox:hover {
+    border-color: #4a90e2;
+    box-shadow:
+        0 0 0 2px rgba(74, 144, 226, 0.1),
+        0 1px 3px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.vch-checkbox:checked {
+    background: #4a90e2 !important;
+    border-color: #4a90e2 !important;
+}
+
+.vch-checkbox:checked::after {
+    content: "✓" !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white !important;
+}
+
+/* Assignment type indicator bars - smaller */
+.vch-task-wrap::before {
+    content: "";
+    width: 2px;
+    height: 14px;
+    margin-right: 4px;
+    border-radius: 1px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+.vch-task-wrap[data-type="homework"]::before {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+}
+
+.vch-task-wrap[data-type="classwork"]::before {
+    background: linear-gradient(135deg, #607d8b, #546e7a);
+}
+
+.vch-task-wrap[data-type="paper"]::before {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.vch-task-wrap[data-type="test"]::before {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+}
+
+.vch-task-wrap[data-type="quiz"]::before {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+}
+
+/* Completed assignment styling - more specific and forceful */
+.vch-done {
+    opacity: 0.7 !important;
+    text-decoration: line-through !important;
+    color: #666 !important;
+}
+
+/* Make sure the checkbox shows as checked when completed - very specific */
+.vch-done .vch-checkbox,
+.vch-done input.vch-checkbox {
+    background: #4caf50 !important;
+    border-color: #4caf50 !important;
+}
+
+.vch-done .vch-checkbox::after,
+.vch-done input.vch-checkbox::after {
+    content: "✓" !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white !important;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.vch-done .vch-task-wrap::before {
+    opacity: 0.6;
+}
+
+/* Better integration with Veracross assignment boxes - more compact */
+.vch-task-wrap {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 2px;
+    padding: 1px 2px;
+    margin: 0px 1px 0px 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    pointer-events: auto;
+    z-index: 5;
+}
+
+.vch-task-wrap:hover {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+/* Ensure completed assignments show proper visual feedback - very specific */
+.vch-done {
+    opacity: 0.7 !important;
+    text-decoration: line-through !important;
+    color: #666 !important;
+}
+
+/* Style the assignment text when completed - very specific */
+.vch-done h1,
+.vch-done h2,
+.vch-done h3,
+.vch-done h4,
+.vch-done h5,
+.vch-done h6,
+.vch-done p,
+.vch-done span,
+.vch-done div,
+.vch-done a {
+    text-decoration: line-through !important;
+    color: #666 !important;
+    opacity: 0.7 !important;
+}
+
+/* Make sure the checkbox shows as checked when completed - very specific */
+.vch-done .vch-checkbox,
+.vch-done input.vch-checkbox {
+    background: #4caf50 !important;
+    border-color: #4caf50 !important;
+}
+
+.vch-done .vch-checkbox::after,
+.vch-done input.vch-checkbox::after {
+    content: "✓" !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white !important;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Enhanced grade panel */
+.vch-grade-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+        Arial, sans-serif;
+    font-size: 14px;
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.vch-grade-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.vch-grade-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.vch-grade-row strong {
+    color: #333;
+    font-weight: 600;
+}
+
+.vch-grade-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: #4a90e2;
+    font-size: 16px;
+}
+
+.vch-grade-note {
+    opacity: 0.6;
+    font-size: 12px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Mobile-friendly adjustments */
+@media (max-width: 768px) {
+    .vch-grade-panel {
+        right: 16px;
+        bottom: 16px;
+        padding: 12px 16px;
+        min-width: 180px;
+    }
+
+    .vch-task-wrap {
+        margin-right: 2px;
+        padding: 1px 2px;
+    }
+
+    .vch-checkbox {
+        width: 10px;
+        height: 10px;
+    }
+
+    .vch-task-wrap::before {
+        width: 1px;
+        height: 12px;
+        margin-right: 2px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .vch-grade-panel {
+        background: rgba(30, 30, 30, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+    }
+
+    .vch-grade-row strong {
+        color: #e0e0e0;
+    }
+
+    .vch-checkbox {
+        background: #2a2a2a;
+        border-color: #555;
+    }
+
+    .vch-checkbox:hover {
+        border-color: #4a90e2;
+    }
+
+    .vch-task-wrap {
+        background: rgba(50, 50, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .vch-task-wrap:hover {
+        background: rgba(60, 60, 60, 0.95);
+    }
+}
+
+/* Fix for scrollable cells - ensure proper background and scrollbar styling */
+.timeline-cell.scrollable {
+    background-clip: content-box !important; /* Ensure background covers the entire scrollable area */
+    min-height: 100% !important; /* Ensure minimum height covers scrollable area */
+}
+
+/* Fix scrollbar styling to prevent white bits */
+.timeline-cell.scrollable::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-cell.scrollable::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+/* Custom Assignments Styling */
+.vch-custom-assignments-row {
+    background-color: #f8f9fa !important;
+    border-left: 4px solid #007bff !important;
+}
+
+.vch-custom-assignments-row td {
+    padding: 12px 8px !important;
+    vertical-align: top !important;
+}
+
+.vch-custom-assignments-row td:first-child {
+    font-weight: bold !important;
+    color: #007bff !important;
+}
+
+.custom-assignment {
+    margin: 4px 0 !important;
+    padding: 6px 8px !important;
+    background-color: #e3f2fd !important;
+    border: 1px solid #2196f3 !important;
+    border-radius: 4px !important;
+    font-size: 13px !important;
+    transition: all 0.2s ease;
+}
+
+.custom-assignment:hover {
+    background-color: #bbdefb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+}
+
+/* Ensure custom assignments work with existing checkbox system */
+.custom-assignment .vch-task-wrap {
+    display: inline-flex !important;
+    margin-right: 6px !important;
+}
+
+.custom-assignment.vch-done {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Better spacing for custom assignment content */
+.custom-assignment strong {
+    color: #1976d2;
+}
+
+.custom-assignment small {
+    color: #666;
+    font-style: italic;
+}
+
+/* Floating Add Assignment Button */
+.vch-floating-add-btn {
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 30px !important;
+    z-index: 1000 !important;
+    opacity: 0.9 !important;
+    transition: opacity 0.3s ease !important;
+}
+
+.vch-add-assignment-btn {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    transition: all 0.2s ease !important;
+    font-family: inherit !important;
+}
+
+.vch-add-assignment-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4) !important;
+}
+
+/* Assignment Modal */
+.vch-assignment-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 10000 !important;
+}
+
+.vch-assignment-modal .modal-content {
+    background: white !important;
+    border-radius: 8px !important;
+    padding: 24px !important;
+    width: 90% !important;
+    max-width: 500px !important;
+    max-height: 80vh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Veracross-style form elements */
+.vch-assignment-modal input[type="text"],
+.vch-assignment-modal input[type="date"],
+.vch-assignment-modal textarea {
+    width: 100% !important;
+    padding: 8px 12px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.vch-assignment-modal input[type="text"]:focus,
+.vch-assignment-modal input[type="date"]:focus,
+.vch-assignment-modal textarea:focus {
+    outline: none !important;
+    border-color: #1976d2 !important;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2) !important;
+}
+
+.vch-assignment-modal button[type="submit"] {
+    background: #1976d2 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.vch-assignment-modal button[type="submit"]:hover {
+    background: #1565c0 !important;
+}
+
+.vch-assignment-modal button[type="button"] {
+    background: #f8f9fa !important;
+    color: #6c757d !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 4px !important;
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.vch-assignment-modal button[type="button"]:hover {
+    background: #e2e6ea !important;
+}
+
+/* Enhanced assignment popups */
+.vch-enhanced {
+    position: relative !important;
+}
+
+/* Hide floating button when modal is open */
+.vch-assignment-modal ~ .vch-floating-add-btn {
+    display: none !important;
+}
+
+/* Ensure scrollable cells inherit background from parent column */
+
+/* Fix the white bar issue by ensuring background covers full scrollable area */
+.timeline-cell.scrollable {
+    background-clip: content-box !important;
+    min-height: 100% !important;
+    position: relative !important;
+}
+
+/* Ensure the background extends to cover the entire scrollable region */
+.timeline-cell.scrollable::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: inherit !important;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Comprehensive fix for white bars in scrollable cells */
+.timeline-cell.scrollable::before,
+.timeline-cell.scrollable::after {
+    background: inherit !important;
+}
+
+/* Target specific elements that might cause white bars */
+.timeline-cell.scrollable .assignment,
+.timeline-cell.scrollable .homework,
+.timeline-cell.scrollable .test,
+.timeline-cell.scrollable .paper,
+.timeline-cell.scrollable .quiz,
+.timeline-cell.scrollable .classwork {
+    background: white !important;
+}
+
+/* Fix for any pseudo-elements or borders that might show white */
+.timeline-cell.scrollable {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Ensure no white backgrounds from any child elements */
+/* Removed the problematic universal selector that was applying light yellow to everything */
+
+/* Fix assignment backgrounds to be white */
+.timeline-cell.scrollable .assignment,
+.timeline-cell.scrollable .homework,
+.timeline-cell.scrollable .test,
+.timeline-cell.scrollable .paper,
+.timeline-cell.scrollable .quiz,
+.timeline-cell.scrollable .classwork,
+.timeline-cell.scrollable [data-assignment-id] {
+    background: white !important;
+}
+
+/* Custom Assignments Timeline Integration - Match Native Veracross Exactly */
+.timeline-row.vch-custom-timeline-row {
+    /* Match native timeline row styling */
+    background: inherit;
+    border-bottom: inherit;
+    height: 90px !important;
+    min-height: 90px !important;
+    max-height: 90px !important;
+}
+
+/* Lock divider cells height too */
+.timeline-row.vch-custom-timeline-row .timeline-cell.divider {
+    height: 90px !important;
+    min-height: 90px !important;
+    max-height: 90px !important;
+}
+
+/* Ensure timeline cells have default cursor */
+.timeline-row.vch-custom-timeline-row .timeline-cell {
+    cursor: default;
+}
+
+/* Custom timeline row closed state - hide assignment descriptions like native */
+.timeline-row.vch-custom-timeline-row.closed .assignment-description {
+    display: none !important;
+}
+
+.timeline-row.vch-custom-timeline-row.closed .assignment {
+    /* Compact layout when closed */
+    padding: 4px 8px;
+}
+
+/* Make custom assignments immune to native show/hide functionality */
+.timeline-row.vch-custom-class-row[data-vch-custom="true"] {
+    display: block !important;
+    visibility: visible !important;
+}
+
+.timeline-row.vch-custom-class-row .timeline-cell {
+    /* Match native timeline cell styling */
+    padding: inherit;
+}
+
+.timeline-row.vch-custom-class-row .title {
+    /* Match native class title styling exactly */
+    color: inherit;
+    text-decoration: none;
+    font-weight: inherit;
+    cursor: pointer;
+}
+
+.timeline-row.vch-custom-class-row .title:hover {
+    color: inherit;
+}
+
+.timeline-row.vch-custom-class-row .subtitle {
+    /* Match native subtitle styling */
+    color: inherit;
+    font-size: inherit;
+    margin: inherit;
+    font-style: inherit;
+}
+
+.timeline-row.vch-custom-class-row .tools {
+    /* Match native tools styling */
+    text-align: inherit;
+}
+
+.timeline-row.vch-custom-class-row .tools a {
+    /* Match native tools link styling */
+    color: inherit;
+    text-decoration: none;
+    font-size: inherit;
+}
+
+.timeline-row.vch-custom-class-row .tools a:hover {
+    text-decoration: underline;
+}
+
+.vch-task-wrap[data-type="custom"]::before {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+}
+
+/* Current day highlighting for custom timeline cells */
+/* Current day highlighting for custom timeline cells - full coverage approach */
+.vch-custom-timeline-row .timeline-cell.today,
+.timeline-cell.today {
+    background: linear-gradient(to right, #fffee0 0%, #fffee0 100%) !important;
+    position: relative !important;
+}
+
+.vch-custom-timeline-row .timeline-cell.today::before,
+.timeline-cell.today::before {
+    content: "";
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: #fffee0 !important;
+    z-index: -1 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Force scrollbar track to be yellow */
+.vch-custom-timeline-row .timeline-cell.today,
+.timeline-cell.today {
+    scrollbar-color: #ccc #fffee0 !important;
+}
+
+.vch-custom-timeline-row .timeline-cell.today::-webkit-scrollbar-track,
+.timeline-cell.today::-webkit-scrollbar-track {
+    background: #fffee0 !important;
+}
+
+.vch-custom-timeline-row .timeline-cell.today::-webkit-scrollbar,
+.timeline-cell.today::-webkit-scrollbar {
+    background: #fffee0 !important;
+}
+
+/* Backup approach using box-shadow to force yellow coverage */
+.vch-custom-timeline-row .timeline-cell.today,
+.timeline-cell.today {
+    box-shadow: inset 0 0 0 1000px #fffee0 !important;
+}
+
+/* Alternative approach - force background through parent container */
+.vch-custom-timeline-row .timeline-cell.today {
+    background-attachment: local !important;
+    background-repeat: repeat !important;
+    background-size: 100% 100% !important;
+}
+
+/* Row-level today highlighting */
+.vch-custom-timeline-row.today,
+.timeline-row.today {
+    background-color: #fffee0 !important;
+}
+
+/* Ensure current day highlighting works with assignments */
+.vch-custom-timeline-row .timeline-cell.today .assignment {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Custom timeline row styling handled by JavaScript copying native styles */
+
+/* Expand/collapse icons for custom assignments */
+.timeline-row.vch-custom-class-row span.expand,
+.timeline-row.vch-custom-class-row span.collapse {
+    font-size: 12px;
+    margin-right: 4px;
+    vertical-align: middle;
+    color: #007bff;
+    transition: transform 0.2s ease;
+}
+
+.timeline-row.vch-custom-class-row span.expand {
+    display: inline;
+}
+
+.timeline-row.vch-custom-class-row span.collapse {
+    display: none;
+}
+
+.timeline-row.vch-custom-class-row .title:hover span.expand,
+.timeline-row.vch-custom-class-row .title:hover span.collapse {
+    color: #0056b3;
+}
+
+/* Custom Assignments Timeline Row Styling - Match Native Veracross */
+.timeline-row.vch-custom-timeline-row {
+    /* Remove custom background - let it inherit from timeline */
+    background: inherit;
+    border-bottom: inherit;
+}
+
+.timeline-row.vch-custom-timeline-row .timeline-cell {
+    /* Match native timeline cell styling exactly */
+    position: relative;
+    vertical-align: top;
+    padding: 0;
+    border: none;
+    background: inherit;
+}
+
+.timeline-row.vch-custom-timeline-row .timeline-cell.divider {
+    /* Match native divider styling */
+    background: inherit;
+    border-right: inherit;
+}
+
+.timeline-row.vch-custom-timeline-row .assignment {
+    /* Exact match to native Veracross assignments */
+    margin: 4px 0;
+    padding: 8px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: block;
+}
+
+.timeline-row.vch-custom-timeline-row .assignment:hover {
+    background-color: #f9f9f9;
+    border-color: #bbb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.timeline-row.vch-custom-timeline-row .assignment.vch-done {
+    opacity: 0.7;
+    background-color: #f5f5f5;
+    border-color: #ccc;
+    text-decoration: line-through;
+}
+
+.timeline-row.vch-custom-timeline-row .assignment-type {
+    /* Match native assignment type styling exactly */
+    display: inline-block;
+    font-size: 11px;
+    font-weight: normal;
+    padding: 0;
+    margin: 0;
+    vertical-align: top;
+}
+
+.timeline-row.vch-custom-timeline-row .assignment-description {
+    /* Match native description styling */
+    font-size: 13px;
+    color: #333;
+    display: inline;
+    margin: 0;
+    font-weight: normal;
+}
+
+.timeline-row.vch-custom-timeline-row .badge.due {
+    /* Match native DUE badge exactly */
+    background-color: #5cb85c;
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-weight: bold;
+    text-transform: uppercase;
+    float: right;
+    margin: 0;
+    line-height: 1;
+}
+
+/* Daily Schedule Page Specific Styles */
+.daily-schedule table.assignments td.assignment-description,
+.schedule table.assignments td.assignment-description {
+    position: relative;
+}
+
+/* Ensure checkboxes in daily schedule tables are properly aligned */
+.daily-schedule table.assignments .vch-task-wrap,
+.schedule table.assignments .vch-task-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Make sure assignment links have proper spacing after checkbox */
+.daily-schedule table.assignments td.assignment-description a,
+.schedule table.assignments td.assignment-description a {
+    display: inline;
+    vertical-align: middle;
+}
+
+/* Ensure proper row height for assignment tables */
+.daily-schedule table.assignments tr,
+.schedule table.assignments tr {
+    min-height: 32px;
+}
+
+/* Better spacing for assignment description cells */
+.daily-schedule table.assignments td.assignment-description,
+.schedule table.assignments td.assignment-description {
+    padding: 8px;
+    vertical-align: middle;
+}
+
+/* Strikethrough effect for completed assignments in daily schedule */
+.daily-schedule table.assignments .vch-done a,
+.schedule table.assignments .vch-done a {
+    text-decoration: line-through;
+    opacity: 0.7;
+}

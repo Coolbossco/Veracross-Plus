@@ -1,299 +1,207 @@
-# Veracross Plus - Cross-Browser Development Guide
+# Veracross Plus
 
-## Overview
+Enhanced Veracross portal experience with homework checklists, grade estimation, custom assignments, and more.
 
-Veracross Plus now supports both **Chrome** and **Firefox** browsers using a dual manifest approach. This ensures maximum compatibility while maintaining a single codebase.
+## Architecture Overview (Phase 1)
 
-## Project Structure
+Veracross Plus follows a modular architecture designed for maintainability, type safety, and future extensibility (cloud sync, accounts, etc.).
+
+### Project Structure
 
 ```
-v+/
-├── content.js              # Main content script (universal)
-├── popup.js               # Popup launcher (universal)
-├── window.js              # Settings window logic (universal)
-├── styles.css             # Extension styles (universal)
-├── popup.html             # Popup HTML (universal)
-├── window.html            # Settings window HTML (universal)
-├── options.html           # Options page (universal)
-├── manifest-chrome.json   # Chrome-specific manifest (Manifest V3)
-├── manifest-firefox.json  # Firefox-specific manifest (Manifest V2)
-├── package.json           # Build configuration
-├── build.sh              # Unix/Linux/Mac build script
-├── build.bat             # Windows build script
-└── dist/                 # Generated distribution files
-    ├── chrome/           # Chrome extension files
-    ├── firefox/          # Firefox extension files
-    ├── veracross-plus-chrome.zip
-    └── veracross-plus-firefox.zip
+Extension/
+├── src/
+│   ├── content/              # Content script (injected into Veracross pages)
+│   │   ├── index.ts          # Main content script
+│   │   └── styles.css        # Injected styles
+│   │
+│   ├── models/               # Data models (Phase 1)
+│   │   ├── Assignment.ts     # Assignment & CustomAssignment types
+│   │   ├── Completion.ts     # Completion state tracking
+│   │   ├── UserPreferences.ts # User settings model
+│   │   └── index.ts          # Central exports
+│   │
+│   ├── storage/              # Storage abstraction layer (Phase 1)
+│   │   ├── StorageProvider.ts    # Storage interface
+│   │   ├── LocalStorageProvider.ts # chrome.storage.sync implementation
+│   │   └── index.ts          # Central exports
+│   │
+│   ├── features/             # Feature flag system (Phase 1)
+│   │   ├── FeatureFlags.ts   # Feature flag management
+│   │   └── index.ts          # Central exports
+│   │
+│   ├── migrations/           # Data versioning & migrations (Phase 1)
+│   │   └── index.ts          # Migration runner
+│   │
+│   ├── ui/                   # UI components
+│   │   ├── popup/            # Extension popup
+│   │   ├── window/           # Settings window
+│   │   └── options/          # Options page
+│   │
+│   └── assets/               # Static assets
+│       └── icons/            # Extension icons
+│
+├── dist/                     # Build output
+├── vite.config.ts            # Vite build configuration
+├── tsconfig.json             # TypeScript configuration
+├── package.json              # Dependencies & scripts
+├── PRIVACY.md                # Privacy policy (draft)
+└── README.md                 # This file
+```
+
+### Key Modules
+
+#### Data Models (`src/models/`)
+
+Type-safe data structures for all extension data:
+
+- **`Assignment.ts`**: Custom assignment model with migration support
+- **`Completion.ts`**: Checkbox/completion state tracking
+- **`UserPreferences.ts`**: User settings and preferences
+
+#### Storage Layer (`src/storage/`)
+
+Abstracted storage for easy testing and future cloud sync:
+
+```typescript
+import { getStorageProvider, STORAGE_KEYS } from "./storage";
+
+const storage = getStorageProvider();
+const assignments = await storage.get(STORAGE_KEYS.CUSTOM_ASSIGNMENTS);
+```
+
+#### Feature Flags (`src/features/`)
+
+Centralized feature control:
+
+```typescript
+import { isFeatureEnabled } from "./features";
+
+if (isFeatureEnabled("enableChecklist")) {
+  applyChecklist();
+}
+```
+
+#### Migrations (`src/migrations/`)
+
+Safe data migrations for updates:
+
+```typescript
+import { initializeDataVersioning } from "./migrations";
+
+await initializeDataVersioning(); // Runs on startup
 ```
 
 ## Quick Start
 
-### Building for Both Browsers
+### Installation
 
-**Option 1: Using npm scripts (recommended)**
 ```bash
-npm run build           # Build both Chrome and Firefox versions
-npm run build:chrome    # Build Chrome version only
-npm run build:firefox   # Build Firefox version only
+# Install dependencies (using bun)
+bun install
 ```
 
-**Option 2: Using shell scripts**
-```bash
-# Unix/Linux/Mac
-./build.sh
+### Development
 
-# Windows
-build.bat
+```bash
+# Start development server with hot reload
+bun run dev
 ```
 
-### Development Workflow
+### Building
 
-1. **Make changes** to the universal files (`*.js`, `*.css`, `*.html`)
-2. **Test in Chrome** during development (uses `manifest.json` symlink)
-3. **Build and test** both versions before deployment
-4. **Deploy** the appropriate ZIP files to each store
-
-## Browser Differences
-
-### Manifest Versions
-- **Chrome**: Uses Manifest V3 (`manifest-chrome.json`)
-- **Firefox**: Uses Manifest V2 (`manifest-firefox.json`)
-
-### Key Differences
-| Feature | Chrome (V3) | Firefox (V2) |
-|---------|-------------|--------------|
-| Action | `action` | `browser_action` |
-| Host Permissions | `host_permissions` | Included in `permissions` |
-| Service Workers | Supported | Uses background scripts |
-| API Namespace | `chrome.*` | `browser.*` (but `chrome.*` works too) |
-
-### Code Compatibility
-The extension code is **100% compatible** between browsers because:
-- Firefox supports the `chrome.*` API namespace for compatibility
-- All used APIs (`storage`, `windows`, `runtime`) work identically
-- No browser-specific code changes needed
-
-## Development Commands
-
-### Build Commands
 ```bash
-# Full build process
-npm run build
+# Build for production
+bun run build
 
-# Individual browser builds
-npm run build:chrome
-npm run build:firefox
-
-# Development builds (no ZIP packaging)
-npm run dev:chrome
-npm run dev:firefox
-
-# Clean build artifacts
-npm run clean
+# Type check
+bun run typecheck
 ```
 
-### Testing
-```bash
-# Validate extensions (placeholder for future validation tools)
-npm run validate
-```
+### Loading in Chrome
 
-## Deployment Guide
-
-### Chrome Web Store
-1. Build Chrome version: `npm run build:chrome`
-2. Upload `dist/veracross-plus-chrome.zip` to Chrome Developer Dashboard
-3. Follow Chrome Web Store review process
-
-### Firefox Add-ons (AMO)
-1. Build Firefox version: `npm run build:firefox`
-2. Upload `dist/veracross-plus-firefox.zip` to Firefox Add-on Developer Hub
-3. Follow Mozilla Add-ons review process
-
-### Manual Installation (Development)
-
-**Chrome:**
-1. Run `npm run dev:chrome`
+1. Run `bun run dev` or `bun run build`
 2. Open `chrome://extensions/`
 3. Enable "Developer mode"
 4. Click "Load unpacked" and select `dist/chrome/`
 
-**Firefox:**
-1. Run `npm run dev:firefox`
-2. Open `about:debugging`
-3. Click "This Firefox" → "Load Temporary Add-on"
-4. Select `dist/firefox/manifest.json`
+## Features
 
-## Features Supported
+### Homework Checkboxes
 
-All features work identically in both browsers:
-- ✅ Homework Checkboxes (Timeline & Daily Schedule)
-- ✅ Grade Estimator
-- ✅ Home Page Redirect
-- ✅ Custom Assignments
-- ✅ Custom Popup Window
-- ✅ Settings Persistence
-- ✅ Veracross Domain Injection
+Add interactive checkboxes to track assignment completion:
 
-## Browser API Compatibility
+- Works on Timeline, Daily Schedule, and Assignments pages
+- Completion state syncs across devices
+- Visual feedback with strikethrough and opacity changes
 
-| API | Chrome | Firefox | Notes |
-|-----|--------|---------|-------|
-| `chrome.storage.sync` | ✅ | ✅ | Works with `chrome.*` namespace |
-| `chrome.windows.create` | ✅ | ✅ | Popup window creation |
-| `chrome.runtime.getURL` | ✅ | ✅ | Resource URL resolution |
-| Content Scripts | ✅ | ✅ | DOM injection and manipulation |
-| CSS Injection | ✅ | ✅ | Style application |
+### Custom Assignments
 
-## Troubleshooting
+Create and manage your own assignments:
 
-### Build Issues
-- **Permission denied on build.sh**: Run `chmod +x build.sh`
-- **Missing dist directory**: Build scripts create it automatically
-- **ZIP creation fails**: Ensure you have `zip` (Unix) or PowerShell (Windows)
+- Appear alongside native Veracross assignments
+- Support title, description, due date, and class
+- Fully integrated with the checkbox system
 
-### Extension Issues
-- **Storage not syncing**: Check browser sync settings
-- **Popup not opening**: Verify manifest permissions
-- **Content script not injecting**: Check URL patterns in manifest
+### Grade Estimator
 
-### Browser-Specific Issues
+Estimate your grade percentages (when enabled).
 
-**Chrome:**
-- Ensure Manifest V3 compliance
-- Check `host_permissions` syntax
+### Home Redirect
 
-**Firefox:**
-- Ensure Manifest V2 format
-- Check `permissions` includes all URLs
-- Verify `web_accessible_resources` if needed
+Automatically redirect to a custom page on login.
 
-## Contributing
+## Data Storage
 
-When making changes:
-1. Edit the universal files (`*.js`, `*.css`, `*.html`)
-2. Update both manifest files if permissions change
-3. Test in both browsers before committing
-4. Update version numbers in all manifest files and `package.json`
+All data is stored locally using `chrome.storage.sync`:
 
-## Version Management
+| Key | Description |
+|-----|-------------|
+| `customAssignments` | Array of user-created assignments |
+| `vc_checked_assignments` | Map of completed assignment IDs |
+| `enableChecklist` | Checkbox feature toggle |
+| `enableCustomAssignments` | Custom assignments toggle |
+| `vcp_data_version` | Data schema version |
 
-Update versions in these files:
-- `package.json`
-- `manifest-chrome.json`
-- `manifest-firefox.json`
+See [PRIVACY.md](./PRIVACY.md) for full privacy details.
 
-Keep all version numbers synchronized.
+## Browser Support
 
-## Custom Assignments Feature
+- **Chrome**: Manifest V3 (primary)
+- **Firefox**: Manifest V2 (planned)
 
-The Custom Assignments feature allows users to create and manage their own assignments within the Veracross timeline.
+## Development
 
-### Feature Overview
+### Type Checking
 
-**Custom Assignments** can be:
-1. **New Assignments**: Custom assignments that appear in a dedicated row at the top of the timeline
-### How It Works
-
-1. **Enable the Feature**: Toggle "Custom Assignments" in the extension popup
-2. **Add Assignments**: Click "Add Custom Assignment" to create new assignments
-3. **Assignment Types**:
-   - Assignments appear in a blue-highlighted row at the top
-4. **Management**: Edit or delete assignments from the popup interface
-
-### Assignment Properties
-
-Each custom assignment includes:
-- **Title**: The assignment name (required)
-- **Description**: Optional details about the assignment
-- **Due Date**: When the assignment is due (required)
-- **Class/Subject**: Optional class or subject name
-
-
-### Visual Design
-
-**Regular Custom Assignments**:
-- Appear in a dedicated row with blue styling (`#f8f9fa` background, `#007bff` border)
-- Individual assignments have light blue backgrounds (`#e3f2fd`)
-- Hover effects for better interactivity
-
-
-
-### Technical Implementation
-
-**Storage**: Custom assignments are stored in Chrome sync storage as `customAssignments` array
-
-**Injection Logic**:
-- Regular assignments: Injected at the top of the timeline table
-- Date matching: Assignments appear in appropriate timeline columns
-
-**Integration**: Works seamlessly with existing checkbox system for task completion tracking
-
-## Daily Schedule Page Checkboxes
-
-The extension now adds interactive checkboxes to assignments on the **Daily Schedule** page (`/student/student/daily-schedule`), in addition to the existing timeline view support.
-
-### Feature Overview
-
-**Daily Schedule Checkboxes** provide:
-1. **Visual Task Tracking**: Check off assignments as you complete them
-2. **Assignment Type Indicators**: Color-coded bars (green for homework, grey for classwork, orange for papers)
-3. **Persistent State**: Checkbox states are saved and synced across devices
-4. **Visual Feedback**: Completed assignments show with strikethrough and reduced opacity
-
-### How It Works
-
-1. **Automatic Injection**: Checkboxes automatically appear next to assignments in the daily schedule table
-2. **Type Detection**: The extension reads the assignment type tag (Homework, Classwork, Paper, etc.)
-3. **Smart Filtering**: Test and exam assignments are excluded from checkboxes
-4. **Click to Complete**: Click any checkbox to mark an assignment as complete
-5. **Persistent Storage**: Completion status is saved automatically
-
-### Visual Design
-
-**Assignment Types**:
-- **Homework**: Green indicator bar
-- **Classwork**: Grey indicator bar  
-- **Paper/Essay**: Orange indicator bar
-- **Test/Exam**: No checkbox (informational only)
-
-**Completed Assignments**:
-- Checkbox shows green checkmark
-- Assignment link has strikethrough effect
-- Text opacity reduced to 70%
-- Color-coded indicator bar slightly faded
-
-### Supported Pages
-
-The checkbox feature works on:
-- ✅ **Timeline View** (`/student/overview`)
-- ✅ **Daily Schedule** (`/student/student/daily-schedule`)
-- ✅ **Upcoming Assignments** (standard assignment pages)
-
-### Technical Details
-
-**DOM Targeting**:
-- Selects `td.assignment-description` cells within `table.assignments`
-- Injects checkbox before the assignment link
-- Preserves existing HTML structure and functionality
-
-**Checkbox Placement**:
-```
-[Type Badge] [✓ Checkbox] [Assignment Link]
+```bash
+bun run typecheck
 ```
 
-**CSS Integration**:
-- Checkboxes are 12px × 12px for compact design
-- Proper vertical alignment with table cells
-- Hover effects for better interactivity
-- Responsive design for mobile devices
+### Code Organization Principles
 
-**State Management**:
-- Checkbox state keyed by assignment URL and text hash
-- Stored in `chrome.storage.sync` under `vc_checked_assignments`
-- Syncs across all devices logged into the same browser account
+1. **No direct storage access** in feature code — use `StorageProvider`
+2. **Type-safe models** for all data structures
+3. **Feature flags** for all optional features
+4. **Migrations** for any data format changes
+
+### Adding a New Feature
+
+1. Create/update models in `src/models/`
+2. Add feature flag in `src/features/FeatureFlags.ts`
+3. Implement feature logic
+4. Add migration if changing data format
+
+## Version History
+
+- **0.2.1**: Phase 1 architecture (models, storage, feature flags, migrations)
+- **0.2.0**: Custom assignments, improved UI
+- **0.1.0**: Initial release with checkboxes
+
+## License
+
+MIT
 
 ---
 
-**Happy cross-browser development! 🚀**
+**Happy studying! 📚**
