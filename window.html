@@ -56,42 +56,36 @@
                 opacity: 0.8;
             }
 
-            .section {
+            .content {
                 flex: 1;
-                display: none;
-                flex-direction: column;
-                gap: 16px;
                 overflow-y: auto;
                 padding-right: 4px;
             }
 
-            .section.active {
-                display: flex;
-            }
-
-            .section::-webkit-scrollbar {
+            .content::-webkit-scrollbar {
                 width: 4px;
             }
 
-            .section::-webkit-scrollbar-track {
+            .content::-webkit-scrollbar-track {
                 background: transparent;
             }
 
-            .section::-webkit-scrollbar-thumb {
+            .content::-webkit-scrollbar-thumb {
                 background: rgba(0, 0, 0, 0.2);
                 border-radius: 2px;
             }
 
-            .card {
+            .feature-card {
                 background: #fff;
                 border: 1px solid #e9ecef;
                 border-radius: 16px;
                 padding: 20px;
+                margin-bottom: 16px;
                 transition: all 0.2s ease;
                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
             }
 
-            .card:hover {
+            .feature-card:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
             }
@@ -179,39 +173,6 @@
                 flex-shrink: 0;
             }
 
-            .sync-status {
-                font-size: 12px;
-                color: #6c757d;
-                margin-top: 6px;
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-            }
-
-            .sync-status[data-state="online"] {
-                color: #28a745;
-            }
-
-            .sync-status[data-state="offline"] {
-                color: #d9534f;
-            }
-
-            .sync-action {
-                margin-top: 10px;
-                padding: 6px 12px;
-                font-size: 12px;
-                border-radius: 6px;
-                border: 1px solid #ced4da;
-                background: #f8f9fa;
-                cursor: pointer;
-                color: #495057;
-                transition: background 0.2s ease, color 0.2s ease;
-            }
-
-            .sync-action:hover {
-                background: #e2e6ea;
-            }
-
             /* Ensure window can be closed */
             .close-btn {
                 position: absolute;
@@ -243,87 +204,6 @@
                 z-index: -1; /* Behind the container but detects clicks */
                 background: transparent;
             }
-
-            .auth-form {
-                display: flex;
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .auth-form label {
-                font-size: 13px;
-                color: #495057;
-                font-weight: 500;
-            }
-
-            .auth-form input {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid #ced4da;
-                border-radius: 8px;
-                font-size: 14px;
-                transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            }
-
-            .auth-form input:focus {
-                outline: none;
-                border-color: #5b6cea;
-                box-shadow: 0 0 0 3px rgba(91, 108, 234, 0.15);
-            }
-
-            .auth-actions {
-                display: flex;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-
-            .auth-button {
-                flex: 1;
-                padding: 10px 14px;
-                font-size: 14px;
-                border-radius: 8px;
-                border: none;
-                cursor: pointer;
-                color: #fff;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-
-            .auth-button.secondary {
-                background: #f1f3f5;
-                color: #495057;
-                box-shadow: none;
-            }
-
-            .auth-button:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
-            }
-
-            .auth-button.secondary:hover {
-                transform: none;
-                box-shadow: none;
-                background: #e9ecef;
-            }
-
-            .auth-message {
-                font-size: 13px;
-                color: #d9534f;
-                min-height: 18px;
-            }
-
-            .account-summary {
-                font-size: 13px;
-                color: #495057;
-                background: #f8f9fa;
-                border-radius: 10px;
-                padding: 10px 12px;
-                margin-bottom: 12px;
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-            }
         </style>
     </head>
     <body>
@@ -334,53 +214,10 @@
             </button>
             <div class="header">
                 <h1>Veracross Plus</h1>
-                <p>Stay signed in to sync assignments anywhere</p>
-                <div
-                    id="syncStatus"
-                    class="sync-status"
-                    data-state="offline"
-                >
-                    Remote sync: pending authentication
-                </div>
             </div>
 
-            <div class="section" id="authSection">
-                <div class="card">
-                    <h2 style="font-size:16px; font-weight:600; margin-bottom:12px; color:#2c3e50;">
-                        Sign in to your account
-                    </h2>
-                    <form class="auth-form" id="authForm">
-                        <div>
-                            <label for="authEmail">Email</label>
-                            <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" required />
-                        </div>
-                        <div>
-                            <label for="authPassword">Password</label>
-                            <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" required />
-                        </div>
-                        <div class="auth-actions">
-                            <button type="submit" id="loginBtn" class="auth-button">Log In</button>
-                            <button type="button" id="signupBtn" class="auth-button secondary">
-                                Create Account
-                            </button>
-                        </div>
-                        <div class="auth-message" id="authMessage"></div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="section" id="preferencesSection">
-                <div class="card">
-                    <div class="account-summary" id="accountSummary"></div>
-                    <button id="logoutBtn" class="auth-button secondary" style="margin-bottom:12px;">
-                        Log Out
-                    </button>
-                    <button id="retrySync" class="sync-action" style="width:100%; text-align:center;">
-                        Refresh From Server
-                    </button>
-                </div>
-
-                <div class="card">
+            <div class="content">
+                <div class="feature-card">
                     <div class="feature-header">
                         <div class="feature-title">📝 Homework Checkboxes</div>
                         <label class="switch">
@@ -416,7 +253,6 @@
             <div class="footer">Settings are saved automatically</div>
         </div>
 
-        <script src="remoteSyncClient.js"></script>
         <script src="window.js"></script>
     </body>
 </html>

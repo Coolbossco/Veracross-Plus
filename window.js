@@ -6,275 +6,61 @@ const WINDOW_DEFAULTS = {
   enableCustomAssignments: false,
 };
 
-function storageGet(defaults) {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(defaults, (vals) => resolve(vals || defaults));
+function load() {
+  chrome.storage.sync.get(WINDOW_DEFAULTS, (vals) => {
+    Object.entries(vals).forEach(([k, v]) => {
+      const el = document.getElementById(k);
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = !!v;
+      else el.value = v || "";
+    });
   });
 }
 
-async function readPreferences() {
-  const defaults = { ...WINDOW_DEFAULTS };
-  if (!window.RemoteSyncClient) {
-    return defaults;
-  }
-
-  let status = null;
-
-  try {
-    await window.RemoteSyncClient.ensureInitialized();
-    status = window.RemoteSyncClient.getStatus?.();
-    if (status?.authenticated) {
-      const remote = await window.RemoteSyncClient.get();
-      if (remote && typeof remote === "object") {
-        const preferences = remote.preferences || remote;
-        return { ...defaults, ...preferences };
-      }
-    } else {
-      return defaults;
-    }
-  } catch (_error) {}
-
-  if (status?.authenticated) {
-    return await storageGet(defaults);
-  }
-
-  return defaults;
-}
-
-async function savePreferences() {
-  const updates = {};
+function save() {
+  const out = {};
   ["enableChecklist", "enableCustomAssignments"].forEach((k) => {
     const el = document.getElementById(k);
     if (el) {
-      updates[k] = el.type === "checkbox" ? el.checked : el.value.trim();
+      out[k] = el.type === "checkbox" ? el.checked : el.value.trim();
     }
   });
-
-  const merged = { ...(await readPreferences()), ...updates };
-
-  let status = null;
-
-  if (window.RemoteSyncClient) {
-    try {
-      await window.RemoteSyncClient.ensureInitialized();
-      status = window.RemoteSyncClient.getStatus?.();
-      if (status?.authenticated) {
-        await window.RemoteSyncClient.set({ preferences: merged });
-        await updateStatus();
-        return;
-      }
-      return;
-    } catch (error) {
-      status = status || window.RemoteSyncClient.getStatus?.();
-    }
-  }
-
-  if (status?.authenticated) {
-    chrome.storage.sync.set(merged, updateStatus);
-  }
-}
-
-async function updateStatus() {
-  const statusEl = document.getElementById("syncStatus");
-  if (!statusEl) return;
-  if (!window.RemoteSyncClient) {
-    statusEl.textContent = "Remote sync unavailable";
-    statusEl.dataset.state = "offline";
-    return;
-  }
-  try {
-    await window.RemoteSyncClient.ensureInitialized();
-  } catch (_err) {
-    statusEl.textContent = "Remote sync unavailable";
-    statusEl.dataset.state = "offline";
-    return;
-  }
-  const status = window.RemoteSyncClient.getStatus();
-  if (status.authenticated) {
-    const emailLine = status.email ? `Signed in as ${status.email}` : "";
-    statusEl.innerHTML = `Remote sync: online${emailLine ? `<br>${emailLine}` : ""}`;
-    statusEl.dataset.state = "online";
-  } else if (status.lastError) {
-    statusEl.textContent = `Remote sync: offline (${status.lastError})`;
-    statusEl.dataset.state = "offline";
-  } else {
-    statusEl.textContent = "Remote sync: sign in required";
-    statusEl.dataset.state = "offline";
-  }
-}
-
-async function loadPreferencesIntoUI() {
-  const values = await readPreferences();
-  Object.entries(values).forEach(([k, v]) => {
-    const el = document.getElementById(k);
-    if (!el) return;
-    if (el.type === "checkbox") el.checked = !!v;
-    else el.value = v || "";
-  });
-}
-
-function showSection(sectionId) {
-  document.querySelectorAll(".section").forEach((section) => {
-    section.classList.toggle("active", section.id === sectionId);
-  });
-}
-
-function setAuthMessage(message, tone = "info") {
-  const messageEl = document.getElementById("authMessage");
-  if (!messageEl) return;
-  messageEl.textContent = message || "";
-  messageEl.style.color = tone === "error" ? "#d9534f" : tone === "success" ? "#28a745" : "#6c757d";
-}
-
-function updateAccountSummary(email) {
-  const summaryEl = document.getElementById("accountSummary");
-  if (!summaryEl) return;
-  if (email) {
-    summaryEl.innerHTML = `
-      <span style="font-weight:600;">Account</span>
-      <span>${email}</span>
-    `;
-  } else {
-    summaryEl.textContent = "";
-  }
-}
-
-async function refreshView() {
-  await updateStatus();
-  if (!window.RemoteSyncClient) {
-    showSection("preferencesSection");
-    await loadPreferencesIntoUI();
-    updateAccountSummary(null);
-    return;
-  }
-
-  await window.RemoteSyncClient.ensureInitialized();
-  const status = window.RemoteSyncClient.getStatus();
-  if (status.authenticated) {
-    showSection("preferencesSection");
-    updateAccountSummary(status.email || "");
-    await loadPreferencesIntoUI();
-    setAuthMessage("");
-  } else {
-    showSection("authSection");
-    updateAccountSummary(null);
-    setAuthMessage("");
-  }
-}
-
-async function handleLogin(event) {
-  event.preventDefault();
-  if (!window.RemoteSyncClient) return;
-  const emailInput = document.getElementById("authEmail");
-  const passwordInput = document.getElementById("authPassword");
-  if (!emailInput || !passwordInput) return;
-
-  setAuthMessage("Signing in…");
-  try {
-    await window.RemoteSyncClient.login(emailInput.value, passwordInput.value);
-    passwordInput.value = "";
-    setAuthMessage("Signed in successfully.", "success");
-    await refreshView();
-  } catch (error) {
-    setAuthMessage(error.message || "Unable to sign in.", "error");
-  }
-}
-
-async function handleSignup() {
-  if (!window.RemoteSyncClient) return;
-  const emailInput = document.getElementById("authEmail");
-  const passwordInput = document.getElementById("authPassword");
-  if (!emailInput || !passwordInput) return;
-
-  setAuthMessage("Creating account…");
-  try {
-    await window.RemoteSyncClient.signUp(emailInput.value, passwordInput.value);
-    passwordInput.value = "";
-    setAuthMessage("Account created! You're signed in.", "success");
-    await refreshView();
-  } catch (error) {
-    setAuthMessage(error.message || "Unable to create account.", "error");
-  }
-}
-
-async function handleLogout() {
-  if (!window.RemoteSyncClient) return;
-  try {
-    await window.RemoteSyncClient.logout();
-  } catch (_error) {}
-  await refreshView();
-  setAuthMessage("You have been signed out.");
-}
-
-async function handleManualSync() {
-  const statusEl = document.getElementById("syncStatus");
-  if (statusEl) {
-    statusEl.textContent = "Remote sync: fetching…";
-    statusEl.dataset.state = "offline";
-  }
-  if (window.RemoteSyncClient) {
-    try {
-      await window.RemoteSyncClient.ensureInitialized();
-      await window.RemoteSyncClient.ensureAuthReady();
-      await Promise.all([
-        window.RemoteSyncClient.get("customAssignments"),
-        window.RemoteSyncClient.get("vc_checked_assignments")
-      ]);
-    } catch (error) {
-      setAuthMessage(error.message || "Sync failed.", "error");
-    }
-  }
-  await updateStatus();
+  chrome.storage.sync.set(out);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  refreshView();
-  setInterval(updateStatus, 5000);
-
-  const authForm = document.getElementById("authForm");
-  if (authForm) {
-    authForm.addEventListener("submit", handleLogin);
-  }
-
-  const signupBtn = document.getElementById("signupBtn");
-  if (signupBtn) {
-    signupBtn.addEventListener("click", handleSignup);
-  }
-
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", handleLogout);
-  }
-
-  const retryBtn = document.getElementById("retrySync");
-  if (retryBtn) {
-    retryBtn.addEventListener("click", handleManualSync);
-  }
+  load();
 
   const checklistToggle = document.getElementById("enableChecklist");
   if (checklistToggle) {
-    checklistToggle.addEventListener("change", savePreferences);
-    checklistToggle.addEventListener("input", savePreferences);
+    checklistToggle.addEventListener("change", save);
+    checklistToggle.addEventListener("input", save);
   }
 
-  const customAssignmentsToggle = document.getElementById("enableCustomAssignments");
+  const customAssignmentsToggle = document.getElementById(
+    "enableCustomAssignments",
+  );
   if (customAssignmentsToggle) {
-    customAssignmentsToggle.addEventListener("change", savePreferences);
-    customAssignmentsToggle.addEventListener("input", savePreferences);
+    customAssignmentsToggle.addEventListener("change", save);
+    customAssignmentsToggle.addEventListener("input", save);
   }
 
+  // Click outside to close functionality
   const clickOutsideOverlay = document.getElementById("clickOutsideOverlay");
   const container = document.querySelector(".container");
 
+  // Method 1: Click on overlay
   clickOutsideOverlay.addEventListener("click", (e) => {
     if (e.target === clickOutsideOverlay) {
       window.close();
     }
   });
 
+  // Method 2: Window blur/focus events (more reliable for popup windows)
   let windowFocused = true;
   window.addEventListener("blur", () => {
     windowFocused = false;
+    // Close after a short delay to allow for re-focusing
     setTimeout(() => {
       if (!windowFocused) {
         window.close();
@@ -286,14 +72,20 @@ document.addEventListener("DOMContentLoaded", () => {
     windowFocused = true;
   });
 
+  // Method 3: Chrome API for window focus changes (backup)
   if (chrome.windows) {
     chrome.windows.onFocusChanged.addListener((windowId) => {
       if (windowId === chrome.windows.WINDOW_ID_NONE) {
+        // No window focused, close our popup
         setTimeout(() => window.close(), 100);
       }
     });
   }
 
+  // Method 4: Removed mouse leave detection - was too aggressive
+  // The blur/focus and click detection methods are sufficient
+
+  // Prevent clicks inside the container from closing the window
   container.addEventListener("click", (e) => {
     e.stopPropagation();
   });
