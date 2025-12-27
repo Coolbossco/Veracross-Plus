@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
 import { crx } from "@crxjs/vite-plugin";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 import { copyFileSync, mkdirSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -22,6 +24,7 @@ const manifest = {
     "*://*.myveracross.com/*",
     "*://portals.veracross.com/*",
     "*://portals-embed.veracross.com/*",
+    "http://localhost:3000/*",
   ],
 
   icons: {
@@ -63,6 +66,8 @@ const manifest = {
 
 export default defineConfig({
   plugins: [
+    react(),
+    tailwindcss(),
     crx({
       manifest,
       // Disable service worker generation - we don't need it
@@ -102,7 +107,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, "src/ui/popup/popup.html"),
-        window: resolve(__dirname, "src/ui/window/window.html"),
         options: resolve(__dirname, "src/ui/options/options.html"),
       },
     },

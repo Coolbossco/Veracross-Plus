@@ -144,6 +144,9 @@ export const STORAGE_KEYS = {
   /** Feature flags (local overrides) */
   FEATURE_FLAGS: "vcp_feature_flags",
 
+  /** Whether the user has completed the first-run onboarding */
+  ONBOARDING_COMPLETE: "vcp_onboarding_complete",
+
   // Legacy keys (for migration compatibility)
   LEGACY: {
     ENABLE_CHECKLIST: "enableChecklist",

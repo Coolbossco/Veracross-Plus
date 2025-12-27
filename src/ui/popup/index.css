@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+    --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --color-primary: #6366f1;
+    --color-primary-hover: #4f46e5;
+    --color-bg: #f8fafc;
+}
+
+body {
+    @apply bg-bg font-sans text-slate-900 w-[360px] min-h-[480px] overflow-x-hidden;
+}
+
+.view-transition-enter {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.view-transition-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms, transform 300ms;
+}
+
+.view-transition-exit {
+    opacity: 1;
+}
+
+.view-transition-exit-active {
+    opacity: 0;
+    transition: opacity 300ms;
+}

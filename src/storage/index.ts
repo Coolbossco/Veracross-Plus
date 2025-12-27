@@ -21,6 +21,34 @@ export {
   createStorageProvider,
 } from "./LocalStorageProvider";
 
+// Cloud storage implementation
+export {
+  CloudStorageProvider,
+  getCloudStorageProvider,
+} from "./CloudStorageProvider";
+
+// Auth service
+export {
+  getAuthToken,
+  getAuthState,
+  register,
+  login,
+  logout,
+  isLoggedIn,
+  type User,
+  type AuthState,
+} from "./AuthService";
+
+// Sync safety
+export {
+  hasSyncedBefore,
+  markSyncedBefore,
+  backupLocalData,
+  restoreFromBackup,
+  getBackupTimestamp,
+  performSafeFirstSync,
+} from "./SyncSafety";
+
 // Re-export a convenience function for quick storage access
 import { getStorageProvider } from "./LocalStorageProvider";
 import { STORAGE_KEYS } from "./StorageProvider";
