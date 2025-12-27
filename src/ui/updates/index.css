@@ -82,7 +82,20 @@ body,
     z-index: 1;
 }
 
-/* 2. Hero Typography */
+/* 2. Brand Logo */
+.brand-logo-container {
+    margin-bottom: 24px;
+    opacity: 0;
+    /* Controlled by GSAP */
+}
+
+.brand-logo {
+    width: 80px;
+    height: 80px;
+    filter: drop-shadow(0 8px 16px rgba(99, 102, 241, 0.2));
+}
+
+/* 3. Hero Typography */
 .hero h1 {
     font-size: clamp(3rem, 6vw, 5rem);
     font-weight: 600;

@@ -16,7 +16,7 @@ const manifest = {
   name: "Veracross Plus",
   description:
     "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
-  version: "0.2.1",
+  version: "0.3.2",
 
   permissions: ["storage"],
   host_permissions: [

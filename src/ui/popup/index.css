@@ -7,8 +7,16 @@
     --color-bg: #f8fafc;
 }
 
+html {
+    overscroll-behavior: none;
+    height: 100%;
+}
+
 body {
-    @apply bg-bg font-sans text-slate-900 w-[360px] min-h-[480px] overflow-x-hidden;
+    @apply bg-bg font-sans text-slate-900 w-[360px] h-[500px] overflow-y-auto;
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: none;
 }
 
 .view-transition-enter {

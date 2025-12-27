@@ -15,6 +15,7 @@ import type { CustomAssignment } from "../models/Assignment";
 import type { CompletionRecord } from "../models/Completion";
 import type { UserPreferences } from "../models/UserPreferences";
 import { DEFAULT_USER_PREFERENCES } from "../models/UserPreferences";
+import { canCreateCustomAssignment, createCheckoutSession, refreshEntitlementState } from "../storage/EntitlementService";
 
 // CSS is loaded via manifest.json content_scripts.css
 
@@ -921,7 +922,7 @@ function addFloatingAssignmentButton() {
     floatingButton.style.opacity = "0.9";
   });
 
-  button.addEventListener("click", (e) => {
+  button.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -941,6 +942,20 @@ function addFloatingAssignmentButton() {
     const existingModals = document.querySelectorAll(".vch-assignment-modal");
     if (existingModals.length === 0) {
       modalOpenInProgress = true;
+
+      // Force refresh entitlement state from backend before checking
+      // This ensures we don't show upgrade modal for subscribed users
+      await refreshEntitlementState();
+
+      // Check entitlement before showing assignment modal
+      const entitlementResult = await canCreateCustomAssignment();
+
+      if (!entitlementResult.allowed) {
+        // Show upgrade modal instead
+        showUpgradeModal(entitlementResult.reason, entitlementResult.message);
+        return;
+      }
+
       showCustomAssignmentModal();
     }
   });
@@ -996,6 +1011,182 @@ async function loadAndInjectCustomAssignments(): Promise<void> {
       customAssignmentsInjected = true;
     }
   }
+}
+
+/**
+ * Show upgrade modal when user tries to create custom assignment without entitlement
+ * Follows Phase 5 guidelines: calm, informational, optional, non-urgent
+ */
+function showUpgradeModal(reason: string, message?: string): void {
+  // Remove any existing modals
+  const existingModals = document.querySelectorAll(".vch-assignment-modal, .vch-upgrade-modal");
+  existingModals.forEach((modal) => modal.remove());
+
+  const modal = document.createElement("div");
+  modal.className = "vch-upgrade-modal";
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+  `;
+
+  const modalContent = document.createElement("div");
+  modalContent.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    text-align: center;
+  `;
+
+  // Calm, non-urgent messaging (from PHASE 5.md)
+  modalContent.innerHTML = `
+    <div style="margin-bottom: 24px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1976d2" stroke-width="1.5" style="margin-bottom: 16px;">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+        <path d="M2 17l10 5 10-5"></path>
+        <path d="M2 12l10 5 10-5"></path>
+      </svg>
+      <h3 style="margin: 0 0 12px 0; color: #333; font-size: 20px; font-weight: 600;">
+        Custom Assignments
+      </h3>
+      <p style="margin: 0 0 8px 0; color: #666; font-size: 15px; line-height: 1.5;">
+        Custom assignments are part of Veracross Plus Cloud.
+      </p>
+      <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.5;">
+        They let you add personal tasks that sync across devices and are safely backed up.
+      </p>
+    </div>
+
+    <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 8px;">
+        <div>
+          <div style="font-size: 20px; font-weight: 600; color: #333;">$2.99</div>
+          <div style="font-size: 12px; color: #666;">/month</div>
+        </div>
+        <div style="border-left: 1px solid #ddd;"></div>
+        <div>
+          <div style="font-size: 20px; font-weight: 600; color: #333;">$24.99</div>
+          <div style="font-size: 12px; color: #666;">/year</div>
+          <div style="font-size: 10px; color: #4caf50; font-weight: 500;">Save 30%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <button id="vch-upgrade-yearly" style="
+        background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 14px 24px;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        font-family: inherit;
+      ">
+        Enable Cloud Features — Yearly
+      </button>
+      <button id="vch-upgrade-monthly" style="
+        background: white;
+        color: #1976d2;
+        border: 1px solid #1976d2;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+      ">
+        Enable Cloud Features — Monthly
+      </button>
+      <button id="vch-upgrade-cancel" style="
+        background: transparent;
+        color: #666;
+        border: none;
+        padding: 12px 24px;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: inherit;
+      ">
+        Keep using local mode
+      </button>
+    </div>
+
+    <p style="margin: 16px 0 0 0; color: #999; font-size: 12px;">
+      You can keep using all existing assignments for free.
+    </p>
+  `;
+
+  modal.appendChild(modalContent);
+  document.body.appendChild(modal);
+
+  const closeModal = () => {
+    modal.remove();
+    modalOpenInProgress = false;
+
+    // Show floating button again
+    const floatingBtn = document.querySelector(".vch-floating-button") as HTMLElement | null;
+    if (floatingBtn) {
+      floatingBtn.style.visibility = "visible";
+      floatingBtn.style.opacity = "0.9";
+      floatingBtn.style.pointerEvents = "auto";
+    }
+  };
+
+  // Handle click outside
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  // Cancel button
+  const cancelBtn = document.getElementById("vch-upgrade-cancel");
+  cancelBtn?.addEventListener("click", closeModal);
+
+  // Upgrade buttons
+  const yearlyBtn = document.getElementById("vch-upgrade-yearly");
+  yearlyBtn?.addEventListener("click", async () => {
+    yearlyBtn.textContent = "Loading...";
+    yearlyBtn.setAttribute("disabled", "true");
+
+    const result = await createCheckoutSession("yearly");
+    if (result.success && result.checkoutUrl) {
+      window.open(result.checkoutUrl, "_blank");
+      closeModal();
+    } else {
+      yearlyBtn.textContent = "Enable Cloud Features — Yearly";
+      yearlyBtn.removeAttribute("disabled");
+      alert(result.error || "Failed to start checkout. Please try again.");
+    }
+  });
+
+  const monthlyBtn = document.getElementById("vch-upgrade-monthly");
+  monthlyBtn?.addEventListener("click", async () => {
+    monthlyBtn.textContent = "Loading...";
+    monthlyBtn.setAttribute("disabled", "true");
+
+    const result = await createCheckoutSession("monthly");
+    if (result.success && result.checkoutUrl) {
+      window.open(result.checkoutUrl, "_blank");
+      closeModal();
+    } else {
+      monthlyBtn.textContent = "Enable Cloud Features — Monthly";
+      monthlyBtn.removeAttribute("disabled");
+      alert(result.error || "Failed to start checkout. Please try again.");
+    }
+  });
 }
 
 function showCustomAssignmentModal(prefillData: Partial<CustomAssignment> = {}): void {

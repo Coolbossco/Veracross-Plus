@@ -8,10 +8,10 @@ import {
     CheckCircle2,
     Plus,
     Layers,
-    ShieldCheck,
     User as UserIcon,
     Loader2
 } from "lucide-react";
+import logo from "../../assets/icons/128.png";
 import {
     getStorageProvider,
     getCloudStorageProvider,
@@ -24,9 +24,10 @@ import {
 } from "../../storage";
 import { getSyncManager, initializeAutoSync } from "../../sync";
 import { initializeFeatureFlags } from "../../features";
+import { getSubscriptionInfo, type SubscriptionInfo } from "../../storage/EntitlementService";
 
 
-type View = "onboarding" | "auth-choice" | "auth-form" | "main";
+type View = "onboarding" | "auth-choice" | "auth-form" | "main" | "upgrade";
 
 const Popup: React.FC = () => {
     const [view, setView] = useState<View>("main");
@@ -37,8 +38,10 @@ const Popup: React.FC = () => {
     const [password, setPassword] = useState("");
     const [authError, setAuthError] = useState("");
     const [authSubmitting, setAuthSubmitting] = useState(false);
+    const [upgradeSubmitting, setUpgradeSubmitting] = useState<"monthly" | "yearly" | null>(null);
     const [syncStatus, setSyncStatus] = useState<string | null>(null);
     const [syncSuccess, setSyncSuccess] = useState(true);
+    const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
     const [settings, setSettings] = useState({
         enableChecklist: false,
         enableCustomAssignments: false,
@@ -68,6 +71,11 @@ const Popup: React.FC = () => {
                     enableChecklist: !!storedSettings.enableChecklist,
                     enableCustomAssignments: !!storedSettings.enableCustomAssignments,
                 });
+
+                // Fetch subscription info
+                const sub = await getSubscriptionInfo();
+                setSubscription(sub);
+
                 setView("main");
             }
             setLoading(false);
@@ -140,15 +148,46 @@ const Popup: React.FC = () => {
     const handleLogout = async () => {
         await logout();
         setAuthState({ isLoggedIn: false, user: null, token: null });
+        setSubscription(null);
+    };
+
+    const handleUpgrade = async (plan: "monthly" | "yearly") => {
+        setUpgradeSubmitting(plan);
+        try {
+            const { createCheckoutSession } = await import("../../storage/EntitlementService");
+            const res = await createCheckoutSession(plan);
+            if (res.success && res.checkoutUrl) {
+                window.open(res.checkoutUrl, "_blank");
+                setView("main");
+            } else {
+                setAuthError(res.error || "Failed to start checkout");
+            }
+        } catch (err) {
+            setAuthError("Checkout error");
+        } finally {
+            setUpgradeSubmitting(null);
+        }
     };
 
     const handleSyncNow = async () => {
         setSyncStatus("Syncing...");
         setSyncSuccess(true);
-        const success = await getSyncManager().sync();
+        const syncManager = getSyncManager();
+        const success = await syncManager.sync();
         setSyncSuccess(success);
-        setSyncStatus(success ? "Sync complete" : "Sync failed");
-        setTimeout(() => setSyncStatus(null), 2000);
+
+        if (success) {
+            setSyncStatus("Sync complete");
+        } else {
+            const error = syncManager.getState().error;
+            if (error?.message === "Subscription Required") {
+                setView("upgrade");
+                setSyncStatus(null);
+                return;
+            }
+            setSyncStatus(error?.message || "Sync failed");
+        }
+        setTimeout(() => setSyncStatus(null), 3000);
 
         // Reload settings from storage after sync to reflect any changes
         if (success) {
@@ -173,24 +212,22 @@ const Popup: React.FC = () => {
     }
 
     return (
-        <div className="container mx-auto p-6 flex flex-col min-h-[480px]">
-            <header className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-linear-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
-                    <Layers className="w-6 h-6" />
-                </div>
+        <div className="container mx-auto p-6 flex flex-col h-full">
+            <header className="flex items-center gap-3 mb-6">
+                <img src={logo} alt="Veracross Plus" className="w-10 h-10 object-contain shadow-lg shadow-indigo-500/10 rounded-xl" />
                 <h1 className="text-xl font-bold tracking-tight text-slate-800">Veracross Plus</h1>
             </header>
 
             {/* ONBOARDING VIEW */}
             {view === "onboarding" && (
                 <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <p className="text-[15px] text-slate-500 mb-6 leading-relaxed font-medium">
+                    <p className="text-[15px] text-slate-500 mb-5 leading-relaxed font-medium">
                         Welcome! How would you like to keep your data?
                     </p>
 
                     <button
                         onClick={() => handleOnboardingChoice("local")}
-                        className="group bg-white border-2 border-transparent rounded-2xl p-6 mb-4 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-xl hover:border-slate-100 shadow-lg text-left flex flex-col gap-2.5"
+                        className="group bg-white border-2 border-transparent rounded-2xl p-5 mb-3 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-xl hover:border-slate-100 shadow-lg text-left flex flex-col gap-2.5"
                     >
                         <div className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-indigo-500 group-hover:bg-indigo-50 transition-colors">
                             <Lock className="w-5.5 h-5.5" />
@@ -203,7 +240,7 @@ const Popup: React.FC = () => {
 
                     <button
                         onClick={() => handleOnboardingChoice("cloud")}
-                        className="group bg-white border-2 border-transparent rounded-2xl p-6 mb-4 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-xl hover:border-slate-100 shadow-lg text-left flex flex-col gap-2.5"
+                        className="group bg-white border-2 border-transparent rounded-2xl p-5 mb-0 cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-xl hover:border-slate-100 shadow-lg text-left flex flex-col gap-2.5 relative overflow-hidden"
                     >
                         <div className="w-11 h-11 bg-slate-100 rounded-xl flex items-center justify-center text-indigo-500 group-hover:bg-indigo-50 transition-colors">
                             <Cloud className="w-5.5 h-5.5" />
@@ -300,7 +337,27 @@ const Popup: React.FC = () => {
                         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-center justify-between mb-6 shadow-sm">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_0_3px_rgba(16,185,129,0.1)]"></div>
-                                <span className="text-[13px] font-bold text-slate-700 truncate max-w-[160px]">{authState.user.email}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[13px] font-bold text-slate-700 truncate max-w-[140px]">{authState.user.email}</span>
+                                        {subscription?.isSubscribed && (
+                                            <span className="bg-indigo-50 text-indigo-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 flex items-center gap-1 animate-in zoom-in-75 duration-300">
+                                                <Cloud className="w-2.5 h-2.5" />
+                                                {subscription.plan?.toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {subscription?.isSubscribed ? (
+                                        <span className="text-[11px] text-slate-400 font-medium">Cloud sync active</span>
+                                    ) : (
+                                        <button
+                                            onClick={() => setView("upgrade")}
+                                            className="text-[11px] font-bold text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1"
+                                        >
+                                            Sync disabled (Upgrade required)
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <button onClick={handleLogout} className="text-[13px] font-semibold text-slate-400 hover:text-red-400 transition-colors">
                                 Sign Out
@@ -362,21 +419,89 @@ const Popup: React.FC = () => {
                             )}
                         </div>
                     ) : (
-                        <div className="mt-6 p-5 bg-red-50 border border-red-100 rounded-2xl flex flex-col items-center gap-3 text-center">
-                            <p className="text-[13px] text-red-700 font-medium leading-relaxed">Cloud sync is currently inactive.</p>
-                            <button
-                                onClick={() => setView("auth-choice")}
-                                className="w-full bg-red-500 text-white p-2.5 rounded-xl text-[13px] font-bold hover:bg-red-600 shadow-md shadow-red-500/20 transition-all"
-                            >
-                                Enable Sync
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setView("auth-choice")}
+                            className="mt-6 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl flex flex-col items-center gap-3 text-center group hover:bg-indigo-100 transition-colors"
+                        >
+                            <p className="text-[13px] text-indigo-600 font-bold leading-relaxed flex items-center gap-2">
+                                <Cloud className="w-4 h-4" />
+                                Enable Cloud Sync
+                            </p>
+                            <p className="text-xs text-indigo-400 font-medium">Keep your settings safe and synced across devices.</p>
+                        </button>
                     )}
                 </div>
             )}
 
+            {/* UPGRADE VIEW */}
+            {view === "upgrade" && (
+                <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <button
+                        onClick={() => setView("main")}
+                        className="flex items-center gap-1.5 text-slate-400 text-sm font-semibold mb-5 hover:text-slate-600 transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                        Back
+                    </button>
+
+                    <div className="text-center mb-6">
+                        <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                            <Cloud className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-xl font-bold tracking-tight text-slate-800 mb-2">Veracross Plus Cloud</h2>
+                        <p className="text-sm text-slate-500 leading-relaxed max-w-[280px] mx-auto">
+                            Custom assignments and device sync are part of Veracross Plus Cloud.
+                        </p>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 text-center">
+                                <div className="text-xl font-bold text-slate-800">$2.99</div>
+                                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Monthly</div>
+                            </div>
+                            <div className="w-px h-10 bg-slate-200"></div>
+                            <div className="flex-1 text-center">
+                                <div className="text-xl font-bold text-slate-800">$24.99</div>
+                                <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Yearly</div>
+                                <div className="text-[10px] text-emerald-500 font-extrabold">SAVE 30%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button
+                            onClick={() => handleUpgrade("yearly")}
+                            disabled={!!upgradeSubmitting}
+                            className="w-full bg-indigo-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 hover:-translate-y-0.5 disabled:opacity-70 disabled:translate-y-0 transition-all flex items-center justify-center gap-2"
+                        >
+                            {upgradeSubmitting === "yearly" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
+                            Enable Cloud Features — Yearly
+                        </button>
+                        <button
+                            onClick={() => handleUpgrade("monthly")}
+                            disabled={!!upgradeSubmitting}
+                            className="w-full bg-white text-indigo-600 border-2 border-indigo-50 p-3.5 rounded-xl font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                        >
+                            {upgradeSubmitting === "monthly" && <Loader2 className="w-4 h-4 animate-spin" />}
+                            Enable Cloud Features — Monthly
+                        </button>
+                        <button
+                            onClick={() => setView("main")}
+                            className="text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors py-2"
+                        >
+                            Keep using local mode
+                        </button>
+                    </div>
+
+                    <p className="mt-4 text-[11px] text-slate-400 text-center leading-relaxed">
+                        You can keep using all existing assignments for free.
+                    </p>
+                </div>
+            )}
+
             <footer className="mt-auto pt-6 text-center text-xs text-slate-400 font-medium tracking-wide">
-                Veracross Plus &bull; 0.2.1
+                Veracross Plus &bull; {typeof chrome !== 'undefined' && chrome.runtime?.getManifest ? chrome.runtime.getManifest().version : "Dev"}
             </footer>
         </div>
     );

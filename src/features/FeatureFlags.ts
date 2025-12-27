@@ -90,18 +90,18 @@ export const FEATURE_FLAG_CONFIG: Record<FeatureFlag, FeatureFlagConfig> = {
     description: "Redirect to a custom page on login",
   },
 
-  // Future features (Phase 2+) - all disabled by default
+  // Future features (Phase 2+) - all enabled by default now
   enableCloudSync: {
-    defaultEnabled: false,
-    userConfigurable: false, // Not user-configurable until Phase 2
+    defaultEnabled: true,
+    userConfigurable: true,
     requiresAccount: true,
     requiresPremium: false,
     displayName: "Cloud Sync",
     description: "Sync your data across devices",
   },
   enableAccounts: {
-    defaultEnabled: false,
-    userConfigurable: false, // Not user-configurable until Phase 2
+    defaultEnabled: true,
+    userConfigurable: true,
     requiresAccount: false,
     requiresPremium: false,
     displayName: "User Accounts",
@@ -200,9 +200,9 @@ class FeatureFlagsManager {
   isAvailable(flag: FeatureFlag): boolean {
     const config = FEATURE_FLAG_CONFIG[flag];
 
-    // Future: Check account and premium requirements
-    // For now, only non-account features are available
-    if (config.requiresAccount || config.requiresPremium) {
+    // For now, all features are available if they don't require premium
+    // Account requirements are handled by the UI/Sync flows
+    if (config.requiresPremium) {
       return false;
     }
 

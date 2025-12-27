@@ -14,6 +14,7 @@ import { API_BASE_URL } from "../constants";
 import { STORAGE_KEYS } from "../storage/StorageProvider";
 import { getStorageProvider } from "../storage/LocalStorageProvider";
 import { getAuthToken, isLoggedIn } from "../storage/AuthService";
+import { canSync } from "../storage/EntitlementService";
 import { trackSyncStarted, trackSyncSuccess, trackSyncFailed, trackSyncRetry, trackBackupCreated } from "./TelemetryService";
 
 export type SyncState = "idle" | "checking" | "pushing" | "pulling" | "success" | "error" | "conflict" | "retrying" | "offline";
@@ -45,6 +46,7 @@ export class SyncManager {
 
     // Serialization & Dirty Flag
     private isDirty = false;
+    private currentSyncIsLocalUpdate = false; // Tracks if current sync was triggered by local changes
     private syncPromise: Promise<boolean> | null = null;
     private autoSyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -103,11 +105,7 @@ export class SyncManager {
             return false;
         }
 
-        // Guard 3: Must have completed first sync successfully
-        const firstSyncComplete = await this.isFirstSyncComplete();
-        if (!firstSyncComplete) {
-            return false;
-        }
+        // Guard 3: Removed first sync complete guard to allow immediate sync
 
         // Guard 4: Not in persistent error state (non-retriable)
         if (this.lastError && !this.lastError.retriable) {
@@ -170,7 +168,9 @@ export class SyncManager {
         }
 
         // Clear dirty flag at start
+        const wasDirty = this.isDirty;
         this.isDirty = false;
+        this.currentSyncIsLocalUpdate = wasDirty;
         this.retryCount = 0;
 
         // Create and track the sync promise
@@ -210,6 +210,16 @@ export class SyncManager {
             await backupManager.createSnapshot();
             trackBackupCreated();
 
+            // 2.5 Verify Entitlement
+            const allowed = await canSync();
+            if (!allowed) {
+                return this.handleFailure({
+                    class: "auth",
+                    message: "Subscription Required",
+                    retriable: false
+                });
+            }
+
             // 3. Handshake (Rule 2)
             const { localHasData, cloudHasData } = await this.performHandshake();
 
@@ -222,20 +232,39 @@ export class SyncManager {
                 return success;
             }
 
-            // 4. Regular Sync (Pull then Push)
-            this.setState("pulling");
+            // 4. Regular Sync
             const cloudProvider = getCloudStorageProvider();
-            const pullSuccess = await cloudProvider.pullFromCloud();
 
-            if (!pullSuccess) {
-                return this.handleFailure({ class: "network", message: "Sync pull failed", retriable: true });
-            }
+            if (this.currentSyncIsLocalUpdate) {
+                // LOCAL UPDATE STRATEGY: Push First
+                // If the user changed something locally (checked item, deleted assignment),
+                // we MUST push first to update the cloud. The backend replaces data,
+                // so pushing our state propagates the deletion/uncheck.
+                const pushSuccess = await this.push();
 
-            const success = await this.push();
-            if (success) {
+                // If push failed, we stop (error handled in push)
+                if (!pushSuccess) return false;
+
+                // Push success! We are now the authority.
                 await this.setFirstSyncComplete();
+                return true;
+            } else {
+                // REMOTE UPDATE STRATEGY: Pull First
+                // If no local changes (startup/poll), we prioritize fetching cloud data.
+                this.setState("pulling");
+                const pullSuccess = await cloudProvider.pullFromCloud();
+
+                if (!pullSuccess) {
+                    return this.handleFailure({ class: "network", message: "Sync pull failed", retriable: true });
+                }
+
+                // Follow up with a push to ensure consistency (e.g. merging new cloud items)
+                const success = await this.push();
+                if (success) {
+                    await this.setFirstSyncComplete();
+                }
+                return success;
             }
-            return success;
         } catch (error) {
             console.error("[SyncManager] Unexpected sync error:", error);
             const errorClass = this.classifyError(error);

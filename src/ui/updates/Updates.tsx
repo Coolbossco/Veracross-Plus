@@ -1,15 +1,16 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { Cloud, Shield, CheckCircle } from 'lucide-react';
+import logo from '../../assets/icons/128.png';
 
 // --- CONFIGURATION: EDIT THIS FOR NEW VERSIONS ---
 const UPDATE_DATA = {
     title: "What’s new in this update",
-    description: "We’ve completely rebuilt the sync engine for instant reliability, enhanced data protection, and unified your experience.",
+    description: "This update brings a fresh new look, improves local data reliability, and lays the groundwork for upcoming cross-device syncing.",
     features: [
-        { icon: <Cloud size={24} strokeWidth={2} />, text: "Instant Sync" },
-        { icon: <Shield size={24} strokeWidth={2} />, text: "Secure Data" },
-        { icon: <CheckCircle size={24} strokeWidth={2} />, text: "Seamless" }
+        { icon: <Cloud size={24} strokeWidth={2} />, text: "Sync Prep" },
+        { icon: <Shield size={24} strokeWidth={2} />, text: "Reliability" },
+        { icon: <CheckCircle size={24} strokeWidth={2} />, text: "New Look" }
     ],
     reassurance: "No action required. Veracross Plus works exactly as before."
 };
@@ -56,6 +57,13 @@ export default function Updates() {
                 stagger: 0.05,
                 ease: "power2.out"
             });
+
+            // 1.5. Logo Reveal
+            tl.fromTo(".brand-logo-container",
+                { opacity: 0, scale: 0.8, y: 10 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.8, ease: "back.out(1.7)" },
+                "-=0.5"
+            );
 
             // 2. The Pause
             tl.to({}, { duration: 1.2 });
@@ -121,6 +129,10 @@ export default function Updates() {
     return (
         <main className="update-wrapper" ref={containerRef}>
             <div className="ambient-glow" />
+
+            <div className="brand-logo-container">
+                <img src={logo} alt="Veracross Plus Logo" className="brand-logo" />
+            </div>
 
             <div className="hero">
                 <h1 id="version-text">
