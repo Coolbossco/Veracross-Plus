@@ -16,6 +16,9 @@ const ENTITLEMENT_STORAGE_KEYS = {
     LAST_VERIFIED: "vcp_entitlement_last_verified",
 } as const;
 
+const QUALIFICATION_DEADLINE = new Date("2026-01-01T00:00:00Z");
+const BENEFIT_EXPIRY = new Date("2026-03-01T00:00:00Z");
+
 /**
  * Subscription status from backend
  */
@@ -223,10 +226,15 @@ export async function canCreateCustomAssignment(): Promise<CanCreateResult> {
 
     // Not logged in = local mode only, no cloud features
     if (!authState.isLoggedIn) {
+        const now = new Date();
+        const isWithinWindow = now < QUALIFICATION_DEADLINE;
+
         return {
             allowed: false,
             reason: "free_tier",
-            message: "Sign in to create custom assignments with cloud sync.",
+            message: isWithinWindow
+                ? "Sign up before Jan 1st to get custom assignments for free until March!"
+                : "Sign in to create custom assignments with cloud sync.",
         };
     }
 

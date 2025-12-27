@@ -1060,7 +1060,7 @@ function showUpgradeModal(reason: string, message?: string): void {
         Custom Assignments
       </h3>
       <p style="margin: 0 0 8px 0; color: #666; font-size: 15px; line-height: 1.5;">
-        Custom assignments are part of Veracross Plus Cloud.
+        ${message || "Custom assignments are part of Veracross Plus Cloud."}
       </p>
       <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.5;">
         They let you add personal tasks that sync across devices and are safely backed up.
