@@ -12,7 +12,7 @@ import { STORAGE_KEYS } from "./StorageProvider";
 import { getAuthToken } from "./AuthService";
 import { LocalStorageProvider } from "./LocalStorageProvider";
 
-const API_BASE_URL = "http://localhost:3000/api/v1";
+import { API_BASE_URL } from "../constants";
 
 /**
  * Cloud Storage Provider

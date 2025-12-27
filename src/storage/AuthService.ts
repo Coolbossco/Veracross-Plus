@@ -8,7 +8,7 @@
  */
 
 // Configuration - can be overridden via storage
-const API_BASE_URL = "http://localhost:3000/api/v1";
+import { API_BASE_URL } from "../constants";
 
 // Storage keys for auth
 const AUTH_STORAGE_KEYS = {

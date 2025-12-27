@@ -24,7 +24,7 @@ export interface TelemetryPayload {
 }
 
 const TELEMETRY_STORAGE_KEY = "vcp_telemetry_enabled";
-const API_BASE_URL = "http://localhost:3000/api/v1";
+import { API_BASE_URL } from "../constants";
 
 class TelemetryService {
     private enabled = true;

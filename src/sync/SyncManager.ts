@@ -9,6 +9,7 @@
 
 import { getBackupManager } from "./BackupManager";
 import { getCloudStorageProvider } from "../storage/CloudStorageProvider";
+import { API_BASE_URL } from "../constants";
 import { STORAGE_KEYS } from "../storage/StorageProvider";
 import { getStorageProvider } from "../storage/LocalStorageProvider";
 import { getAuthToken } from "../storage/AuthService";
@@ -208,7 +209,6 @@ export class SyncManager {
 
         // To check if cloud has data, we'll try to pull metadata or check with a lightweight call
         const token = await getAuthToken();
-        const API_BASE_URL = "http://localhost:3000/api/v1";
 
         try {
             const response = await fetch(`${API_BASE_URL}/sync/pull`, {
