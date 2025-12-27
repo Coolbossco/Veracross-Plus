@@ -102,8 +102,6 @@ const MIGRATIONS: Migration[] = [
         const migratedCompletions = migrateLegacyCompletions(completions);
         await storage.set(STORAGE_KEYS.CHECKED_ASSIGNMENTS, migratedCompletions);
       }
-
-      console.log("[Veracross Plus] Migration v1 complete: Data format standardized");
     },
   },
   // Future migrations will be added here:
@@ -152,20 +150,11 @@ export async function runMigrations(): Promise<MigrationResult> {
   ).sort((a, b) => a.version - b.version);
 
   if (pendingMigrations.length === 0) {
-    console.log("[Veracross Plus] No migrations needed");
     return result;
   }
 
-  console.log(
-    `[Veracross Plus] Running ${pendingMigrations.length} migration(s) from v${result.fromVersion} to v${CURRENT_DATA_VERSION}`
-  );
-
   for (const migration of pendingMigrations) {
     try {
-      console.log(
-        `[Veracross Plus] Running migration v${migration.version}: ${migration.description}`
-      );
-
       await migration.migrate();
 
       result.migrationsRun.push(migration.version);
@@ -191,16 +180,6 @@ export async function runMigrations(): Promise<MigrationResult> {
       // Stop running migrations after a failure
       break;
     }
-  }
-
-  if (result.success) {
-    console.log(
-      `[Veracross Plus] All migrations complete. Data version: v${result.toVersion}`
-    );
-  } else {
-    console.warn(
-      `[Veracross Plus] Migrations partially complete. Stopped at v${result.toVersion}`
-    );
   }
 
   return result;

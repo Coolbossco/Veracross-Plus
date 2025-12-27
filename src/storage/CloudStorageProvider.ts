@@ -4,7 +4,7 @@
  * Implementation of StorageProvider that syncs with the backend API.
  * Uses local storage as a cache and syncs changes to/from the cloud.
  *
- * @version 1
+ * @version 2 - Delegates sync to SyncManager
  */
 
 import type { StorageProvider } from "./StorageProvider";
@@ -13,6 +13,24 @@ import { getAuthToken } from "./AuthService";
 import { LocalStorageProvider } from "./LocalStorageProvider";
 
 import { API_BASE_URL } from "../constants";
+
+// Cached reference to SyncManager to avoid circular dependency issues
+let cachedSyncManager: { markDirty: () => void } | null = null;
+
+function getSyncManagerLazy(): { markDirty: () => void } | null {
+    if (!cachedSyncManager) {
+        // Try to get it from the global sync module
+        // This is set by the sync module on initialization
+        cachedSyncManager = (globalThis as any).__vcpSyncManager || null;
+    }
+    return cachedSyncManager;
+}
+
+// Called by SyncManager to register itself
+export function registerSyncManager(manager: { markDirty: () => void }): void {
+    cachedSyncManager = manager;
+    (globalThis as any).__vcpSyncManager = manager;
+}
 
 /**
  * Cloud Storage Provider
@@ -42,28 +60,28 @@ export class CloudStorageProvider implements StorageProvider {
 
     async set<T>(key: string, value: T): Promise<void> {
         await this.localStorage.set(key, value);
-        // Trigger background sync after write
-        this.scheduleSync();
+        // Delegate sync scheduling to SyncManager
+        this.notifySyncManager();
     }
 
     async setMany(items: Record<string, unknown>): Promise<void> {
         await this.localStorage.setMany(items);
-        this.scheduleSync();
+        this.notifySyncManager();
     }
 
     async remove(key: string): Promise<void> {
         await this.localStorage.remove(key);
-        this.scheduleSync();
+        this.notifySyncManager();
     }
 
     async removeMany(keys: string[]): Promise<void> {
         await this.localStorage.removeMany(keys);
-        this.scheduleSync();
+        this.notifySyncManager();
     }
 
     async clear(): Promise<void> {
         await this.localStorage.clear();
-        this.scheduleSync();
+        this.notifySyncManager();
     }
 
     async keys(): Promise<string[]> {
@@ -75,14 +93,18 @@ export class CloudStorageProvider implements StorageProvider {
     }
 
     /**
-     * Schedule a sync operation (debounced)
+     * Notify SyncManager that data changed
+     * SyncManager handles debouncing and sync guards
      */
-    private syncTimeout: ReturnType<typeof setTimeout> | null = null;
-    private scheduleSync(): void {
-        if (this.syncTimeout) {
-            clearTimeout(this.syncTimeout);
+    private notifySyncManager(): void {
+        try {
+            const syncManager = getSyncManagerLazy();
+            if (syncManager) {
+                syncManager.markDirty();
+            }
+        } catch (error) {
+            console.error("[CloudStorage] Could not notify SyncManager:", error);
         }
-        this.syncTimeout = setTimeout(() => this.pushToCloud(), 2000);
     }
 
     /**
@@ -137,7 +159,6 @@ export class CloudStorageProvider implements StorageProvider {
             }
 
             const result = await response.json();
-            console.log("[Veracross Plus] Sync push successful:", result.written);
             return { success: true, written: result.written };
         } catch (error) {
             console.error("[Veracross Plus] Sync push error:", error);
@@ -170,12 +191,6 @@ export class CloudStorageProvider implements StorageProvider {
 
             const cloudData = await response.json();
 
-            console.log("[Veracross Plus] Pull received cloud data:", {
-                hasPrefs: !!cloudData.preferences,
-                assignmentsCount: Array.isArray(cloudData.assignments) ? cloudData.assignments.length : 0,
-                completionsCount: cloudData.completions ? Object.keys(cloudData.completions).length : 0
-            });
-
             // === MERGE PREFERENCES (cloud properties override local, but local-only properties preserved) ===
             const localPrefs = await this.localStorage.get<Record<string, unknown>>(STORAGE_KEYS.PREFERENCES) || {};
             const cloudPrefs = (cloudData.preferences || {}) as Record<string, unknown>;
@@ -202,30 +217,45 @@ export class CloudStorageProvider implements StorageProvider {
                 }
             }
 
-            // === MERGE ASSIGNMENTS (by ID - cloud wins on duplicates, local-only preserved) ===
-            const localAssignments = await this.localStorage.get<Array<{ id: string }>>(STORAGE_KEYS.CUSTOM_ASSIGNMENTS) || [];
+            // === MERGE ASSIGNMENTS (Last-Write-Wins via updatedAt) ===
+            const localAssignments = await this.localStorage.get<Array<any>>(STORAGE_KEYS.CUSTOM_ASSIGNMENTS) || [];
             const cloudAssignments = Array.isArray(cloudData.assignments) ? cloudData.assignments : [];
 
-            // Create a map of all assignments by ID
-            const assignmentMap = new Map<string, unknown>();
+            // Map by ID
+            const assignmentMap = new Map<string, any>();
 
-            // Add local assignments first
+            // 1. Load all local assignments
             for (const assignment of localAssignments) {
                 if (assignment.id) {
                     assignmentMap.set(assignment.id, assignment);
                 }
             }
 
-            // Cloud assignments override duplicates
-            for (const assignment of cloudAssignments) {
-                if (assignment.id) {
-                    assignmentMap.set(assignment.id, assignment);
+            // 2. Merge cloud assignments
+            for (const cloudAssignment of cloudAssignments) {
+                if (!cloudAssignment.id) continue;
+
+                const localAssignment = assignmentMap.get(cloudAssignment.id);
+
+                if (!localAssignment) {
+                    // New from cloud
+                    assignmentMap.set(cloudAssignment.id, cloudAssignment);
+                } else {
+                    // Conflict: Compare timestamps
+                    const localTime = new Date(localAssignment.updatedAt || 0).getTime();
+                    const cloudTime = new Date(cloudAssignment.updatedAt || 0).getTime();
+
+                    if (cloudTime >= localTime) {
+                        // Cloud is newer or equal -> Cloud Wins
+                        assignmentMap.set(cloudAssignment.id, cloudAssignment);
+                    } else {
+                        // Local is newer -> Local Wins (preserved)
+                    }
                 }
             }
 
             const mergedAssignments = Array.from(assignmentMap.values());
             await this.localStorage.set(STORAGE_KEYS.CUSTOM_ASSIGNMENTS, mergedAssignments);
-            console.log("[Veracross Plus] Merged assignments:", { local: localAssignments.length, cloud: cloudAssignments.length, merged: mergedAssignments.length });
 
             // === MERGE COMPLETIONS (by key - cloud wins on duplicates, local-only preserved) ===
             const localCompletions = await this.localStorage.get<Record<string, number>>(STORAGE_KEYS.CHECKED_ASSIGNMENTS) || {};
@@ -233,9 +263,7 @@ export class CloudStorageProvider implements StorageProvider {
             const mergedCompletions = { ...localCompletions, ...cloudCompletions };
 
             await this.localStorage.set(STORAGE_KEYS.CHECKED_ASSIGNMENTS, mergedCompletions);
-            console.log("[Veracross Plus] Merged completions:", { local: Object.keys(localCompletions).length, cloud: Object.keys(cloudCompletions).length, merged: Object.keys(mergedCompletions).length });
 
-            console.log("[Veracross Plus] Sync pull + merge successful");
             return true;
         } catch (error) {
             console.error("[Veracross Plus] Sync pull error:", error);

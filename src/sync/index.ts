@@ -16,3 +16,5 @@ export {
     trackBackupRestored,
     type TelemetryEvent
 } from "./TelemetryService";
+export { getAutoSyncController, initializeAutoSync } from "./AutoSyncController";
+

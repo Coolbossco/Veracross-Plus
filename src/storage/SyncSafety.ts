@@ -141,7 +141,6 @@ export async function performSafeFirstSync(
     if (!alreadySynced) {
         // First time syncing - create backup
         await backupLocalData();
-        console.log("[Veracross Plus] Created local backup before first sync");
     }
 
     const success = await syncFunction();

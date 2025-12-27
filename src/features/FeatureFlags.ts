@@ -257,7 +257,6 @@ class FeatureFlagsManager {
     const config = FEATURE_FLAG_CONFIG[flag];
 
     if (!config.userConfigurable) {
-      console.warn(`[Veracross Plus] Feature ${flag} is not user-configurable`);
       return;
     }
 

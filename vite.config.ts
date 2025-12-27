@@ -69,8 +69,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
     crx({
-      manifest,
-      // Disable service worker generation - we don't need it
+      manifest: {
+        ...manifest,
+        background: {
+          service_worker: "src/background/index.ts",
+          type: "module",
+        },
+      } as any, // Type cast to avoid potential typing issues with partial manifest updates if strict
       contentScripts: {
         injectCss: true,
       },
@@ -108,6 +113,7 @@ export default defineConfig({
       input: {
         popup: resolve(__dirname, "src/ui/popup/popup.html"),
         options: resolve(__dirname, "src/ui/options/options.html"),
+        updates: resolve(__dirname, "src/ui/updates/updates.html"),
       },
     },
     // Ensure CSS files are included

@@ -2,20 +2,21 @@
  * Veracross Plus — Sync Manager
  *
  * The central orchestrator for all sync activities.
- * Implements safety rules, backup creation, and retry logic.
+ * Implements safety rules, backup creation, retry logic,
+ * dirty flag serialization, and automatic sync guards.
  *
- * @version 1
+ * @version 2 - Added automatic sync support
  */
 
 import { getBackupManager } from "./BackupManager";
-import { getCloudStorageProvider } from "../storage/CloudStorageProvider";
+import { getCloudStorageProvider, registerSyncManager } from "../storage/CloudStorageProvider";
 import { API_BASE_URL } from "../constants";
 import { STORAGE_KEYS } from "../storage/StorageProvider";
 import { getStorageProvider } from "../storage/LocalStorageProvider";
-import { getAuthToken } from "../storage/AuthService";
+import { getAuthToken, isLoggedIn } from "../storage/AuthService";
 import { trackSyncStarted, trackSyncSuccess, trackSyncFailed, trackSyncRetry, trackBackupCreated } from "./TelemetryService";
 
-export type SyncState = "idle" | "checking" | "pushing" | "pulling" | "success" | "error" | "conflict" | "retrying";
+export type SyncState = "idle" | "checking" | "pushing" | "pulling" | "success" | "error" | "conflict" | "retrying" | "offline";
 
 export type SyncErrorClass = "network" | "auth" | "validation" | "server" | "conflict" | "unknown";
 
@@ -33,6 +34,8 @@ export interface SyncError {
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
+const AUTO_SYNC_DEBOUNCE_MS = 2000;
+const FIRST_SYNC_COMPLETE_KEY = "vcp_first_sync_complete";
 
 export class SyncManager {
     private state: SyncState = "idle";
@@ -40,17 +43,151 @@ export class SyncManager {
     private listeners: Set<(state: SyncState, error?: SyncError | null) => void> = new Set();
     private retryCount = 0;
 
+    // Serialization & Dirty Flag
+    private isDirty = false;
+    private syncPromise: Promise<boolean> | null = null;
+    private autoSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Offline tracking
+    private isOffline = false;
+
+    constructor() {
+        // Register this instance with CloudStorageProvider for notifications
+        registerSyncManager(this);
+
+        // Check initial online state
+        if (typeof navigator !== "undefined") {
+            this.isOffline = !navigator.onLine;
+            if (this.isOffline) {
+                this.setState("offline");
+            }
+        }
+    }
+
     /**
-     * Main sync orchestration entry point
+     * Mark data as dirty - triggers debounced auto-sync if enabled
      */
-    async sync(): Promise<boolean> {
-        if (this.state !== "idle" && this.state !== "error") {
-            console.warn("[SyncManager] Sync already in progress, skipping");
+    markDirty(): void {
+        this.isDirty = true;
+        this.scheduleAutoSync();
+    }
+
+    /**
+     * Schedule a debounced auto-sync
+     */
+    private scheduleAutoSync(): void {
+        if (this.autoSyncTimeout) {
+            clearTimeout(this.autoSyncTimeout);
+        }
+
+        this.autoSyncTimeout = setTimeout(async () => {
+            this.autoSyncTimeout = null;
+            if (await this.isAutoSyncEnabled()) {
+                await this.sync();
+            }
+        }, AUTO_SYNC_DEBOUNCE_MS);
+    }
+
+    /**
+     * Check if automatic sync is allowed
+     */
+    async isAutoSyncEnabled(): Promise<boolean> {
+        // Guard 1: Must be online
+        if (this.isOffline) {
             return false;
         }
 
+        // Guard 2: Must be authenticated
+        const authenticated = await isLoggedIn();
+        if (!authenticated) {
+            return false;
+        }
+
+        // Guard 3: Must have completed first sync successfully
+        const firstSyncComplete = await this.isFirstSyncComplete();
+        if (!firstSyncComplete) {
+            return false;
+        }
+
+        // Guard 4: Not in persistent error state (non-retriable)
+        if (this.lastError && !this.lastError.retriable) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if first sync has been completed
+     */
+    private async isFirstSyncComplete(): Promise<boolean> {
+        const storage = getStorageProvider();
+        const complete = await storage.get<boolean>(FIRST_SYNC_COMPLETE_KEY);
+        return complete === true;
+    }
+
+    /**
+     * Mark first sync as complete
+     */
+    private async setFirstSyncComplete(): Promise<void> {
+        const storage = getStorageProvider();
+        await storage.set(FIRST_SYNC_COMPLETE_KEY, true);
+    }
+
+    /**
+     * Handle online/offline status changes
+     */
+    setOnlineStatus(online: boolean): void {
+        const wasOffline = this.isOffline;
+        this.isOffline = !online;
+
+        if (this.isOffline) {
+            this.setState("offline");
+        } else if (wasOffline && online) {
+            this.setState("idle");
+            // If we have pending changes, sync now
+            if (this.isDirty) {
+                this.scheduleAutoSync();
+            }
+        }
+    }
+
+    /**
+     * Main sync orchestration entry point
+     * Serialized: only one sync at a time, dirty flag for re-run
+     */
+    async sync(): Promise<boolean> {
+        // If already syncing, mark dirty and return the existing promise
+        if (this.syncPromise) {
+            this.isDirty = true;
+            return this.syncPromise;
+        }
+
+        // Check if offline
+        if (this.isOffline) {
+            this.isDirty = true; // Queue for later
+            return false;
+        }
+
+        // Clear dirty flag at start
+        this.isDirty = false;
         this.retryCount = 0;
-        return this.attemptSync();
+
+        // Create and track the sync promise
+        this.syncPromise = this.attemptSync();
+
+        try {
+            const result = await this.syncPromise;
+            return result;
+        } finally {
+            this.syncPromise = null;
+
+            // If dirty flag was set during sync, trigger another sync
+            if (this.isDirty) {
+                // Small delay to prevent tight loops
+                setTimeout(() => this.sync(), 500);
+            }
+        }
     }
 
     /**
@@ -72,15 +209,17 @@ export class SyncManager {
             const backupManager = getBackupManager();
             await backupManager.createSnapshot();
             trackBackupCreated();
-            console.log("[SyncManager] Snapshot created before sync");
 
             // 3. Handshake (Rule 2)
             const { localHasData, cloudHasData } = await this.performHandshake();
 
             if (localHasData && !cloudHasData) {
                 // First sync push path
-                console.log("[SyncManager] First sync: Local data exists, cloud empty. Pushing...");
-                return await this.push();
+                const success = await this.push();
+                if (success) {
+                    await this.setFirstSyncComplete();
+                }
+                return success;
             }
 
             // 4. Regular Sync (Pull then Push)
@@ -92,7 +231,11 @@ export class SyncManager {
                 return this.handleFailure({ class: "network", message: "Sync pull failed", retriable: true });
             }
 
-            return await this.push();
+            const success = await this.push();
+            if (success) {
+                await this.setFirstSyncComplete();
+            }
+            return success;
         } catch (error) {
             console.error("[SyncManager] Unexpected sync error:", error);
             const errorClass = this.classifyError(error);
@@ -108,7 +251,6 @@ export class SyncManager {
             const result = await cloudProvider.pushToCloud();
 
             if (result.success && result.written) {
-                console.log("[SyncManager] Cloud write confirmed:", result.written);
                 trackSyncSuccess();
                 this.setState("success");
                 this.lastError = null;
@@ -131,7 +273,6 @@ export class SyncManager {
         if (error.retriable && this.retryCount < MAX_RETRIES) {
             this.retryCount++;
             const backoffMs = INITIAL_BACKOFF_MS * Math.pow(2, this.retryCount - 1);
-            console.log(`[SyncManager] Retry ${this.retryCount}/${MAX_RETRIES} in ${backoffMs}ms`);
             trackSyncRetry(this.retryCount);
 
             this.setState("retrying");
@@ -205,8 +346,6 @@ export class SyncManager {
             return true;
         });
 
-        console.log("[SyncManager] Handshake - localHasData:", localHasData, "localData:", localData);
-
         // To check if cloud has data, we'll try to pull metadata or check with a lightweight call
         const token = await getAuthToken();
 
@@ -244,8 +383,8 @@ export class SyncManager {
         this.notifyListeners();
     }
 
-    getState(): { state: SyncState; error: SyncError | null } {
-        return { state: this.state, error: this.lastError };
+    getState(): { state: SyncState; error: SyncError | null; isOffline: boolean } {
+        return { state: this.state, error: this.lastError, isOffline: this.isOffline };
     }
 
     onStateChange(callback: (state: SyncState, error?: SyncError | null) => void): () => void {
@@ -273,6 +412,16 @@ export class SyncManager {
     async restoreFromBackup(snapshotId: string): Promise<boolean> {
         const backupManager = getBackupManager();
         return backupManager.restoreFromSnapshot(snapshotId);
+    }
+
+    /**
+     * Clear error state and allow retry
+     */
+    clearError(): void {
+        if (this.state === "error") {
+            this.lastError = null;
+            this.setState("idle");
+        }
     }
 }
 

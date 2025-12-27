@@ -100,7 +100,6 @@ class TelemetryService {
             });
         } catch (error) {
             // Silently fail - telemetry should never break the app
-            console.debug("[Telemetry] Failed to send events:", error);
         }
     }
 }

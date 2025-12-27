@@ -7,9 +7,10 @@
 // while maintaining full backwards compatibility with existing functionality.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { getStorageProvider, STORAGE_KEYS } from "../storage";
+import { getStorageProvider, getCloudStorageProvider, STORAGE_KEYS } from "../storage";
 import { initializeFeatureFlags, getFeatureFlags } from "../features";
 import { initializeDataVersioning } from "../migrations";
+import { initializeAutoSync } from "../sync";
 import type { CustomAssignment } from "../models/Assignment";
 import type { CompletionRecord } from "../models/Completion";
 import type { UserPreferences } from "../models/UserPreferences";
@@ -38,7 +39,7 @@ function hash(str: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Storage functions (backwards compatible, delegating to StorageProvider)
+// Storage functions (backwards compatible, using CloudStorageProvider for sync)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function loadSettings(): Promise<UserPreferences> {
@@ -49,7 +50,8 @@ async function loadSettings(): Promise<UserPreferences> {
 }
 
 async function saveSettings(changes: Partial<UserPreferences>): Promise<void> {
-  const storage = getStorageProvider();
+  // Use CloudStorageProvider to trigger sync
+  const storage = getCloudStorageProvider();
   await storage.setMany(changes);
 }
 
@@ -59,7 +61,8 @@ async function getStorage<T>(key: string): Promise<T | undefined> {
 }
 
 async function setStorage(obj: Record<string, unknown>): Promise<void> {
-  const storage = getStorageProvider();
+  // Use CloudStorageProvider to trigger sync
+  const storage = getCloudStorageProvider();
   await storage.setMany(obj);
 }
 
@@ -75,10 +78,10 @@ async function initializePhase1Systems(): Promise<void> {
     // Initialize feature flags system
     await initializeFeatureFlags();
 
-    console.log("[Veracross Plus] Phase 1 systems initialized");
+    // Initialize auto-sync for content script (registers SyncManager)
+    initializeAutoSync();
   } catch (error) {
-    // Non-critical: log and continue with legacy behavior
-    console.warn("[Veracross Plus] Phase 1 initialization warning:", error);
+    // Non-critical: continue with legacy behavior
   }
 }
 

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
     getStorageProvider,
+    getCloudStorageProvider,
     getAuthState,
     login,
     register,
@@ -21,8 +22,9 @@ import {
     STORAGE_KEYS,
     type AuthState
 } from "../../storage";
-import { getSyncManager } from "../../sync";
+import { getSyncManager, initializeAutoSync } from "../../sync";
 import { initializeFeatureFlags } from "../../features";
+
 
 type View = "onboarding" | "auth-choice" | "auth-form" | "main";
 
@@ -45,6 +47,10 @@ const Popup: React.FC = () => {
     useEffect(() => {
         const init = async () => {
             await initializeFeatureFlags();
+
+            // Initialize auto-sync controller for event-driven syncing
+            initializeAutoSync();
+
             const storage = getStorageProvider();
             const isOnboardingComplete = await storage.get<boolean>(STORAGE_KEYS.ONBOARDING_COMPLETE);
 
@@ -72,7 +78,8 @@ const Popup: React.FC = () => {
     const handleToggle = async (key: keyof typeof settings) => {
         const newVal = !settings[key];
         setSettings(prev => ({ ...prev, [key]: newVal }));
-        await getStorageProvider().set(key, newVal);
+        // Use CloudStorageProvider to trigger auto-sync
+        await getCloudStorageProvider().set(key, newVal);
     };
 
     const handleOnboardingChoice = async (choice: "local" | "cloud") => {
@@ -107,6 +114,17 @@ const Popup: React.FC = () => {
                 setSyncStatus(syncSuccess ? "Sync complete" : "Sync failed");
                 setTimeout(() => setSyncStatus(null), 2000);
 
+                // Reload settings from storage after sync to reflect cloud values
+                const storage = getStorageProvider();
+                const storedSettings = await storage.getMany<Record<string, boolean>>([
+                    "enableChecklist",
+                    "enableCustomAssignments"
+                ]);
+                setSettings({
+                    enableChecklist: !!storedSettings.enableChecklist,
+                    enableCustomAssignments: !!storedSettings.enableCustomAssignments,
+                });
+
                 setAuthState(await getAuthState());
                 setView("main");
             } else {
@@ -131,6 +149,19 @@ const Popup: React.FC = () => {
         setSyncSuccess(success);
         setSyncStatus(success ? "Sync complete" : "Sync failed");
         setTimeout(() => setSyncStatus(null), 2000);
+
+        // Reload settings from storage after sync to reflect any changes
+        if (success) {
+            const storage = getStorageProvider();
+            const storedSettings = await storage.getMany<Record<string, boolean>>([
+                "enableChecklist",
+                "enableCustomAssignments"
+            ]);
+            setSettings({
+                enableChecklist: !!storedSettings.enableChecklist,
+                enableCustomAssignments: !!storedSettings.enableCustomAssignments,
+            });
+        }
     };
 
     if (loading) {
