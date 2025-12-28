@@ -13,11 +13,11 @@ import { getCloudStorageProvider, registerSyncManager } from "../storage/CloudSt
 import { API_BASE_URL } from "../constants";
 import { STORAGE_KEYS } from "../storage/StorageProvider";
 import { getStorageProvider } from "../storage/LocalStorageProvider";
-import { getAuthToken, isLoggedIn } from "../storage/AuthService";
-import { canSync } from "../storage/EntitlementService";
+import { getAuthToken, isLoggedIn, handleAuthError } from "../storage/AuthService";
+import { canSync, refreshEntitlementState } from "../storage/EntitlementService";
 import { trackSyncStarted, trackSyncSuccess, trackSyncFailed, trackSyncRetry, trackBackupCreated } from "./TelemetryService";
 
-export type SyncState = "idle" | "checking" | "pushing" | "pulling" | "success" | "error" | "conflict" | "retrying" | "offline";
+export type SyncState = "idle" | "checking" | "pushing" | "pulling" | "success" | "error" | "conflict" | "retrying" | "offline" | "quiet_error";
 
 export type SyncErrorClass = "network" | "auth" | "validation" | "server" | "conflict" | "unknown";
 
@@ -31,15 +31,17 @@ export interface SyncError {
     class: SyncErrorClass;
     message: string;
     retriable: boolean;
+    isTransient: boolean; // True for network/server flakes, false for auth/validation
 }
 
-const MAX_RETRIES = 3;
-const INITIAL_BACKOFF_MS = 1000;
+const MAX_RETRIES = 5; // Increased slightly for better resilience
+const INITIAL_BACKOFF_MS = 2000;
+const MAX_BACKOFF_MS = 30000; // Cap backoff at 30 seconds
 const AUTO_SYNC_DEBOUNCE_MS = 2000;
 const FIRST_SYNC_COMPLETE_KEY = "vcp_first_sync_complete";
 
 export class SyncManager {
-    private state: SyncState = "idle";
+    private state: SyncState = "idle"; // Default to idle
     private lastError: SyncError | null = null;
     private listeners: Set<(state: SyncState, error?: SyncError | null) => void> = new Set();
     private retryCount = 0;
@@ -196,12 +198,18 @@ export class SyncManager {
     private async attemptSync(): Promise<boolean> {
         this.setState("checking");
         trackSyncStarted();
+        const startTime = Date.now();
 
         try {
             // 1. Check Auth
             const token = await getAuthToken();
             if (!token) {
-                this.setError({ class: "auth", message: "User not authenticated", retriable: false });
+                this.setError({
+                    class: "auth",
+                    message: "User not authenticated",
+                    retriable: false,
+                    isTransient: false
+                });
                 return false;
             }
 
@@ -211,12 +219,20 @@ export class SyncManager {
             trackBackupCreated();
 
             // 2.5 Verify Entitlement
-            const allowed = await canSync();
+            let allowed = await canSync();
+            if (!allowed) {
+                // Double check: Force refresh state in case user just upgraded
+                const { refreshEntitlementState } = await import("../storage/EntitlementService");
+                await refreshEntitlementState();
+                allowed = await canSync();
+            }
+
             if (!allowed) {
                 return this.handleFailure({
                     class: "auth",
                     message: "Subscription Required",
-                    retriable: false
+                    retriable: false,
+                    isTransient: false
                 });
             }
 
@@ -255,7 +271,12 @@ export class SyncManager {
                 const pullSuccess = await cloudProvider.pullFromCloud();
 
                 if (!pullSuccess) {
-                    return this.handleFailure({ class: "network", message: "Sync pull failed", retriable: true });
+                    return this.handleFailure({
+                        class: "network",
+                        message: "Sync pull failed",
+                        retriable: true,
+                        isTransient: true
+                    });
                 }
 
                 // Follow up with a push to ensure consistency (e.g. merging new cloud items)
@@ -263,6 +284,13 @@ export class SyncManager {
                 if (success) {
                     await this.setFirstSyncComplete();
                 }
+
+                if (success) {
+                    const duration = Date.now() - startTime;
+                    const { trackSyncLatency } = await import("./TelemetryService");
+                    trackSyncLatency(duration);
+                }
+
                 return success;
             }
         } catch (error) {
@@ -287,7 +315,12 @@ export class SyncManager {
                 setTimeout(() => this.setState("idle"), 3000);
                 return true;
             } else {
-                return this.handleFailure({ class: "server", message: "Sync push failed or write not confirmed", retriable: true });
+                return this.handleFailure({
+                    class: "server",
+                    message: "Sync push failed or write not confirmed",
+                    retriable: true,
+                    isTransient: true
+                });
             }
         } catch (error) {
             const errorClass = this.classifyError(error);
@@ -301,12 +334,40 @@ export class SyncManager {
     private async handleFailure(error: SyncError): Promise<boolean> {
         if (error.retriable && this.retryCount < MAX_RETRIES) {
             this.retryCount++;
-            const backoffMs = INITIAL_BACKOFF_MS * Math.pow(2, this.retryCount - 1);
+
+            // Exponential backoff with jitter
+            // Delay = Base * 2^retries + random(0, Base)
+            const base = INITIAL_BACKOFF_MS;
+            const exp = Math.min(MAX_BACKOFF_MS, base * Math.pow(2, this.retryCount - 1));
+            const jitter = Math.random() * base;
+            const backoffMs = exp + jitter;
+
             trackSyncRetry(this.retryCount);
 
-            this.setState("retrying");
+            // QUIET RECOVERY: If it's a transient error and we haven't exhausted retries,
+            // we use 'quiet_error' state instead of 'error'.
+            if (error.isTransient) {
+                this.setState("quiet_error");
+            } else {
+                this.setError(error);
+                return false; // Fatal errors don't retry here
+            }
+
             await this.delay(backoffMs);
+
+            // Re-check online status before retrying
+            if (this.isOffline) {
+                this.isDirty = true;
+                return false;
+            }
+
             return this.attemptSync();
+        }
+
+        // If it's a subscription error, force a refresh of the entitlement state
+        if (error.message.includes("Subscription Required")) {
+            const { refreshEntitlementState } = await import("../storage/EntitlementService");
+            await refreshEntitlementState();
         }
 
         trackSyncFailed(error.class);
@@ -319,25 +380,43 @@ export class SyncManager {
      */
     private classifyError(error: unknown): SyncError {
         if (error instanceof TypeError && error.message.includes("fetch")) {
-            return { class: "network", message: "Network error", retriable: true };
+            return {
+                class: "network",
+                message: "Network connection lost",
+                retriable: true,
+                isTransient: true
+            };
         }
 
         if (error instanceof Error) {
-            if (error.message.includes("401") || error.message.includes("unauthorized")) {
-                return { class: "auth", message: "Authentication expired", retriable: false };
+            const msg = error.message.toLowerCase();
+
+            if (msg.includes("subscription required")) {
+                return { class: "auth", message: "Subscription Required", retriable: false, isTransient: false };
             }
-            if (error.message.includes("400") || error.message.includes("validation")) {
-                return { class: "validation", message: "Invalid data", retriable: false };
+            if (msg.includes("401") || msg.includes("unauthorized")) {
+                return { class: "auth", message: "Authentication expired", retriable: false, isTransient: false };
             }
-            if (error.message.includes("500") || error.message.includes("server")) {
-                return { class: "server", message: "Server error", retriable: true };
+            if (msg.includes("400") || msg.includes("validation")) {
+                return { class: "validation", message: "Invalid data", retriable: false, isTransient: false };
             }
-            if (error.message.includes("conflict")) {
-                return { class: "conflict", message: "Data conflict detected", retriable: false };
+            if (msg.includes("user not found")) {
+                return { class: "auth", message: "Account deleted", retriable: false, isTransient: false };
+            }
+            if (msg.includes("500") || msg.includes("server")) {
+                return { class: "server", message: "Server issue", retriable: true, isTransient: true };
+            }
+            if (msg.includes("conflict")) {
+                return { class: "conflict", message: "Data conflict detected", retriable: false, isTransient: false };
             }
         }
 
-        return { class: "unknown", message: error instanceof Error ? error.message : "Unknown error", retriable: false };
+        return {
+            class: "unknown",
+            message: error instanceof Error ? error.message : "Unexpected error",
+            retriable: false,
+            isTransient: false
+        };
     }
 
     private async performHandshake(): Promise<{ localHasData: boolean; cloudHasData: boolean }> {
@@ -354,8 +433,6 @@ export class SyncManager {
         const individualSettingKeys = [
             "enableChecklist",
             "enableCustomAssignments",
-            "enableEstimator",
-            "enableHomeRedirect"
         ];
 
         const allKeys = [...unifiedKeys, ...individualSettingKeys];
@@ -383,7 +460,10 @@ export class SyncManager {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (!response.ok) return { localHasData, cloudHasData: false };
+            if (!response.ok) {
+                await handleAuthError(response);
+                return { localHasData, cloudHasData: false };
+            }
 
             const cloudData = await response.json();
             const cloudHasData = Object.values(cloudData).some(val =>

@@ -46,13 +46,14 @@
 html,
 body,
 #root {
-    height: 100%;
     margin: 0;
-    /* Richer, warmer background base */
+    padding: 0;
     background: #f8fafc;
     color: #0f172a;
     font-family: var(--font-system);
-    overflow: hidden;
+    overflow-x: hidden;
+    height: auto !important;
+    width: auto !important;
 }
 
 /* Ambient Background Blobs (Pseudo-elements could also work, but doing this via wrapper) */
@@ -72,14 +73,13 @@ body,
 
 /* 1. Hard-center everything */
 .update-wrapper {
-    height: 100%;
     display: grid;
     place-items: center;
     text-align: center;
-    padding: 40px;
-    width: 100vw;
+    padding: 80px 40px;
     position: relative;
     z-index: 1;
+    overflow-x: hidden;
 }
 
 /* 2. Brand Logo */

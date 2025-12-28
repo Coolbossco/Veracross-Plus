@@ -14,12 +14,15 @@ export type TelemetryEvent =
     | "sync_retry"
     | "conflict_detected"
     | "backup_created"
-    | "backup_restored";
+    | "backup_restored"
+    | "popup_render_time"
+    | "sync_latency";
 
 export interface TelemetryPayload {
     event: TelemetryEvent;
     errorClass?: string;
     retryCount?: number;
+    durationMs?: number; // For performance metrics
     timestamp: string;
 }
 
@@ -65,7 +68,7 @@ class TelemetryService {
     /**
      * Track a telemetry event
      */
-    track(event: TelemetryEvent, extra?: { errorClass?: string; retryCount?: number }): void {
+    track(event: TelemetryEvent, extra?: { errorClass?: string; retryCount?: number; durationMs?: number }): void {
         if (!this.enabled) return;
 
         const payload: TelemetryPayload = {
@@ -136,4 +139,12 @@ export function trackBackupCreated(): void {
 
 export function trackBackupRestored(): void {
     getTelemetryService().track("backup_restored");
+}
+
+export function trackPopupRenderTime(durationMs: number): void {
+    getTelemetryService().track("popup_render_time", { durationMs });
+}
+
+export function trackSyncLatency(durationMs: number): void {
+    getTelemetryService().track("sync_latency", { durationMs });
 }

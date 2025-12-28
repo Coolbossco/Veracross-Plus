@@ -106,7 +106,7 @@ class AutoSyncController {
         if (areaName !== "local") return;
 
         // Ignore internal sync-related keys
-        const ignoredPrefixes = ["vcp_sync_", "vcp_auth_", "vcp_telemetry", "vcp_first_sync"];
+        const ignoredPrefixes = ["vcp_sync_", "vcp_auth_", "vcp_telemetry", "vcp_first_sync", "vcp_entitlement_"];
         const relevantChanges = Object.keys(changes).filter(key =>
             !ignoredPrefixes.some(prefix => key.startsWith(prefix))
         );

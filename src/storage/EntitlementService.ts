@@ -7,7 +7,7 @@
  * @version 1
  */
 
-import { getAuthToken, getAuthState } from "./AuthService";
+import { getAuthToken, getAuthState, handleAuthError } from "./AuthService";
 import { API_BASE_URL } from "../constants";
 
 // Storage keys for entitlement state
@@ -24,6 +24,8 @@ const BENEFIT_EXPIRY = new Date("2026-03-01T00:00:00Z");
  */
 export interface SubscriptionInfo {
     isSubscribed: boolean;
+    isGrandfathered: boolean;
+    grandfatherCutoff: string | null;
     plan: "monthly" | "yearly" | null;
     subscriptionEnd: string | null;
     cancelAtPeriodEnd: boolean;
@@ -146,6 +148,7 @@ async function fetchEntitlementState(): Promise<EntitlementState | null> {
         });
 
         if (!response.ok) {
+            await handleAuthError(response);
             console.warn("[Veracross Plus] Failed to fetch entitlement state:", response.status);
             return null;
         }
@@ -319,11 +322,31 @@ export async function canSync(): Promise<boolean> {
 }
 
 /**
+ * Get cached subscription info instantly (no network)
+ */
+export async function getCachedSubscriptionInfo(): Promise<SubscriptionInfo | null> {
+    const state = await getCachedState();
+    if (!state) return null;
+
+    return {
+        ...state.subscription,
+        isGrandfathered: state.entitlement.isGrandfathered,
+        grandfatherCutoff: state.entitlement.grandfatherCutoff,
+    };
+}
+
+/**
  * Get subscription info for display purposes
  */
-export async function getSubscriptionInfo(): Promise<SubscriptionInfo | null> {
-    const state = await getEntitlementState();
-    return state?.subscription || null;
+export async function getSubscriptionInfo(forceRefresh = false): Promise<SubscriptionInfo | null> {
+    const state = await getEntitlementState(forceRefresh);
+    if (!state) return null;
+
+    return {
+        ...state.subscription,
+        isGrandfathered: state.entitlement.isGrandfathered,
+        grandfatherCutoff: state.entitlement.grandfatherCutoff,
+    };
 }
 
 /**
@@ -340,7 +363,8 @@ export async function isGrandfathered(): Promise<boolean> {
  * Returns the checkout URL to redirect the user to.
  */
 export async function createCheckoutSession(
-    plan: "monthly" | "yearly"
+    plan: "monthly" | "yearly",
+    returnUrl?: string
 ): Promise<{ success: boolean; checkoutUrl?: string; error?: string }> {
     const token = await getAuthToken();
 
@@ -355,7 +379,7 @@ export async function createCheckoutSession(
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ plan }),
+            body: JSON.stringify({ plan, returnUrl }),
         });
 
         if (!response.ok) {
@@ -376,7 +400,9 @@ export async function createCheckoutSession(
  *
  * Returns the portal URL for managing subscription.
  */
-export async function createPortalSession(): Promise<{
+export async function createPortalSession(
+    returnUrl?: string
+): Promise<{
     success: boolean;
     portalUrl?: string;
     error?: string;
@@ -394,6 +420,7 @@ export async function createPortalSession(): Promise<{
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
+            body: JSON.stringify({ returnUrl }),
         });
 
         if (!response.ok) {

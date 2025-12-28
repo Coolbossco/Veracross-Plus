@@ -16,6 +16,7 @@ import type { CompletionRecord } from "../models/Completion";
 import type { UserPreferences } from "../models/UserPreferences";
 import { DEFAULT_USER_PREFERENCES } from "../models/UserPreferences";
 import { canCreateCustomAssignment, createCheckoutSession, refreshEntitlementState } from "../storage/EntitlementService";
+import { getAuthState } from "../storage/AuthService";
 
 // CSS is loaded via manifest.json content_scripts.css
 
@@ -240,6 +241,22 @@ function handleWindowResize() {
   }, 100);
 }
 
+// Debounce utility
+function debounce(func: Function, wait: number) {
+  let timeout: number | undefined;
+  return function executedFunction(...args: any[]) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = window.setTimeout(later, wait);
+  };
+}
+
+// Global scan function for checklist items
+let globalChecklistScan: (() => void) | null = null;
+
 // ———————————————— Feature 1: Homework checklist ————————————————
 async function applyChecklist() {
   const checked = (await getStorage("vc_checked_assignments")) || {};
@@ -254,7 +271,8 @@ function applyChecklistToDocument(doc: Document, checked: CompletionRecord) {
   // Clear any existing checkboxes first to prevent duplicates
   const existingCheckboxes = doc.querySelectorAll(".vch-task-wrap");
   if (existingCheckboxes.length > 0) {
-    existingCheckboxes.forEach((cb: Element) => cb.remove());
+    // Only remove if we're doing a full re-apply
+    // For performance optimization, we might improve this later to differential update
   }
 
   // Much more specific selectors to avoid multiple checkboxes per assignment
@@ -610,109 +628,11 @@ function applyChecklistToDocument(doc: Document, checked: CompletionRecord) {
   }
 
   scan();
-  const mo = new MutationObserver(() => scan());
-  mo.observe(doc.documentElement, { childList: true, subtree: true });
+  globalChecklistScan = scan;
 }
 
-// ———————————————— Feature 2: Exact % estimator ————————————————
-function parseScores(root: HTMLElement) {
-  // Finds fragments like "8/10" or "75%" inside tables/lists.
-  const text = root.innerText || "";
-  const byFraction = [
-    ...text.matchAll(/(\b\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/g),
-  ].map((m) => ({ earned: +m[1], possible: +m[2] }));
-  const byPercent = [...text.matchAll(/(\b\d+(?:\.\d+)?)\s*%/g)].map((m) => ({
-    percent: +m[1],
-  }));
-  return { byFraction, byPercent };
-}
 
-function estimatePercent({ byFraction, byPercent }: { byFraction: Array<{ earned: number; possible: number }>; byPercent: Array<{ percent: number }> }) {
-  let earned = 0,
-    possible = 0;
-  byFraction.forEach(({ earned: e, possible: p }: { earned: number; possible: number }) => {
-    if (!isNaN(e) && !isNaN(p) && p > 0) {
-      earned += e;
-      possible += p;
-    }
-  });
-
-  // If we only have percents, average them (unweighted) as a fallback.
-  if (possible === 0 && byPercent.length) {
-    const avg = byPercent.reduce((s: number, r: { percent: number }) => s + r.percent, 0) / byPercent.length;
-    return { percent: avg, method: "avg of visible %" };
-  }
-  if (possible > 0) {
-    return { percent: (earned / possible) * 100, method: "sum of points" };
-  }
-  return { percent: null, method: "no data" };
-}
-
-function ensurePanel() {
-  let panel = document.querySelector(".vch-grade-panel");
-  if (panel) return panel;
-  panel = document.createElement("div");
-  panel.className = "vch-grade-panel";
-  panel.innerHTML = `
-      <div class="vch-grade-row">
-        <strong>Estimated Grade</strong>
-        <span class="vch-grade-value">—</span>
-      </div>
-      <div class="vch-grade-note">Based on visible scores only · unofficial</div>
-    `;
-  document.body.appendChild(panel);
-  return panel;
-}
-
-function applyEstimator() {
-  const panel = ensurePanel();
-
-  function recalc() {
-    // Heuristic: prefer the main content region
-    const main =
-      (document.querySelector("main, #main, .main-content") as HTMLElement) || document.body;
-    const data = parseScores(main);
-    const est = estimatePercent(data);
-    const val = panel.querySelector(".vch-grade-value");
-    if (val) {
-      if (est.percent == null) {
-        val.textContent = "—";
-      } else {
-        val.textContent = `${est.percent.toFixed(1)}%`;
-      }
-    }
-    const panelEl = panel as HTMLElement;
-    panelEl.title = `Method: ${est.method}`;
-  }
-
-  recalc();
-  const mo = new MutationObserver(() => recalc());
-  mo.observe(document.documentElement, { childList: true, subtree: true });
-}
-
-// ———————————————— Feature 3: Home redirect ————————————————
-function maybeRedirectHome(settings: UserPreferences): void {
-  try {
-    if (!settings.enableHomeRedirect) return;
-    if (!settings.homeUrl) return;
-
-    const isRootish =
-      /\/student\/?$/.test(location.pathname) ||
-      /\/portal\/?$/.test(location.pathname);
-    if (isRootish) {
-      // Support relative or absolute
-      const target = settings.homeUrl.startsWith("http")
-        ? settings.homeUrl
-        : new URL(settings.homeUrl, location.origin).toString();
-      if (location.toString() !== target) {
-        location.replace(target);
-      }
-    }
-  } catch (e) {
-    // no-op
-  }
-}
-
+// ———————————————— Feature 4: Custom Assignments ————————————————
 // ———————————————— Feature 4: Custom Assignments ————————————————
 let customAssignmentsInjected = false;
 let injectionInProgress = false;
@@ -1017,7 +937,10 @@ async function loadAndInjectCustomAssignments(): Promise<void> {
  * Show upgrade modal when user tries to create custom assignment without entitlement
  * Follows Phase 5 guidelines: calm, informational, optional, non-urgent
  */
-function showUpgradeModal(reason: string, message?: string): void {
+async function showUpgradeModal(reason: string, message?: string): Promise<void> {
+  const authState = await getAuthState();
+  const isLoggedIn = authState.isLoggedIn;
+
   // Remove any existing modals
   const existingModals = document.querySelectorAll(".vch-assignment-modal, .vch-upgrade-modal");
   existingModals.forEach((modal) => modal.remove());
@@ -1068,59 +991,80 @@ function showUpgradeModal(reason: string, message?: string): void {
     </div>
 
     <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-      <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 8px;">
-        <div>
-          <div style="font-size: 20px; font-weight: 600; color: #333;">$2.99</div>
-          <div style="font-size: 12px; color: #666;">/month</div>
+      ${!isLoggedIn ? `
+        <div style="color: #1976d2; font-weight: 600; font-size: 15px; margin-bottom: 4px;">Sign in required</div>
+        <div style="font-size: 13px; color: #666;">Open the Veracross Plus extension popup to sign in or create an account.</div>
+      ` : `
+        <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 8px;">
+          <div>
+            <div style="font-size: 20px; font-weight: 600; color: #333;">$2.99</div>
+            <div style="font-size: 12px; color: #666;">/month</div>
+          </div>
+          <div style="border-left: 1px solid #ddd;"></div>
+          <div>
+            <div style="font-size: 20px; font-weight: 600; color: #333;">$24.99</div>
+            <div style="font-size: 12px; color: #666;">/year</div>
+            <div style="font-size: 10px; color: #4caf50; font-weight: 500;">Save 30%</div>
+          </div>
         </div>
-        <div style="border-left: 1px solid #ddd;"></div>
-        <div>
-          <div style="font-size: 20px; font-weight: 600; color: #333;">$24.99</div>
-          <div style="font-size: 12px; color: #666;">/year</div>
-          <div style="font-size: 10px; color: #4caf50; font-weight: 500;">Save 30%</div>
-        </div>
-      </div>
+      `}
     </div>
 
     <div style="display: flex; flex-direction: column; gap: 12px;">
-      <button id="vch-upgrade-yearly" style="
-        background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 14px 24px;
-        font-size: 15px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        font-family: inherit;
-      ">
-        Enable Cloud Features — Yearly
-      </button>
-      <button id="vch-upgrade-monthly" style="
-        background: white;
-        color: #1976d2;
-        border: 1px solid #1976d2;
-        border-radius: 8px;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        font-family: inherit;
-      ">
-        Enable Cloud Features — Monthly
-      </button>
-      <button id="vch-upgrade-cancel" style="
-        background: transparent;
-        color: #666;
-        border: none;
-        padding: 12px 24px;
-        font-size: 14px;
-        cursor: pointer;
-        font-family: inherit;
-      ">
-        Keep using local mode
-      </button>
+      ${!isLoggedIn ? `
+        <button id="vch-upgrade-cancel" style="
+          background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 14px 24px;
+          font-size: 15px;
+          font-weight: 500;
+          cursor: pointer;
+          font-family: inherit;
+        ">
+          Got it
+        </button>
+      ` : `
+        <button id="vch-upgrade-yearly" style="
+          background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 14px 24px;
+          font-size: 15px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          font-family: inherit;
+        ">
+          Enable Cloud Features — Yearly
+        </button>
+        <button id="vch-upgrade-monthly" style="
+          background: white;
+          color: #1976d2;
+          border: 1px solid #1976d2;
+          border-radius: 8px;
+          padding: 12px 24px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          font-family: inherit;
+        ">
+          Enable Cloud Features — Monthly
+        </button>
+        <button id="vch-upgrade-cancel" style="
+          background: transparent;
+          color: #666;
+          border: none;
+          padding: 12px 24px;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: inherit;
+        ">
+          Keep using local mode
+        </button>
+      `}
     </div>
 
     <p style="margin: 16px 0 0 0; color: #999; font-size: 12px;">
@@ -1161,7 +1105,11 @@ function showUpgradeModal(reason: string, message?: string): void {
     yearlyBtn.textContent = "Loading...";
     yearlyBtn.setAttribute("disabled", "true");
 
-    const result = await createCheckoutSession("yearly");
+    const returnUrl = typeof chrome !== 'undefined' && chrome.runtime?.getURL
+      ? chrome.runtime.getURL('src/ui/options/options.html')
+      : undefined;
+
+    const result = await createCheckoutSession("yearly", returnUrl);
     if (result.success && result.checkoutUrl) {
       window.open(result.checkoutUrl, "_blank");
       closeModal();
@@ -1177,7 +1125,11 @@ function showUpgradeModal(reason: string, message?: string): void {
     monthlyBtn.textContent = "Loading...";
     monthlyBtn.setAttribute("disabled", "true");
 
-    const result = await createCheckoutSession("monthly");
+    const returnUrl = typeof chrome !== 'undefined' && chrome.runtime?.getURL
+      ? chrome.runtime.getURL('src/ui/options/options.html')
+      : undefined;
+
+    const result = await createCheckoutSession("monthly", returnUrl);
     if (result.success && result.checkoutUrl) {
       window.open(result.checkoutUrl, "_blank");
       closeModal();
@@ -3411,61 +3363,37 @@ chrome.runtime.onMessage.addListener((message: { type?: string }, sender, sendRe
 
     const settings = await loadSettings();
 
-    maybeRedirectHome(settings);
 
-    // Fix clipping issues first
+
+    // Initial pass
     fixClippingIssues();
-    // Also enhance scrolling for timeline cells
     setTimeout(() => enhanceTimelineScrolling(), 100);
 
-    // For Veracross timeline, wait for the timeline to be rendered
-    if (
-      location.hostname.includes("veracross") ||
-      location.hostname.includes("portals")
-    ) {
-      let timelineCheckCount = 0;
-      const maxChecks = 50; // Prevent infinite polling
-
-      // Wait for timeline to be created
-      const waitForTimeline = () => {
-        timelineCheckCount++;
-        const timeline = document.querySelector(
-          ".timeline-records, .timeline-table",
-        );
-
-        if (timeline) {
-          // Apply fixes when timeline is found
-          setTimeout(() => {
-            fixClippingIssues();
-            enhanceTimelineScrolling();
-          }, 500);
-          setTimeout(() => {
-            fixClippingIssues();
-            enhanceTimelineScrolling();
-          }, 1000);
-          setTimeout(() => {
-            fixClippingIssues();
-            enhanceTimelineScrolling();
-          }, 2000);
-        } else if (timelineCheckCount < maxChecks) {
-          setTimeout(waitForTimeline, 100);
-        }
-      };
-      waitForTimeline();
+    if (settings.enableChecklist) {
+      await applyChecklist();
     }
 
-    // Monitor for dynamic content changes and reapply fixes
-    const clipObserver = new MutationObserver((mutations) => {
-      fixClippingIssues();
-      // Also enhance scrolling for any new scrollable cells
-      setTimeout(() => enhanceTimelineScrolling(), 100);
+    // Apply custom assignments if enabled
+    await applyCustomAssignments(settings);
 
-      // Check if timeline structure changed and re-inject assignments if needed
+    // Single Consolidated MutationObserver
+    // Handles specific checks efficiently and debounces updates
+    const handleMutations = debounce((mutations: MutationRecord[]) => {
+      // 1. Always check for clipping/scrolling needing updates
+      fixClippingIssues();
+      enhanceTimelineScrolling();
+
+      // 2. Checklist items (if enabled)
+      if (globalChecklistScan) {
+        globalChecklistScan();
+      }
+
+      // 4. Custom Assignments Timeline Checks
       const hasTimelineChanges = mutations.some((mutation) => {
         return Array.from(mutation.addedNodes).some((node) => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element;
-            // Don't re-inject if we're just adding our own custom elements
+            // Ignore our own injections
             if (
               element.matches &&
               (element.matches("[data-vch-custom]") ||
@@ -3494,62 +3422,50 @@ chrome.runtime.onMessage.addListener((message: { type?: string }, sender, sendRe
         settings.enableCustomAssignments &&
         !instantUpdateInProgress
       ) {
-        setTimeout(async () => {
-          customAssignmentsInjected = false;
-          injectionInProgress = false;
-          await instantAssignmentUpdate();
-        }, 100);
+        // Debounce re-injection
+        customAssignmentsInjected = false;
+        injectionInProgress = false;
+        instantAssignmentUpdate().catch(() => { });
       }
-    });
-    clipObserver.observe(document.documentElement, {
+    }, 250); // 250ms debounce window
+
+    const globalObserver = new MutationObserver(handleMutations);
+    globalObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
+      // We generally don't need attributes for these features, save performance
+      attributes: false,
+      characterData: false
     });
+
+    // For Veracross timeline, wait for the timeline to be rendered (poll backup)
+    if (
+      location.hostname.includes("veracross") ||
+      location.hostname.includes("portals")
+    ) {
+      let timelineCheckCount = 0;
+      const maxChecks = 50; // Prevent infinite polling
+
+      const waitForTimeline = () => {
+        timelineCheckCount++;
+        const timeline = document.querySelector(
+          ".timeline-records, .timeline-table",
+        );
+
+        if (timeline) {
+          setTimeout(() => {
+            fixClippingIssues();
+            enhanceTimelineScrolling();
+          }, 500);
+        } else if (timelineCheckCount < maxChecks) {
+          setTimeout(waitForTimeline, 100);
+        }
+      };
+      waitForTimeline();
+    }
 
     // Add window resize listener for responsive scrolling
     window.addEventListener("resize", handleWindowResize);
-
-    // Add scroll event listener to fix alignment issues during horizontal scrolling
-    const scrollContainer =
-      document.querySelector(
-        ".timeline-table-wrapper, .timeline-records-wrapper, .timeline-wrapper, .timeline-table, .timeline-records",
-      ) || document;
-    scrollContainer.addEventListener("scroll", () => {
-      // Debounce the scroll event to avoid excessive calls
-      const scrollEl = scrollContainer as HTMLElement & { scrollTimeout?: number };
-      if (scrollEl.scrollTimeout) {
-        clearTimeout(scrollEl.scrollTimeout);
-      }
-      scrollEl.scrollTimeout = window.setTimeout(() => {
-        // fixTableAlignment(); // This function is removed
-      }, 100);
-    });
-
-    if (settings.enableChecklist) {
-      // Apply checklist directly to the current page
-      // This works on all Veracross pages without iframe communication issues
-      const checked = (await getStorage<CompletionRecord>("vc_checked_assignments")) || ({} as CompletionRecord);
-
-      // Wait for DOM to be ready
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => {
-          applyChecklistToDocument(document, checked);
-          // Recalculate scrolling after checkboxes are added
-          setTimeout(() => enhanceTimelineScrolling(), 200);
-        });
-      } else {
-        applyChecklistToDocument(document, checked);
-        // Recalculate scrolling after checkboxes are added
-        setTimeout(() => enhanceTimelineScrolling(), 200);
-      }
-    }
-
-    if (settings.enableEstimator) {
-      applyEstimator();
-    }
-
-    // Apply custom assignments if enabled
-    await applyCustomAssignments(settings);
 
     // Set up URL change detection for single-page app navigation
     let currentUrl = location.href;
@@ -3565,10 +3481,11 @@ chrome.runtime.onMessage.addListener((message: { type?: string }, sender, sendRe
             injectionInProgress = false;
             await instantAssignmentUpdate();
           }
+          // Re-run other checks on nav
+          if (globalChecklistScan) globalChecklistScan();
+          fixClippingIssues();
         }, 100);
       }
-
-      // Continue checking
       setTimeout(checkForUrlChange, 1000);
     };
 

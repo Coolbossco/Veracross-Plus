@@ -150,10 +150,7 @@ export const STORAGE_KEYS = {
   // Legacy keys (for migration compatibility)
   LEGACY: {
     ENABLE_CHECKLIST: "enableChecklist",
-    ENABLE_ESTIMATOR: "enableEstimator",
-    ENABLE_HOME_REDIRECT: "enableHomeRedirect",
     ENABLE_CUSTOM_ASSIGNMENTS: "enableCustomAssignments",
-    HOME_URL: "homeUrl",
   },
 } as const;
 

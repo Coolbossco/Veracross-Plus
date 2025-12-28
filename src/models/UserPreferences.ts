@@ -15,17 +15,8 @@ export interface UserPreferences {
   /** Enable homework checkboxes on timeline and schedule pages */
   enableChecklist: boolean;
 
-  /** Enable grade percentage estimator */
-  enableEstimator: boolean;
-
-  /** Enable automatic redirect to a custom home URL */
-  enableHomeRedirect: boolean;
-
   /** Enable custom assignments feature */
   enableCustomAssignments: boolean;
-
-  /** Custom home URL for redirect feature (relative or absolute) */
-  homeUrl: string;
 }
 
 /**
@@ -36,10 +27,7 @@ export interface UserPreferences {
  */
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   enableChecklist: false,
-  enableEstimator: false,
-  enableHomeRedirect: false,
   enableCustomAssignments: false,
-  homeUrl: "",
 };
 
 /**
@@ -47,8 +35,6 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
  */
 export type ToggleablePreference =
   | "enableChecklist"
-  | "enableEstimator"
-  | "enableHomeRedirect"
   | "enableCustomAssignments";
 
 /**
@@ -61,10 +47,7 @@ export function validatePreferences(
 ): UserPreferences {
   return {
     enableChecklist: Boolean(data.enableChecklist ?? DEFAULT_USER_PREFERENCES.enableChecklist),
-    enableEstimator: Boolean(data.enableEstimator ?? DEFAULT_USER_PREFERENCES.enableEstimator),
-    enableHomeRedirect: Boolean(data.enableHomeRedirect ?? DEFAULT_USER_PREFERENCES.enableHomeRedirect),
     enableCustomAssignments: Boolean(data.enableCustomAssignments ?? DEFAULT_USER_PREFERENCES.enableCustomAssignments),
-    homeUrl: typeof data.homeUrl === "string" ? data.homeUrl : DEFAULT_USER_PREFERENCES.homeUrl,
   };
 }
 

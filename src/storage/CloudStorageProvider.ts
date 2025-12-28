@@ -9,7 +9,7 @@
 
 import type { StorageProvider } from "./StorageProvider";
 import { STORAGE_KEYS } from "./StorageProvider";
-import { getAuthToken } from "./AuthService";
+import { getAuthToken, handleAuthError } from "./AuthService";
 import { LocalStorageProvider } from "./LocalStorageProvider";
 
 import { API_BASE_URL } from "../constants";
@@ -129,9 +129,6 @@ export class CloudStorageProvider implements StorageProvider {
             const individualSettings = await this.localStorage.getMany([
                 "enableChecklist",
                 "enableCustomAssignments",
-                "enableEstimator",
-                "enableHomeRedirect",
-                "homeUrl"
             ]);
 
             // Merge individual settings into preferences object for sync
@@ -154,15 +151,23 @@ export class CloudStorageProvider implements StorageProvider {
             });
 
             if (!response.ok) {
-                console.error("[Veracross Plus] Sync push failed:", await response.text());
-                return { success: false };
+                await handleAuthError(response);
+                const errorText = await response.text();
+                let errorMessage = "Sync push failed";
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.error || errorJson.message || errorMessage;
+                } catch (e) {
+                    errorMessage = `${response.status}: ${errorText || response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
             return { success: true, written: result.written };
         } catch (error) {
             console.error("[Veracross Plus] Sync push error:", error);
-            return { success: false };
+            throw error;
         } finally {
             this.syncInProgress = false;
         }
@@ -185,8 +190,16 @@ export class CloudStorageProvider implements StorageProvider {
             });
 
             if (!response.ok) {
-                console.error("[Veracross Plus] Sync pull failed:", await response.text());
-                return false;
+                await handleAuthError(response);
+                const errorText = await response.text();
+                let errorMessage = "Sync pull failed";
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.error || errorJson.message || errorMessage;
+                } catch (e) {
+                    errorMessage = `${response.status}: ${errorText || response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
 
             const cloudData = await response.json();
@@ -205,15 +218,6 @@ export class CloudStorageProvider implements StorageProvider {
                 }
                 if (mergedPrefs.enableCustomAssignments !== undefined) {
                     await this.localStorage.set("enableCustomAssignments", mergedPrefs.enableCustomAssignments);
-                }
-                if (mergedPrefs.enableEstimator !== undefined) {
-                    await this.localStorage.set("enableEstimator", mergedPrefs.enableEstimator);
-                }
-                if (mergedPrefs.enableHomeRedirect !== undefined) {
-                    await this.localStorage.set("enableHomeRedirect", mergedPrefs.enableHomeRedirect);
-                }
-                if (mergedPrefs.homeUrl !== undefined) {
-                    await this.localStorage.set("homeUrl", mergedPrefs.homeUrl);
                 }
             }
 
@@ -267,7 +271,7 @@ export class CloudStorageProvider implements StorageProvider {
             return true;
         } catch (error) {
             console.error("[Veracross Plus] Sync pull error:", error);
-            return false;
+            throw error;
         } finally {
             this.syncInProgress = false;
         }

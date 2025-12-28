@@ -9,7 +9,8 @@ import {
     Plus,
     Layers,
     User as UserIcon,
-    Loader2
+    Loader2,
+    LayoutDashboard
 } from "lucide-react";
 import logo from "../../assets/icons/128.png";
 import {
@@ -24,7 +25,9 @@ import {
 } from "../../storage";
 import { getSyncManager, initializeAutoSync } from "../../sync";
 import { initializeFeatureFlags } from "../../features";
-import { getSubscriptionInfo, type SubscriptionInfo } from "../../storage/EntitlementService";
+import { getSubscriptionInfo, getCachedSubscriptionInfo, type SubscriptionInfo } from "../../storage/EntitlementService";
+import { Tooltip } from "../components/Tooltip";
+import { trackPopupRenderTime } from "../../sync/TelemetryService";
 
 
 type View = "onboarding" | "auth-choice" | "auth-form" | "main" | "upgrade";
@@ -47,8 +50,12 @@ const Popup: React.FC = () => {
         enableCustomAssignments: false,
     });
 
+    // Performance tracking: track how long until initial UI is ready
+    const [mountTime] = useState(Date.now());
+
     useEffect(() => {
         const init = async () => {
+            // Start feature flags init (non-blocking if possible, but we await to ensure consistent state)
             await initializeFeatureFlags();
 
             // Initialize auto-sync controller for event-driven syncing
@@ -59,6 +66,7 @@ const Popup: React.FC = () => {
 
             if (!isOnboardingComplete) {
                 setView("onboarding");
+                setLoading(false);
             } else {
                 const state = await getAuthState();
                 setAuthState(state);
@@ -72,13 +80,27 @@ const Popup: React.FC = () => {
                     enableCustomAssignments: !!storedSettings.enableCustomAssignments,
                 });
 
-                // Fetch subscription info
-                const sub = await getSubscriptionInfo();
-                setSubscription(sub);
+                // Optimistic UI: Load cached subscription info first
+                const cachedSub = await getCachedSubscriptionInfo();
+                if (cachedSub) {
+                    setSubscription(cachedSub);
+                }
 
+                // Render immediately with cached state
                 setView("main");
+                setLoading(false);
+
+                // Background revalidation: Fetch fresh info if needed
+                getSubscriptionInfo().then(sub => {
+                    // Update state only if we got a valid response (or if it changed)
+                    // React state updates handle equality checks mostly, but good to be safe
+                    if (sub) {
+                        setSubscription(sub);
+                    }
+                });
             }
             setLoading(false);
+            trackPopupRenderTime(Date.now() - mountTime);
         };
         init();
     }, []);
@@ -134,6 +156,7 @@ const Popup: React.FC = () => {
                 });
 
                 setAuthState(await getAuthState());
+                setSubscription(await getSubscriptionInfo(true));
                 setView("main");
             } else {
                 setAuthError(res.error || "Authentication failed");
@@ -155,7 +178,12 @@ const Popup: React.FC = () => {
         setUpgradeSubmitting(plan);
         try {
             const { createCheckoutSession } = await import("../../storage/EntitlementService");
-            const res = await createCheckoutSession(plan);
+            const dashboardUrl = typeof chrome !== 'undefined' && chrome.runtime?.getURL
+                ? chrome.runtime.getURL('src/ui/options/options.html')
+                : window.location.origin + '/options.html';
+
+            const res = await createCheckoutSession(plan, dashboardUrl);
+            
             if (res.success && res.checkoutUrl) {
                 window.open(res.checkoutUrl, "_blank");
                 setView("main");
@@ -179,13 +207,19 @@ const Popup: React.FC = () => {
         if (success) {
             setSyncStatus("Sync complete");
         } else {
-            const error = syncManager.getState().error;
-            if (error?.message === "Subscription Required") {
+            const { state, error } = syncManager.getState();
+
+            if (state === "quiet_error") {
+                setSyncStatus("Will retry soon...");
+                setSyncSuccess(true); // Treat as success/neutral for UI color
+            } else if (error?.message === "Subscription Required") {
+                setSubscription(await getSubscriptionInfo());
                 setView("upgrade");
                 setSyncStatus(null);
                 return;
+            } else {
+                setSyncStatus(error?.message || "Sync failed");
             }
-            setSyncStatus(error?.message || "Sync failed");
         }
         setTimeout(() => setSyncStatus(null), 3000);
 
@@ -205,14 +239,14 @@ const Popup: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[480px]">
+            <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto p-6 flex flex-col h-full">
+        <div className="container mx-auto p-6 flex flex-col">
             <header className="flex items-center gap-3 mb-6">
                 <img src={logo} alt="Veracross Plus" className="w-10 h-10 object-contain shadow-lg shadow-indigo-500/10 rounded-xl" />
                 <h1 className="text-xl font-bold tracking-tight text-slate-800">Veracross Plus</h1>
@@ -334,72 +368,79 @@ const Popup: React.FC = () => {
             {view === "main" && (
                 <div className="flex flex-col animate-in fade-in duration-300">
                     {authState.isLoggedIn && authState.user && (
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-center justify-between mb-6 shadow-sm">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_0_3px_rgba(16,185,129,0.1)]"></div>
-                                <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[13px] font-bold text-slate-700 truncate max-w-[140px]">{authState.user.email}</span>
-                                        {subscription?.isSubscribed && (
-                                            <span className="bg-indigo-50 text-indigo-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 flex items-center gap-1 animate-in zoom-in-75 duration-300">
-                                                <Cloud className="w-2.5 h-2.5" />
-                                                {subscription.plan?.toUpperCase()}
-                                            </span>
-                                        )}
-                                    </div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col gap-3 mb-4 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-3 opacity-[0.03] pointer-events-none">
+                                <UserIcon size={48} />
+                            </div>
+                            <div className="flex items-center justify-between gap-4 relative z-10">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_0_3px_rgba(16,185,129,0.1)] shrink-0"></div>
+                                    <span className="text-[14px] font-bold text-slate-700 truncate">{authState.user.email}</span>
                                     {subscription?.isSubscribed ? (
-                                        <span className="text-[11px] text-slate-400 font-medium">Cloud sync active</span>
+                                        <span className="bg-indigo-50 text-indigo-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-indigo-100 uppercase tracking-tight">
+                                            {subscription.plan}
+                                        </span>
+                                    ) : subscription?.isGrandfathered ? (
+                                        <span className="bg-emerald-50 text-emerald-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-emerald-100 uppercase tracking-tight">
+                                            Legacy
+                                        </span>
                                     ) : (
-                                        <button
-                                            onClick={() => setView("upgrade")}
-                                            className="text-[11px] font-bold text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1"
-                                        >
-                                            Sync disabled (Upgrade required)
-                                        </button>
+                                        <span className="bg-slate-100 text-slate-500 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border border-slate-200 uppercase tracking-tight">
+                                            Free
+                                        </span>
                                     )}
                                 </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors shrink-0 whitespace-nowrap"
+                                >
+                                    Sign Out
+                                </button>
                             </div>
-                            <button onClick={handleLogout} className="text-[13px] font-semibold text-slate-400 hover:text-red-400 transition-colors">
-                                Sign Out
+
+                            <button
+                                onClick={() => typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage ? chrome.runtime.openOptionsPage() : window.open('options.html')}
+                                className="w-full bg-white border border-slate-200 text-slate-700 py-2 rounded-lg text-[12px] font-bold shadow-sm hover:shadow-md hover:border-indigo-200 hover:text-indigo-600 transition-all flex items-center justify-center gap-2 group"
+                            >
+                                <LayoutDashboard size={14} className="text-slate-400 group-hover:text-indigo-500" />
+                                Open Dashboard
                             </button>
                         </div>
                     )}
 
                     <div className="flex flex-col gap-4">
-                        <div className="bg-white rounded-2xl p-5 shadow-lg border border-black/5 flex flex-col gap-3.5">
+                        <div className="bg-white rounded-2xl p-4 shadow-lg border border-black/5 flex flex-col gap-3">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-indigo-500">
-                                        <CheckCircle2 className="w-5 h-5" />
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center text-indigo-500">
+                                        <CheckCircle2 size={18} />
                                     </div>
                                     <div className="font-semibold text-sm">Checkboxes</div>
                                 </div>
                                 <button
                                     onClick={() => handleToggle("enableChecklist")}
-                                    className={`w-12 h-6.5 rounded-full relative transition-colors ${settings.enableChecklist ? 'bg-indigo-500' : 'bg-slate-200'}`}
+                                    className={`w-10 h-5.5 rounded-full relative transition-colors ${settings.enableChecklist ? 'bg-indigo-500' : 'bg-slate-200'}`}
                                 >
-                                    <div className={`absolute top-1 w-4.5 h-4.5 bg-white rounded-full transition-transform ${settings.enableChecklist ? 'left-6.5' : 'left-1'} shadow-sm`} />
+                                    <div className={`absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full transition-transform ${settings.enableChecklist ? 'left-5' : 'left-0.5'} shadow-sm`} />
                                 </button>
                             </div>
-                            <p className="text-[13px] text-slate-500 leading-relaxed">Enable interactive checkboxes for assignments.</p>
                         </div>
 
-                        <div className="bg-white rounded-2xl p-5 shadow-lg border border-black/5 flex flex-col gap-3.5">
+                        <div className="bg-white rounded-2xl p-4 shadow-lg border border-black/5 flex flex-col gap-3">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-indigo-500">
-                                        <Plus className="w-5 h-5" />
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center text-indigo-500">
+                                        <Plus size={18} />
                                     </div>
                                     <div className="font-semibold text-sm">Custom Tasks</div>
                                 </div>
                                 <button
                                     onClick={() => handleToggle("enableCustomAssignments")}
-                                    className={`w-12 h-6.5 rounded-full relative transition-colors ${settings.enableCustomAssignments ? 'bg-indigo-500' : 'bg-slate-200'}`}
+                                    className={`w-10 h-5.5 rounded-full relative transition-colors ${settings.enableCustomAssignments ? 'bg-indigo-500' : 'bg-slate-200'}`}
                                 >
-                                    <div className={`absolute top-1 w-4.5 h-4.5 bg-white rounded-full transition-transform ${settings.enableCustomAssignments ? 'left-6.5' : 'left-1'} shadow-sm`} />
+                                    <div className={`absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full transition-transform ${settings.enableCustomAssignments ? 'left-5' : 'left-0.5'} shadow-sm`} />
                                 </button>
                             </div>
-                            <p className="text-[13px] text-slate-500 leading-relaxed">Add your own assignments to the timeline.</p>
                         </div>
                     </div>
 
@@ -413,7 +454,7 @@ const Popup: React.FC = () => {
                                 Sync Now
                             </button>
                             {syncStatus && (
-                                <div className={`text-[13px] font-bold text-center animate-in fade-in duration-300 ${syncSuccess ? 'text-emerald-500' : 'text-red-500'}`}>
+                                <div className={`text-[13px] font-bold text-center animate-in fade-in duration-300 ${syncSuccess ? 'text-indigo-500' : 'text-slate-400'}`}>
                                     {syncStatus}
                                 </div>
                             )}

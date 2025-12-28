@@ -3,7 +3,7 @@ import { crx } from "@crxjs/vite-plugin";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
-import { copyFileSync, mkdirSync, existsSync } from "fs";
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
@@ -16,15 +16,14 @@ const manifest = {
   name: "Veracross Plus",
   description:
     "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
-  version: "0.3.2",
+  version: "1.0.0",
 
   permissions: ["storage"],
   host_permissions: [
     "*://*.veracross.com/*",
     "*://*.myveracross.com/*",
     "*://portals.veracross.com/*",
-    "*://portals-embed.veracross.com/*",
-    "http://localhost:3000/*",
+    "*://portals-embed.veracross.com/*"
   ],
 
   icons: {
@@ -61,6 +60,13 @@ const manifest = {
 
   options_page: "src/ui/options/options.html",
 
+  web_accessible_resources: [
+    {
+      resources: ["src/ui/options/options.html"],
+      matches: ["https://vp.codegraph.cc/*"]
+    }
+  ],
+
   // No background service worker needed - this is a content script only extension
 };
 
@@ -75,7 +81,7 @@ export default defineConfig({
           service_worker: "src/background/index.ts",
           type: "module",
         },
-      } as any, // Type cast to avoid potential typing issues with partial manifest updates if strict
+      } as any,
       contentScripts: {
         injectCss: true,
       },
@@ -90,6 +96,33 @@ export default defineConfig({
         if (existsSync(cssSource)) {
           mkdirSync(resolve(__dirname, "dist/chrome/src/content"), { recursive: true });
           copyFileSync(cssSource, cssDest);
+        }
+      },
+    },
+    // Plugin to fix HTML for Chrome extension compatibility
+    {
+      name: "fix-extension-html",
+      writeBundle() {
+        const htmlFiles = [
+          "dist/chrome/src/ui/popup/popup.html",
+          "dist/chrome/src/ui/updates/updates.html",
+          "dist/chrome/src/ui/options/options.html",
+        ];
+
+        for (const htmlPath of htmlFiles) {
+          const fullPath = resolve(__dirname, htmlPath);
+          if (existsSync(fullPath)) {
+            let content = readFileSync(fullPath, "utf-8");
+            const originalContent = content;
+
+            // Remove crossorigin attribute - can cause issues in extensions
+            content = content.replace(/ crossorigin/g, "");
+
+            if (content !== originalContent) {
+              writeFileSync(fullPath, content, "utf-8");
+              console.log(`✓ Fixed HTML attributes in ${htmlPath}`);
+            }
+          }
         }
       },
     },
@@ -116,12 +149,7 @@ export default defineConfig({
         updates: resolve(__dirname, "src/ui/updates/updates.html"),
       },
     },
-    // Ensure CSS files are included
     cssCodeSplit: false,
-  },
-  // Ensure CSS is processed
-  css: {
-    // Vite handles CSS automatically
   },
 });
 

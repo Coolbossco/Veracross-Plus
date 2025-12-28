@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Veracross Plus",
   "description": "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
-  "version": "0.2.4",
+  "version": "1.0.0",
   "permissions": [
     "storage"
   ],

@@ -1,22 +1,24 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { Cloud, Shield, CheckCircle } from 'lucide-react';
+import { Cloud, Shield, Zap } from 'lucide-react';
+import ConfettiExplosion from 'react-confetti-explosion';
 import logo from '../../assets/icons/128.png';
 
 // --- CONFIGURATION: EDIT THIS FOR NEW VERSIONS ---
 const UPDATE_DATA = {
-    title: "What’s new in this update",
-    description: "This update brings a fresh new look, improves local data reliability, and lays the groundwork for upcoming cross-device syncing.",
+    title: "Veracross Plus 1.0 is here",
+    description: "Our first major release brings full cloud synchronization, multi-device persistence, and a premium dashboard. Move beyond local tracking to a seamless, unified experience.",
     features: [
-        { icon: <Cloud size={24} strokeWidth={2} />, text: "Sync Prep" },
-        { icon: <Shield size={24} strokeWidth={2} />, text: "Reliability" },
-        { icon: <CheckCircle size={24} strokeWidth={2} />, text: "New Look" }
+        { icon: <Cloud size={24} strokeWidth={2} />, text: "Cloud Sync" },
+        { icon: <Shield size={24} strokeWidth={2} />, text: "Persistence" },
+        { icon: <Zap size={24} strokeWidth={2} />, text: "New Dashboard" }
     ],
-    reassurance: "No action required. Veracross Plus works exactly as before."
+    reassurance: "Your local data is safe. Sign in to unlock cloud features or continue as a guest."
 };
 
 export default function Updates() {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [isExploding, setIsExploding] = useState(false);
 
     // Safety check for dev environment vs production extension
     const version = typeof chrome !== 'undefined' && chrome.runtime?.getManifest
@@ -56,6 +58,11 @@ export default function Updates() {
                 duration: 1.0,
                 stagger: 0.05,
                 ease: "power2.out"
+            });
+
+            // --- CONFETTI BLAST ---
+            tl.call(() => {
+                setIsExploding(true);
             });
 
             // 1.5. Logo Reveal
@@ -135,6 +142,17 @@ export default function Updates() {
             </div>
 
             <div className="hero">
+                {isExploding && (
+                    <div style={{ position: 'fixed', left: '50%', top: '45%', transform: 'translate(-50%, -50%)' }}>
+                        <ConfettiExplosion
+                            force={0.8}
+                            duration={3000}
+                            particleCount={250}
+                            width={1600}
+                            colors={['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b']}
+                        />
+                    </div>
+                )}
                 <h1 id="version-text">
                     {renderChars(prefix)}
                     <span className="hero-highlight">

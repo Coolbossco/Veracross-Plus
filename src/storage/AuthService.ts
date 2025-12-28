@@ -165,6 +165,38 @@ export async function logout(): Promise<void> {
 }
 
 /**
+ * Handle authentication-related errors from the backend.
+ * Specifically checks for 404 "User not found" and triggers a logout.
+ * 
+ * @param response The fetch Response object
+ * @returns true if the error was handled (user logged out), false otherwise
+ */
+export async function handleAuthError(response: Response): Promise<boolean> {
+    if (response.status === 404) {
+        try {
+            // Clone the response so it can be read again by the caller if needed
+            const clonedResponse = response.clone();
+            const data = await clonedResponse.json();
+
+            if (data.error === "User not found") {
+                console.warn("[Veracross Plus] User not found on backend. Logging out...");
+                await logout();
+                return true;
+            }
+        } catch (e) {
+            // Not JSON or other parsing error, ignore
+        }
+    }
+
+    if (response.status === 401) {
+        // Optional: Could also trigger logout on 401 if we want strict session handling
+        // But for now, we'll focus on the specific 404 "User not found" request.
+    }
+
+    return false;
+}
+
+/**
  * Check if user is currently logged in
  */
 export async function isLoggedIn(): Promise<boolean> {

@@ -22,8 +22,7 @@ import { STORAGE_KEYS } from "../storage/StorageProvider";
 export type FeatureFlag =
   | "enableChecklist"
   | "enableCustomAssignments"
-  | "enableEstimator"
-  | "enableHomeRedirect"
+
   // Future features (Phase 2+)
   | "enableCloudSync"
   | "enableAccounts"
@@ -73,23 +72,6 @@ export const FEATURE_FLAG_CONFIG: Record<FeatureFlag, FeatureFlagConfig> = {
     displayName: "Custom Assignments",
     description: "Create and track your own assignments",
   },
-  enableEstimator: {
-    defaultEnabled: false,
-    userConfigurable: true,
-    requiresAccount: false,
-    requiresPremium: false,
-    displayName: "Grade Estimator",
-    description: "Estimate your grade percentages",
-  },
-  enableHomeRedirect: {
-    defaultEnabled: false,
-    userConfigurable: true,
-    requiresAccount: false,
-    requiresPremium: false,
-    displayName: "Home Redirect",
-    description: "Redirect to a custom page on login",
-  },
-
   // Future features (Phase 2+) - all enabled by default now
   enableCloudSync: {
     defaultEnabled: true,
@@ -148,8 +130,7 @@ class FeatureFlagsManager {
     const legacySettings = await storage.getMany<Record<string, boolean>>([
       "enableChecklist",
       "enableCustomAssignments",
-      "enableEstimator",
-      "enableHomeRedirect",
+
     ]);
 
     this.userSettings = legacySettings as Partial<Record<FeatureFlag, boolean>>;
