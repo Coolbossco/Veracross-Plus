@@ -1,3 +1,6 @@
+import browser from 'webextension-polyfill';
+import './styles.css';
+
 // Veracross Plus — content script (MVP)
 // Adds: (1) homework checkboxes (2) exact % estimator (3) optional home redirect
 
@@ -21,36 +24,21 @@ function hash(str) {
   return (h >>> 0).toString(36);
 }
 
-function loadSettings() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(DEFAULTS, (result) => {
-      resolve(result);
-    });
-  });
+async function loadSettings() {
+  return await browser.storage.sync.get(DEFAULTS);
 }
 
-function saveSettings(changes) {
-  return new Promise((resolve) => {
-    chrome.storage.sync.set(changes, () => {
-      resolve();
-    });
-  });
+async function saveSettings(changes) {
+  await browser.storage.sync.set(changes);
 }
 
-function getStorage(key) {
-  return new Promise((resolve) =>
-    chrome.storage.sync.get(key, (obj) => {
-      resolve(obj[key]);
-    }),
-  );
+async function getStorage(key) {
+  const obj = await browser.storage.sync.get(key);
+  return obj[key];
 }
 
-function setStorage(obj) {
-  return new Promise((resolve) =>
-    chrome.storage.sync.set(obj, () => {
-      resolve();
-    }),
-  );
+async function setStorage(obj) {
+  await browser.storage.sync.set(obj);
 }
 
 // ———————————————— Fix clipping issues ————————————————
@@ -106,7 +94,7 @@ function fixClippingIssues() {
 
   // Legacy fallback: expand row heights to show all assignments
   const timelineRows = document.querySelectorAll(
-    ".timeline-records tr, .timeline-table tr, tr",
+    ".timeline-records tr, .timeline-table tr, tr"
   );
 
   let processedRows = 0;
@@ -121,7 +109,7 @@ function fixClippingIssues() {
 
     cells.forEach((cell, cellIndex) => {
       const hasAssignmentElements = cell.querySelector(
-        '[class*="assignment"], .homework, .test, .paper, .quiz, .classwork, [data-assignment-id]',
+        '[class*="assignment"], .homework, .test, .paper, .quiz, .classwork, [data-assignment-id]'
       );
       const text = cell.textContent || "";
       const hasAssignmentText =
@@ -165,7 +153,7 @@ function fixClippingIssues() {
 function enhanceTimelineScrolling() {
   // Find all scrollable timeline cells
   const scrollableCells = document.querySelectorAll(
-    ".timeline-cell.scrollable",
+    ".timeline-cell.scrollable"
   );
 
   scrollableCells.forEach((cell, index) => {
@@ -355,7 +343,7 @@ function applyChecklistToDocument(doc, checked) {
     // For daily schedule assignments in tables, skip the additional filtering
     // since they're always valid assignments from the schedule
     const isDailyScheduleAssignment = node.classList.contains(
-      "assignment-description",
+      "assignment-description"
     );
 
     if (!isDailyScheduleAssignment) {
@@ -436,7 +424,7 @@ function applyChecklistToDocument(doc, checked) {
 
     // Method 3: Improved date parsing with better regex
     const dateMatch = nodeText.match(
-      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\s\u00A0]*(\d{1,2})\b/i,
+      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\s\u00A0]*(\d{1,2})\b/i
     );
 
     if (dateMatch) {
@@ -463,7 +451,7 @@ function applyChecklistToDocument(doc, checked) {
         const today = new Date(
           now.getFullYear(),
           now.getMonth(),
-          now.getDate(),
+          now.getDate()
         );
         let dueDate = new Date(now.getFullYear(), monthNum, day);
 
@@ -475,11 +463,14 @@ function applyChecklistToDocument(doc, checked) {
         // Consider assignments due today or in the future as "upcoming"
         const isUpcomingByDate = dueDate >= today;
 
-        if (isUpcomingByDate || isInUpcomingSection) {
+        if (
+          !checked.hasOwnProperty(id) &&
+          (isUpcomingByDate || isInUpcomingSection)
+        ) {
           isChecked = false;
         }
       }
-    } else if (isInUpcomingSection) {
+    } else if (!checked.hasOwnProperty(id) && isInUpcomingSection) {
       // Force unchecked if in upcoming section even without date match
       isChecked = false;
     }
@@ -529,7 +520,7 @@ function applyChecklistToDocument(doc, checked) {
 
         // prune undefineds
         const compact = Object.fromEntries(
-          Object.entries(checked).filter(([, v]) => v),
+          Object.entries(checked).filter(([, v]) => v)
         );
 
         await setStorage({ vc_checked_assignments: compact });
@@ -694,7 +685,7 @@ document.addEventListener(
 
       // Only prevent default for timeline assignments (not assignments page)
       const isTimelineAssignment = assignmentDiv.closest(
-        ".timeline-records, .timeline-row, .timeline-cell",
+        ".timeline-records, .timeline-row, .timeline-cell"
       );
       if (isTimelineAssignment) {
         // Always prevent native Veracross preview system from interfering for timeline
@@ -713,13 +704,13 @@ document.addEventListener(
         modalOpenInProgress = true;
         // Get assignment ID and show our modal
         const assignmentId = assignmentDiv.getAttribute(
-          "data-custom-assignment-id",
+          "data-custom-assignment-id"
         );
         if (assignmentId) {
           // Find assignment data and show details
           getStorage("customAssignments").then((customAssignments) => {
             const assignment = (customAssignments || []).find(
-              (a) => a.id === assignmentId,
+              (a) => a.id === assignmentId
             );
             if (assignment) {
               showCustomAssignmentDetails(assignment);
@@ -729,7 +720,7 @@ document.addEventListener(
       }
     }
   },
-  true,
+  true
 );
 
 async function applyCustomAssignments(settings) {
@@ -924,10 +915,10 @@ async function loadAndInjectCustomAssignments() {
 
       const waitForTimeline = () => {
         const timelineYHeader = document.querySelector(
-          ".timeline-header-y-inner",
+          ".timeline-header-y-inner"
         );
         const timelineRows = document.querySelectorAll(
-          ".timeline-row[data-row-id]",
+          ".timeline-row[data-row-id]"
         );
 
         if (timelineYHeader && timelineRows.length > 0) {
@@ -1010,22 +1001,30 @@ function showCustomAssignmentModal(prefillData = {}) {
     <form id="vch-assignment-form">
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Assignment Title *</label>
-        <input type="text" id="vch-title" required style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" value="${prefillData.title || ""}">
+        <input type="text" id="vch-title" required style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" value="${
+          prefillData.title || ""
+        }">
       </div>
 
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Description</label>
-        <textarea id="vch-description" style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical; box-sizing: border-box;" placeholder="Assignment details...">${prefillData.description || ""}</textarea>
+        <textarea id="vch-description" style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical; box-sizing: border-box;" placeholder="Assignment details...">${
+          prefillData.description || ""
+        }</textarea>
       </div>
 
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Due Date *</label>
-        <input type="date" id="vch-due-date" required style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" value="${prefillData.dueDate || ""}">
+        <input type="date" id="vch-due-date" required style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" value="${
+          prefillData.dueDate || ""
+        }">
       </div>
 
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #333;">Class/Subject</label>
-        <input type="text" id="vch-class" style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="e.g., Mathematics, English" value="${prefillData.class || ""}">
+        <input type="text" id="vch-class" style="width: 100%; max-width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;" placeholder="e.g., Mathematics, English" value="${
+          prefillData.class || ""
+        }">
       </div>
 
 
@@ -1135,7 +1134,7 @@ function showCustomAssignmentModal(prefillData = {}) {
               type: "VCH_REFRESH_ASSIGNMENTS",
               assignment: assignment,
             },
-            "*",
+            "*"
           );
         }
       }
@@ -1152,7 +1151,7 @@ async function refreshCustomAssignmentsWithRetry(retries = 3) {
     setTimeout(async () => {
       const customAssignments = (await getStorage("customAssignments")) || [];
       const assignmentElements = document.querySelectorAll(
-        "[data-custom-assignment-id]",
+        "[data-custom-assignment-id]"
       );
 
       if (
@@ -1191,7 +1190,7 @@ async function refreshCustomAssignments() {
 
   // Remove all existing custom assignment elements with more thorough cleanup
   const elementsToRemove = document.querySelectorAll(
-    ".vch-custom-class-row, .vch-custom-timeline-row, .vch-custom-assignment, .vch-custom-assignments-section, [data-vch-custom='true'], [data-custom-assignment-id]",
+    ".vch-custom-class-row, .vch-custom-timeline-row, .vch-custom-assignment, .vch-custom-assignments-section, [data-vch-custom='true'], [data-custom-assignment-id]"
   );
 
   elementsToRemove.forEach((el) => {
@@ -1237,7 +1236,7 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
 
     // Find the assignments container
     let assignmentsContainer = document.querySelector(
-      ".assignment-center-column, .upcoming-assignment, .assignment-list, .content-2-columns .x-column-inner",
+      ".assignment-center-column, .upcoming-assignment, .assignment-list, .content-2-columns .x-column-inner"
     );
 
     if (!assignmentsContainer) {
@@ -1275,7 +1274,7 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
       // Final fallback: try to find any existing assignment-like elements and inject near them
       if (!assignmentsContainer) {
         const existingAssignments = document.querySelectorAll(
-          '[class*="assignment"], [class*="due"], .row, .item, .card',
+          '[class*="assignment"], [class*="due"], .row, .item, .card'
         );
 
         if (existingAssignments.length > 0) {
@@ -1288,7 +1287,7 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
                 !el.closest("button") &&
                 !el.classList.contains("vch-add-assignment-btn")
               );
-            },
+            }
           );
 
           if (validAssignments.length > 0) {
@@ -1344,14 +1343,14 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
         // Insert as first child of body to avoid floating button area
         document.body.insertBefore(
           assignmentsContainer,
-          document.body.firstChild,
+          document.body.firstChild
         );
       }
     }
 
     // Remove existing custom assignments section
     const existingSection = assignmentsContainer.querySelector(
-      ".vch-custom-assignments-section",
+      ".vch-custom-assignments-section"
     );
     if (existingSection) {
       existingSection.remove();
@@ -1370,12 +1369,12 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
   `;
 
     const customList = customSection.querySelector(
-      ".vch-custom-assignments-list",
+      ".vch-custom-assignments-list"
     );
 
     // Sort assignments by due date
     const sortedAssignments = [...customAssignments].sort(
-      (a, b) => new Date(a.dueDate) - new Date(b.dueDate),
+      (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
     );
 
     // Create assignment elements
@@ -1402,10 +1401,18 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
             <div style="font-size: 12px; color: #666;">
               Due: ${formattedDate}
             </div>
-            ${assignment.description ? `<div style="font-size: 12px; color: #888; margin-top: 4px;">${escapeHtml(assignment.description)}</div>` : ""}
+            ${
+              assignment.description
+                ? `<div style="font-size: 12px; color: #888; margin-top: 4px;">${escapeHtml(
+                    assignment.description
+                  )}</div>`
+                : ""
+            }
           </div>
           <div style="margin-left: 10px;">
-            <button class="vch-assignment-details" data-assignment-id="${assignment.id}" style="padding: 4px 8px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">
+            <button class="vch-assignment-details" data-assignment-id="${
+              assignment.id
+            }" style="padding: 4px 8px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">
               Details
             </button>
           </div>
@@ -1419,7 +1426,7 @@ function injectCustomAssignmentsToAssignmentsPage(customAssignments) {
     // Insert at the top of the assignments container
     assignmentsContainer.insertBefore(
       customSection,
-      assignmentsContainer.firstChild,
+      assignmentsContainer.firstChild
     );
 
     // Add click handlers for details buttons
@@ -1442,7 +1449,7 @@ async function saveCustomAssignment(assignment) {
 
   // If assignment has an ID, update existing; otherwise add new
   const existingIndex = customAssignments.findIndex(
-    (a) => a.id === assignment.id,
+    (a) => a.id === assignment.id
   );
   if (existingIndex >= 0) {
     customAssignments[existingIndex] = assignment;
@@ -1496,10 +1503,10 @@ async function instantAssignmentUpdate() {
 
     // Update existing elements without removing them first (no flicker)
     const existingSidebar = document.querySelector(
-      ".vch-custom-assignments-sidebar",
+      ".vch-custom-assignments-sidebar"
     );
     const existingTimelineRow = document.querySelector(
-      ".vch-custom-timeline-row",
+      ".vch-custom-timeline-row"
     );
 
     // Update sidebar content instantly
@@ -1521,7 +1528,7 @@ async function instantAssignmentUpdate() {
     // Add persistence check - verify timeline row still exists after a brief delay
     setTimeout(() => {
       const timelineRowCheck = document.querySelector(
-        ".vch-custom-timeline-row",
+        ".vch-custom-timeline-row"
       );
       if (!timelineRowCheck && customAssignments.length > 0) {
         injectCustomAssignmentsTimeline(customAssignments);
@@ -1574,10 +1581,10 @@ async function immediatelyRefreshAssignments() {
 
     // Always try to update existing elements first, only create if none exist
     const existingSidebar = document.querySelector(
-      ".vch-custom-assignments-sidebar",
+      ".vch-custom-assignments-sidebar"
     );
     const existingTimelineRow = document.querySelector(
-      ".vch-custom-timeline-row",
+      ".vch-custom-timeline-row"
     );
 
     // Update sidebar content
@@ -1682,7 +1689,7 @@ function updateTimelineRowContent(timelineRow, customAssignments) {
     const assignmentDate = new Date(
       parseInt(dateParts[0], 10), // year
       parseInt(dateParts[1], 10) - 1, // month (0-based)
-      parseInt(dateParts[2], 10), // day
+      parseInt(dateParts[2], 10) // day
     );
 
     const columnIndex = getColumnIndexForDate(assignmentDate);
@@ -1726,7 +1733,7 @@ function updateTimelineRowContent(timelineRow, customAssignments) {
 function getColumnIndexForDate(assignmentDate) {
   // Use the exact same selector as the working initial load code
   const headerCells = document.querySelectorAll(
-    ".timeline-header-x-inner .timeline-cell",
+    ".timeline-header-x-inner .timeline-cell"
   );
 
   // Parse assignment date components in local timezone
@@ -1829,7 +1836,7 @@ function parseColumnDateFormat(dateFormat) {
 async function deleteCustomAssignment(assignmentId) {
   const customAssignments = (await getStorage("customAssignments")) || [];
   const filteredAssignments = customAssignments.filter(
-    (a) => a.id !== assignmentId,
+    (a) => a.id !== assignmentId
   );
   await setStorage({ customAssignments: filteredAssignments });
 
@@ -1846,7 +1853,7 @@ async function deleteCustomAssignment(assignmentId) {
         {
           type: "VCH_REFRESH_ASSIGNMENTS",
         },
-        "*",
+        "*"
       );
     }
   }
@@ -1895,7 +1902,7 @@ function injectCustomAssignmentsSidebar(customAssignments) {
 
     injectCustomAssignmentsSidebarToContainer(
       timelineYHeader,
-      customAssignments,
+      customAssignments
     );
     injectCustomAssignmentsTimeline(customAssignments);
   } catch (error) {
@@ -1905,7 +1912,7 @@ function injectCustomAssignmentsSidebar(customAssignments) {
 
 function injectCustomAssignmentsSidebarToContainer(
   container,
-  customAssignments,
+  customAssignments
 ) {
   // Validate inputs
   if (!container || !container.querySelector) {
@@ -1931,7 +1938,7 @@ function injectCustomAssignmentsSidebarToContainer(
 
   // Copy exact structure and styling from native rows
   const firstExistingRow = document.querySelector(
-    ".timeline-header-y-inner .timeline-row[data-row-id]:not(.vch-custom-class-row)",
+    ".timeline-header-y-inner .timeline-row[data-row-id]:not(.vch-custom-class-row)"
   );
   if (firstExistingRow) {
     // Copy all classes and add our custom identifier
@@ -2075,7 +2082,7 @@ function injectCustomAssignmentsSidebarToContainer(
 
             // Also fix divider cell heights
             const dividerCells = target.querySelectorAll(
-              ".timeline-cell.divider",
+              ".timeline-cell.divider"
             );
             dividerCells.forEach((cell) => {
               cell.style.height = "90px";
@@ -2146,7 +2153,7 @@ function injectCustomAssignmentsTimeline(customAssignments) {
 
     // Remove existing custom assignments timeline row
     const existingTimelineRow = timelineRecords.querySelector(
-      ".vch-custom-timeline-row",
+      ".vch-custom-timeline-row"
     );
     if (existingTimelineRow) {
       existingTimelineRow.remove();
@@ -2159,7 +2166,7 @@ function injectCustomAssignmentsTimeline(customAssignments) {
 
     // Copy positioning and layout styles from existing timeline rows
     const firstNativeRow = timelineRecords.querySelector(
-      ".timeline-row:not(.vch-custom-timeline-row)",
+      ".timeline-row:not(.vch-custom-timeline-row)"
     );
     if (firstNativeRow) {
       // Copy all classes from native row, then add our custom classes
@@ -2203,15 +2210,15 @@ function injectCustomAssignmentsTimeline(customAssignments) {
           e.stopImmediatePropagation();
         }
       },
-      true,
+      true
     );
 
     // Detect initial closed state from other timeline rows
     const otherRows = timelineRecords.querySelectorAll(
-      ".timeline-row:not(.vch-custom-timeline-row)",
+      ".timeline-row:not(.vch-custom-timeline-row)"
     );
     const closedRowsCount = Array.from(otherRows).filter((row) =>
-      row.classList.contains("closed"),
+      row.classList.contains("closed")
     ).length;
     const shouldStartClosed = closedRowsCount > otherRows.length / 2;
 
@@ -2289,7 +2296,7 @@ function injectCustomAssignmentsTimeline(customAssignments) {
 
     // Get timeline columns (dates) to create matching cells
     const headerColumns = document.querySelectorAll(
-      ".timeline-header-x-inner .timeline-cell",
+      ".timeline-header-x-inner .timeline-cell"
     );
 
     // Get the width of existing cells to match exactly
@@ -2389,13 +2396,13 @@ function injectCustomAssignmentsTimeline(customAssignments) {
         const matchingAssignments = getCustomAssignmentsForDate(
           customAssignments,
           headerCell,
-          index,
+          index
         );
 
         matchingAssignments.forEach((assignment) => {
           const assignmentEl = createTimelineAssignmentElement(
             assignment,
-            timelineRow,
+            timelineRow
           );
           timelineCell.appendChild(assignmentEl);
         });
@@ -2428,7 +2435,7 @@ function injectCustomAssignmentsTimeline(customAssignments) {
 function getCustomAssignmentsForDate(
   customAssignments,
   headerCell,
-  columnIndex,
+  columnIndex
 ) {
   // Extract date from header cell - try multiple selectors
   let headerText = headerCell.querySelector("h4")?.textContent?.trim();
@@ -2482,7 +2489,7 @@ function getCustomAssignmentsForDate(
     const assignmentDate = new Date(
       assignmentYear,
       assignmentMonth,
-      assignmentDay,
+      assignmentDay
     );
 
     // Direct date comparison - parseHeaderDate now handles years correctly
@@ -2599,7 +2606,7 @@ function createTimelineAssignmentElement(assignment, parentRow) {
 
       // Remove undefined values and save
       const compact = Object.fromEntries(
-        Object.entries(checked).filter(([, v]) => v),
+        Object.entries(checked).filter(([, v]) => v)
       );
       await setStorage({ vc_checked_assignments: compact });
     } catch (error) {
@@ -2944,7 +2951,7 @@ function showCustomAssignmentDetails(assignment) {
       async () => {
         await deleteCustomAssignment(assignment.id);
         closeModal();
-      },
+      }
     );
   });
 
@@ -2983,7 +2990,7 @@ function showConfirmationModal(
   message,
   confirmText,
   cancelText,
-  onConfirm,
+  onConfirm
 ) {
   // Create confirmation modal
   const confirmModal = document.createElement("div");
@@ -3115,7 +3122,7 @@ function formatDate(dateString) {
 }
 
 // Listen for messages from popup/window
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "refreshCustomAssignments") {
     setTimeout(() => {
       instantAssignmentUpdate();
@@ -3148,7 +3155,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const waitForTimeline = () => {
         timelineCheckCount++;
         const timeline = document.querySelector(
-          ".timeline-records, .timeline-table",
+          ".timeline-records, .timeline-table"
         );
 
         if (timeline) {
@@ -3198,7 +3205,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 node.matches(".timeline-cell") ||
                 node.matches(".timeline-records-inner") ||
                 node.querySelector(
-                  ".timeline-row, .timeline-cell, .timeline-records-inner",
+                  ".timeline-row, .timeline-cell, .timeline-records-inner"
                 ))
             );
           }
@@ -3229,7 +3236,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Add scroll event listener to fix alignment issues during horizontal scrolling
     const scrollContainer =
       document.querySelector(
-        ".timeline-table-wrapper, .timeline-records-wrapper, .timeline-wrapper, .timeline-table, .timeline-records",
+        ".timeline-table-wrapper, .timeline-records-wrapper, .timeline-wrapper, .timeline-table, .timeline-records"
       ) || document;
     scrollContainer.addEventListener("scroll", () => {
       // Debounce the scroll event to avoid excessive calls

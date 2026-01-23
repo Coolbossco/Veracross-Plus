@@ -1,8 +1,4 @@
-// Custom popup window launcher
-// This creates a system-level popup window that can have true rounded corners
-
-// Firefox compatibility: Create browser namespace polyfill
-const browser = chrome || browser;
+import browser from 'webextension-polyfill';
 
 document.addEventListener("DOMContentLoaded", () => {
   // Close the standard popup immediately
@@ -12,7 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const windowHeight = 450;
 
   // Position the popup window near the top-right (typical extension popup position)
-  // This works reliably across different browsers and screen sizes
   let left = Math.round(screen.width - windowWidth - 20); // 20px from right edge
   let top = 80; // Below browser UI
 
@@ -22,9 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
     top = screen.height - windowHeight - 20; // Keep at least 20px from bottom
   }
 
-  // Firefox-compatible window creation
   const windowCreateOptions = {
-    url: chrome.runtime.getURL("window.html"),
+    url: browser.runtime.getURL("src/popup/window.html"),
     type: "popup",
     width: windowWidth,
     height: windowHeight,
@@ -34,15 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Create a custom popup window with rounded corners
-  if (chrome.windows && chrome.windows.create) {
-    chrome.windows.create(windowCreateOptions, (createdWindow) => {
-      if (chrome.runtime.lastError) {
-        // Fallback: try to open in a new tab if window creation fails
-        chrome.tabs.create({ url: chrome.runtime.getURL("window.html") });
-      }
+  if (browser.windows && browser.windows.create) {
+    browser.windows.create(windowCreateOptions).catch(() => {
+        browser.tabs.create({ url: browser.runtime.getURL("src/popup/window.html") });
     });
   } else {
-    // Fallback for browsers that don't support window creation
-    chrome.tabs.create({ url: chrome.runtime.getURL("window.html") });
+    browser.tabs.create({ url: browser.runtime.getURL("src/popup/window.html") });
   }
 });

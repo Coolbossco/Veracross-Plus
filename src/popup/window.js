@@ -1,23 +1,21 @@
-// Firefox compatibility: Create browser namespace polyfill
-const browser = chrome || browser;
+import browser from 'webextension-polyfill';
 
 const WINDOW_DEFAULTS = {
   enableChecklist: false,
   enableCustomAssignments: false,
 };
 
-function load() {
-  chrome.storage.sync.get(WINDOW_DEFAULTS, (vals) => {
-    Object.entries(vals).forEach(([k, v]) => {
-      const el = document.getElementById(k);
-      if (!el) return;
-      if (el.type === "checkbox") el.checked = !!v;
-      else el.value = v || "";
-    });
+async function load() {
+  const vals = await browser.storage.sync.get(WINDOW_DEFAULTS);
+  Object.entries(vals).forEach(([k, v]) => {
+    const el = document.getElementById(k);
+    if (!el) return;
+    if (el.type === "checkbox") el.checked = !!v;
+    else el.value = v || "";
   });
 }
 
-function save() {
+async function save() {
   const out = {};
   ["enableChecklist", "enableCustomAssignments"].forEach((k) => {
     const el = document.getElementById(k);
@@ -25,7 +23,7 @@ function save() {
       out[k] = el.type === "checkbox" ? el.checked : el.value.trim();
     }
   });
-  chrome.storage.sync.set(out);
+  await browser.storage.sync.set(out);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -49,18 +47,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const clickOutsideOverlay = document.getElementById("clickOutsideOverlay");
   const container = document.querySelector(".container");
 
-  // Method 1: Click on overlay
-  clickOutsideOverlay.addEventListener("click", (e) => {
-    if (e.target === clickOutsideOverlay) {
-      window.close();
-    }
-  });
+  if (clickOutsideOverlay) {
+    clickOutsideOverlay.addEventListener("click", (e) => {
+      if (e.target === clickOutsideOverlay) {
+        window.close();
+      }
+    });
+  }
 
-  // Method 2: Window blur/focus events (more reliable for popup windows)
   let windowFocused = true;
   window.addEventListener("blur", () => {
     windowFocused = false;
-    // Close after a short delay to allow for re-focusing
     setTimeout(() => {
       if (!windowFocused) {
         window.close();
@@ -72,21 +69,17 @@ document.addEventListener("DOMContentLoaded", () => {
     windowFocused = true;
   });
 
-  // Method 3: Chrome API for window focus changes (backup)
-  if (chrome.windows) {
-    chrome.windows.onFocusChanged.addListener((windowId) => {
-      if (windowId === chrome.windows.WINDOW_ID_NONE) {
-        // No window focused, close our popup
+  if (browser.windows) {
+    browser.windows.onFocusChanged.addListener((windowId) => {
+      if (windowId === browser.windows.WINDOW_ID_NONE) {
         setTimeout(() => window.close(), 100);
       }
     });
   }
 
-  // Method 4: Removed mouse leave detection - was too aggressive
-  // The blur/focus and click detection methods are sufficient
-
-  // Prevent clicks inside the container from closing the window
-  container.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
+  if (container) {
+    container.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+  }
 });
