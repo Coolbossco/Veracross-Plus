@@ -188,7 +188,20 @@ function bindToggle(id) {
   el.addEventListener("change", () => saveAndTrack(id));
 }
 
+function bindBrandIcon() {
+  const img = document.getElementById("brandIcon");
+  if (!img) return;
+  // Prefer the packaged action icon URL so the path works whether the popup
+  // HTML is opened from dist/src/popup/ or rewritten by the bundler.
+  try {
+    img.src = browser.runtime.getURL("icons/32.png");
+  } catch {
+    img.src = "../../icons/32.png";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  bindBrandIcon();
   load();
   trackUmamiEvent("popup_opened");
 
