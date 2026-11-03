@@ -1,4 +1,17 @@
-/* Veracross Plus - Enhanced Styling */
+/* Veracross Plus — achromatic-ledger chrome (Taste Skill) */
+@import "../ui/tokens.css";
+
+.vch-home-widget,
+.vch-lunch-card,
+.vch-grade-panel,
+.vch-assignment-modal,
+.vch-lunch-modal,
+.vch-whats-new,
+.vch-floating-add-btn,
+.vch-add-assignment-btn {
+    font-family: var(--vch-font) !important;
+    -webkit-font-smoothing: antialiased;
+}
 
 /* Reset and base styles */
 .vch-task-wrap {
@@ -29,13 +42,13 @@
 }
 
 .vch-checkbox:hover {
-    border-color: var(--vch-accent, #4a90e2);
+    border-color: var(--vch-text, #0a0a0a);
     box-shadow: none;
 }
 
 .vch-checkbox:checked {
-    background: var(--vch-accent, #4a90e2) !important;
-    border-color: var(--vch-accent, #4a90e2) !important;
+    background: var(--vch-primary, #141414) !important;
+    border-color: var(--vch-primary, #141414) !important;
 }
 
 .vch-checkbox:checked::after {
@@ -64,33 +77,33 @@ html:not([data-vch-theme]) .vch-task-wrap::before {
 }
 
 .vch-task-wrap[data-type="homework"]::before {
-    background: linear-gradient(135deg, #4caf50, #45a049);
+    background: #2e7d32;
 }
 
 .vch-task-wrap[data-type="classwork"]::before,
 .vch-task-wrap[data-type="lab"]::before,
 .vch-task-wrap[data-type="participation"]::before {
-    background: #000;
+    background: #0a0a0a;
 }
 
 .vch-task-wrap[data-type="paper"]::before {
-    background: linear-gradient(135deg, #ff9800, #f57c00);
+    background: #92400e;
 }
 
 .vch-task-wrap[data-type="test"]::before {
-    background: linear-gradient(135deg, #f44336, #d32f2f);
+    background: #c4242a;
 }
 
 .vch-task-wrap[data-type="quiz"]::before {
-    background: #f90;
+    background: #b45309;
 }
 
 .vch-task-wrap[data-type="project"]::before {
-    background: linear-gradient(135deg, #3f51b5, #303f9f);
+    background: #1d5fbf;
 }
 
 .vch-task-wrap[data-type="custom"]::before {
-    background: #1976d2;
+    background: #1d5fbf;
 }
 
 /* Completed assignment styling - more specific and forceful */
@@ -103,8 +116,8 @@ html:not([data-vch-theme]) .vch-task-wrap::before {
 /* Make sure the checkbox shows as checked when completed - very specific */
 .vch-done .vch-checkbox,
 .vch-done input.vch-checkbox {
-    background: #4caf50 !important;
-    border-color: #4caf50 !important;
+    background: var(--vch-positive, #2e7d32) !important;
+    border-color: var(--vch-positive, #2e7d32) !important;
 }
 
 .vch-done .vch-checkbox::after,
@@ -116,7 +129,7 @@ html:not([data-vch-theme]) .vch-task-wrap::before {
     transform: translate(-50%, -50%);
     color: white !important;
     font-size: 10px;
-    font-weight: bold;
+    font-weight: 700;
     line-height: 1;
 }
 
@@ -126,20 +139,20 @@ html:not([data-vch-theme]) .vch-task-wrap::before {
 
 /* Better integration with Veracross assignment boxes - more compact */
 html:not([data-vch-theme]) .vch-task-wrap {
-    background: color-mix(in srgb, var(--vch-surface, #fff) 80%, transparent);
+    background: transparent;
     border-radius: 2px;
     padding: 1px 2px;
     margin: 0px 1px 0px 0;
-    box-shadow: 0 1px 2px var(--vch-shadow, rgba(0, 0, 0, 0.08));
-    border: 1px solid color-mix(in srgb, var(--vch-border, #000) 12%, transparent);
+    box-shadow: none;
+    border: 0;
     pointer-events: auto;
     z-index: 5;
 }
 
 html:not([data-vch-theme]) .vch-task-wrap:hover {
-    background: color-mix(in srgb, var(--vch-surface, #fff) 95%, transparent);
-    box-shadow: 0 1px 3px var(--vch-shadow, rgba(0, 0, 0, 0.12));
-    transform: translateY(-1px);
+    background: transparent;
+    box-shadow: none;
+    transform: none;
 }
 
 html[data-vch-theme] .vch-task-wrap,
@@ -178,8 +191,8 @@ html[data-vch-theme] .vch-task-wrap:hover {
 /* Make sure the checkbox shows as checked when completed - very specific */
 .vch-done .vch-checkbox,
 .vch-done input.vch-checkbox {
-    background: #4caf50 !important;
-    border-color: #4caf50 !important;
+    background: var(--vch-positive, #2e7d32) !important;
+    border-color: var(--vch-positive, #2e7d32) !important;
 }
 
 .vch-done .vch-checkbox::after,
@@ -191,7 +204,7 @@ html[data-vch-theme] .vch-task-wrap:hover {
     transform: translate(-50%, -50%);
     color: white !important;
     font-size: 10px;
-    font-weight: bold;
+    font-weight: 700;
     line-height: 1;
 }
 
@@ -201,24 +214,15 @@ html[data-vch-theme] .vch-task-wrap:hover {
     right: 20px;
     bottom: 20px;
     z-index: 9999;
-    background: color-mix(in srgb, var(--vch-surface, #fff) 98%, transparent);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--vch-border, rgba(0, 0, 0, 0.1));
-    border-radius: 16px;
-    padding: 16px 20px;
-    box-shadow: 0 8px 32px var(--vch-shadow, rgba(0, 0, 0, 0.15));
-    color: var(--vch-text, #333);
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-        Arial, sans-serif;
-    font-size: 14px;
+    background: var(--vch-surface, #fff);
+    border: 1px solid var(--vch-border, #e6e6e6);
+    border-radius: var(--vch-radius-card, 8px);
+    padding: 14px 16px;
+    box-shadow: 0 8px 24px var(--vch-shadow, rgba(10, 10, 10, 0.08));
+    color: var(--vch-text, #0a0a0a);
+    font-family: var(--vch-font);
+    font-size: var(--vch-fs-body, 14px);
     min-width: 200px;
-    transition: all 0.3s ease;
-}
-
-.vch-grade-panel:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px var(--vch-shadow, rgba(0, 0, 0, 0.2));
 }
 
 .vch-grade-row {
@@ -230,23 +234,21 @@ html[data-vch-theme] .vch-task-wrap:hover {
 }
 
 .vch-grade-row strong {
-    color: var(--vch-text, #333);
-    font-weight: 600;
+    color: var(--vch-text, #0a0a0a);
+    font-weight: 500;
 }
 
 .vch-grade-value {
     font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    color: var(--vch-accent, #4a90e2);
+    font-weight: 500;
+    color: var(--vch-data, #1d5fbf);
     font-size: 16px;
 }
 
 .vch-grade-note {
-    opacity: 0.6;
     font-size: 12px;
-    text-align: center;
-    color: var(--vch-textMuted, #666);
-    font-style: italic;
+    text-align: left;
+    color: var(--vch-textMuted, #6b6b6b);
 }
 
 /* Mobile-friendly adjustments */
@@ -303,8 +305,8 @@ html[data-vch-theme] .vch-task-wrap:hover {
 
 /* Custom Assignments Styling */
 .vch-custom-assignments-row {
-    background-color: #f8f9fa !important;
-    border-left: 4px solid #007bff !important;
+    background-color: var(--vch-ground, #f2f4f7) !important;
+    border-left: 3px solid var(--vch-data, #1d5fbf) !important;
 }
 
 .vch-custom-assignments-row td {
@@ -313,24 +315,21 @@ html[data-vch-theme] .vch-task-wrap:hover {
 }
 
 .vch-custom-assignments-row td:first-child {
-    font-weight: bold !important;
-    color: #007bff !important;
+    font-weight: 500 !important;
+    color: var(--vch-text, #0a0a0a) !important;
 }
 
 .custom-assignment {
     margin: 4px 0 !important;
     padding: 6px 8px !important;
-    background-color: #e3f2fd !important;
-    border: 1px solid #2196f3 !important;
-    border-radius: 4px !important;
+    background-color: var(--vch-surface, #fff) !important;
+    border: 1px solid var(--vch-border, #e6e6e6) !important;
+    border-radius: var(--vch-radius-chip, 4px) !important;
     font-size: 13px !important;
-    transition: all 0.2s ease;
 }
 
 .custom-assignment:hover {
-    background-color: #bbdefb !important;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+    background-color: var(--vch-raised, #eeeeee) !important;
 }
 
 /* Ensure custom assignments work with existing checkbox system */
@@ -346,12 +345,11 @@ html[data-vch-theme] .vch-task-wrap:hover {
 
 /* Better spacing for custom assignment content */
 .custom-assignment strong {
-    color: #1976d2;
+    color: var(--vch-text, #0a0a0a);
 }
 
 .custom-assignment small {
-    color: #666;
-    font-style: italic;
+    color: var(--vch-textMuted, #6b6b6b);
 }
 
 /* Floating Add Assignment Button */
@@ -360,31 +358,26 @@ html[data-vch-theme] .vch-task-wrap:hover {
     bottom: 30px !important;
     right: 30px !important;
     z-index: 1000 !important;
-    opacity: 0.9 !important;
-    transition: opacity 0.3s ease !important;
 }
 
 .vch-add-assignment-btn {
-    background: var(--vch-accent, #1976d2) !important;
-    color: var(--vch-accentText, white) !important;
+    background: var(--vch-primary, #141414) !important;
+    color: var(--vch-accentText, #fff) !important;
     border: none !important;
-    border-radius: 8px !important;
-    padding: 12px 20px !important;
+    border-radius: var(--vch-radius-control, 6px) !important;
+    padding: 10px 16px !important;
     font-size: 14px !important;
     font-weight: 500 !important;
     cursor: pointer !important;
-    box-shadow: 0 4px 12px var(--vch-shadow, rgba(25, 118, 210, 0.3)) !important;
+    box-shadow: 0 8px 20px var(--vch-shadow, rgba(10, 10, 10, 0.12)) !important;
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    transition: all 0.2s ease !important;
-    font-family: inherit !important;
+    font-family: var(--vch-font) !important;
 }
 
 .vch-add-assignment-btn:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px var(--vch-shadow, rgba(25, 118, 210, 0.4)) !important;
-    filter: brightness(1.05);
+    filter: brightness(1.12);
 }
 
 /* Assignment Modal */
@@ -394,7 +387,7 @@ html[data-vch-theme] .vch-task-wrap:hover {
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background: rgba(0, 0, 0, 0.5) !important;
+    background: rgba(10, 10, 10, 0.4) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -402,16 +395,17 @@ html[data-vch-theme] .vch-task-wrap:hover {
 }
 
 .vch-assignment-modal .modal-content {
-    background: var(--vch-surface, white) !important;
-    color: var(--vch-text, #333) !important;
-    border-radius: 8px !important;
-    padding: 24px !important;
+    background: var(--vch-surface, #fff) !important;
+    color: var(--vch-text, #0a0a0a) !important;
+    border-radius: var(--vch-radius-card, 8px) !important;
+    padding: 20px 22px !important;
     width: 90% !important;
     max-width: 500px !important;
     max-height: 80vh !important;
     overflow-y: auto !important;
-    box-shadow: 0 10px 30px var(--vch-shadow, rgba(0, 0, 0, 0.2)) !important;
-    border: 1px solid var(--vch-border, transparent) !important;
+    box-shadow: 0 16px 40px rgba(10, 10, 10, 0.18) !important;
+    border: 1px solid var(--vch-border, #e6e6e6) !important;
+    font-family: var(--vch-font) !important;
 }
 
 /* Veracross-style form elements */
@@ -421,13 +415,12 @@ html[data-vch-theme] .vch-task-wrap:hover {
 .vch-assignment-modal select {
     width: 100% !important;
     padding: 8px 12px !important;
-    border: 1px solid var(--vch-border, #ddd) !important;
-    border-radius: 4px !important;
+    border: 1px solid var(--vch-control, #d4d4d4) !important;
+    border-radius: var(--vch-radius-control, 6px) !important;
     font-size: 14px !important;
     font-family: inherit !important;
-    transition: border-color 0.2s ease !important;
-    background: var(--vch-surfaceAlt, #fff) !important;
-    color: var(--vch-text, #333) !important;
+    background: var(--vch-surface, #fff) !important;
+    color: var(--vch-text, #0a0a0a) !important;
 }
 
 .vch-assignment-modal input[type="text"]:focus,
@@ -435,38 +428,37 @@ html[data-vch-theme] .vch-task-wrap:hover {
 .vch-assignment-modal textarea:focus,
 .vch-assignment-modal select:focus {
     outline: none !important;
-    border-color: var(--vch-accent, #1976d2) !important;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--vch-accent, #1976d2) 25%, transparent) !important;
+    border-color: var(--vch-text, #0a0a0a) !important;
+    box-shadow: none !important;
 }
 
 .vch-assignment-modal button[type="submit"] {
-    background: var(--vch-accent, #1976d2) !important;
-    color: var(--vch-accentText, white) !important;
+    background: var(--vch-primary, #141414) !important;
+    color: var(--vch-accentText, #fff) !important;
     border: none !important;
-    border-radius: 4px !important;
-    padding: 10px 20px !important;
+    border-radius: var(--vch-radius-control, 6px) !important;
+    padding: 10px 18px !important;
     font-size: 14px !important;
+    font-weight: 500 !important;
     cursor: pointer !important;
-    transition: background-color 0.2s ease !important;
 }
 
 .vch-assignment-modal button[type="submit"]:hover {
-    filter: brightness(1.08);
+    filter: brightness(1.1);
 }
 
 .vch-assignment-modal button[type="button"] {
-    background: var(--vch-surfaceAlt, #f8f9fa) !important;
-    color: var(--vch-textMuted, #6c757d) !important;
-    border: 1px solid var(--vch-border, #dee2e6) !important;
-    border-radius: 4px !important;
-    padding: 10px 20px !important;
+    background: var(--vch-surface, #fff) !important;
+    color: var(--vch-text, #0a0a0a) !important;
+    border: 1px solid var(--vch-border, #e6e6e6) !important;
+    border-radius: var(--vch-radius-control, 6px) !important;
+    padding: 10px 18px !important;
     font-size: 14px !important;
     cursor: pointer !important;
-    transition: background-color 0.2s ease !important;
 }
 
 .vch-assignment-modal button[type="button"]:hover {
-    background: var(--vch-surface, #e2e6ea) !important;
+    background: var(--vch-raised, #eeeeee) !important;
 }
 
 /* Enhanced assignment popups */
@@ -761,34 +753,34 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-btn-primary {
-    background: #1976d2 !important;
+    background: var(--vch-primary, #141414) !important;
     color: #fff !important;
     border: none !important;
 }
 
 .vch-btn-primary:hover {
-    background: #1565c0 !important;
+    background: #2a2a2a !important;
 }
 
 .vch-btn-secondary {
     background: var(--vch-surface, #fff) !important;
-    color: var(--vch-accent, #1976d2) !important;
-    border: 1px solid var(--vch-accent, #1976d2) !important;
+    color: var(--vch-text, #0a0a0a) !important;
+    border: 1px solid var(--vch-border, #e6e6e6) !important;
 }
 
 .vch-btn-secondary:hover {
-    background: var(--vch-accent, #1976d2) !important;
-    color: var(--vch-accentText, #fff) !important;
+    background: var(--vch-raised, #eeeeee) !important;
+    color: var(--vch-text, #0a0a0a) !important;
 }
 
 .vch-btn-danger {
     background: var(--vch-surface, #fff) !important;
-    color: var(--vch-danger, #dc3545) !important;
-    border: 1px solid var(--vch-danger, #dc3545) !important;
+    color: var(--vch-negative, #c4242a) !important;
+    border: 1px solid var(--vch-negative, #c4242a) !important;
 }
 
 .vch-btn-danger:hover {
-    background: #dc3545 !important;
+    background: var(--vch-negative, #c4242a) !important;
     color: #fff !important;
 }
 
@@ -922,13 +914,13 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     display: flex;
     flex-direction: column;
     background: var(--vch-surface, #fff);
-    border: 1px solid var(--vch-border, #d0d5dd);
-    border-radius: 8px;
+    border: 1px solid var(--vch-border, #e6e6e6);
+    border-radius: var(--vch-radius-card, 8px);
     margin: 0;
     overflow: hidden;
-    font-family: inherit;
-    color: var(--vch-text, #333);
-    box-shadow: 0 12px 28px var(--vch-shadow, rgba(0, 0, 0, 0.16));
+    font-family: var(--vch-font);
+    color: var(--vch-text, #0a0a0a);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .vch-home-widget-header {
@@ -937,10 +929,10 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     justify-content: space-between;
     gap: 8px;
     padding: 10px 12px 10px 14px;
-    background: var(--vch-surfaceAlt, #f4f6f8);
-    border-bottom: 1px solid var(--vch-border, #e5e7eb);
-    font-weight: 600;
-    font-size: 15px;
+    background: var(--vch-ground, #f2f4f7);
+    border-bottom: 1px solid var(--vch-border, #e6e6e6);
+    font-weight: 500;
+    font-size: 14px;
     cursor: grab;
     user-select: none;
     touch-action: none;
@@ -952,35 +944,36 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-panel-toggle {
-    border: 1px solid var(--vch-border, #d0d5dd);
+    border: 1px solid var(--vch-border, #e6e6e6);
     background: var(--vch-surface, #fff);
-    color: var(--vch-text, #333);
+    color: var(--vch-text, #0a0a0a);
     height: 26px;
     padding: 0 8px;
-    border-radius: 6px;
+    border-radius: var(--vch-radius-control, 6px);
     font: inherit;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1;
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .vch-panel-toggle:hover {
-    background: color-mix(in srgb, var(--vch-text, #000) 6%, transparent);
+    background: var(--vch-raised, #eeeeee);
 }
 
 .vch-panel-chip {
     display: none;
     align-items: center;
     gap: 6px;
-    border: 0;
-    background: var(--vch-surfaceAlt, #f4f6f8);
-    color: var(--vch-text, #333);
+    border: 1px solid var(--vch-border, #e6e6e6);
+    background: var(--vch-surface, #fff);
+    color: var(--vch-text, #0a0a0a);
     font: inherit;
-    font-weight: 600;
+    font-weight: 500;
     font-size: 12px;
     padding: 6px 8px 6px 10px;
+    border-radius: var(--vch-radius-control, 6px);
     cursor: grab;
     width: auto;
     max-width: none;
@@ -1000,11 +993,11 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     width: 18px;
     height: 18px;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 1;
-    color: var(--vch-link, #1976d2);
-    background: color-mix(in srgb, var(--vch-link, #1976d2) 12%, transparent);
-    border-radius: 4px;
+    color: var(--vch-text, #0a0a0a);
+    background: var(--vch-raised, #eeeeee);
+    border-radius: var(--vch-radius-chip, 4px);
 }
 
 .vch-home-widget--collapsed,
@@ -1013,7 +1006,7 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     min-width: 0;
     max-width: none;
     max-height: none;
-    box-shadow: 0 6px 16px var(--vch-shadow, rgba(0, 0, 0, 0.16));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .vch-home-widget--collapsed .vch-home-widget-header,
@@ -1066,8 +1059,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 .vch-home-spinner {
     width: 18px;
     height: 18px;
-    border: 2px solid var(--vch-border, #d0d5dd);
-    border-top-color: var(--vch-accent, #1976d2);
+    border: 2px solid var(--vch-border, #e6e6e6);
+    border-top-color: var(--vch-primary, #141414);
     border-radius: 50%;
     animation: vch-spin 0.7s linear infinite;
     flex-shrink: 0;
@@ -1081,15 +1074,16 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 
 .vch-home-status {
     margin: 8px 0;
-    font-size: 14px;
-    color: var(--vch-textMuted, #666);
-    background: var(--vch-surfaceAlt, #f8f4e8);
-    border-radius: 4px;
+    font-size: 13px;
+    color: var(--vch-pill-warning-ink, #92400e);
+    background: var(--vch-pill-warning-bg, #fffbeb);
+    border: 1px solid #fde68a;
+    border-radius: var(--vch-radius-chip, 4px);
     padding: 8px 10px;
 }
 
 .vch-home-error {
-    color: var(--vch-danger, #a33);
+    color: var(--vch-negative, #c4242a);
 }
 
 .vch-home-group {
@@ -1098,11 +1092,11 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 
 .vch-home-group h3 {
     margin: 12px 0 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--vch-textMuted, #555);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--vch-textMuted, #6b6b6b);
+    text-transform: none;
+    letter-spacing: 0;
 }
 
 .vch-home-list {
@@ -1119,9 +1113,21 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     row-gap: 2px;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid var(--vch-border, #f0f0f0);
-    border-left: 4px solid transparent;
+    border-bottom: 1px solid var(--vch-rule, #f0f0f0);
+    border-left: 3px solid transparent;
     padding-left: 8px;
+}
+
+.vch-home-group[data-vch-group="past-due"] .vch-home-item {
+    border-left-color: var(--vch-negative, #c4242a);
+}
+
+.vch-home-group[data-vch-group="upcoming"] .vch-home-item {
+    border-left-color: var(--vch-data, #1d5fbf);
+}
+
+.vch-home-group[data-vch-group="completed"] .vch-home-item {
+    border-left-color: var(--vch-control, #d4d4d4);
 }
 
 .vch-home-item:last-child {
@@ -1141,8 +1147,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     padding: 0;
     margin: 0;
     font: inherit;
-    font-weight: 600;
-    color: var(--vch-link, #1a5fbf);
+    font-weight: 500;
+    color: var(--vch-data, #1d5fbf);
     text-align: left;
     cursor: pointer;
     text-decoration: none;
@@ -1155,7 +1161,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 .vch-home-meta {
     grid-column: 2;
     font-size: 12px;
-    color: var(--vch-textMuted, #777);
+    color: var(--vch-textMuted, #6b6b6b);
+    font-variant-numeric: tabular-nums;
 }
 
 .vch-home-item.vch-done .vch-home-title,
@@ -1175,14 +1182,13 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     display: flex;
     flex-direction: column;
     background: var(--vch-surface, #fff);
-    border: 1px solid var(--vch-border, #d0d5dd);
-    border-radius: 8px;
+    border: 1px solid var(--vch-border, #e6e6e6);
+    border-radius: var(--vch-radius-card, 8px);
     margin: 0;
     overflow: hidden;
-    font-family: inherit;
-    color: var(--vch-text, #333);
-    box-shadow: 0 12px 28px var(--vch-shadow, rgba(0, 0, 0, 0.16));
-    animation: vch-lunch-card-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    font-family: var(--vch-font);
+    color: var(--vch-text, #0a0a0a);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .vch-lunch-card-header {
@@ -1191,8 +1197,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     justify-content: space-between;
     gap: 8px;
     padding: 10px 12px;
-    background: var(--vch-surfaceAlt, #f4f6f8);
-    border-bottom: 1px solid var(--vch-border, #e5e7eb);
+    background: var(--vch-ground, #f2f4f7);
+    border-bottom: 1px solid var(--vch-border, #e6e6e6);
     flex-shrink: 0;
     cursor: grab;
     user-select: none;
@@ -1207,8 +1213,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-lunch-card-title {
-    font-weight: 600;
-    font-size: 15px;
+    font-weight: 500;
+    font-size: 14px;
 }
 
 .vch-lunch-card-nav {
@@ -1218,10 +1224,10 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-lunch-nav-btn {
-    border: 1px solid var(--vch-border, #d0d5dd);
+    border: 1px solid var(--vch-border, #e6e6e6);
     background: var(--vch-surface, #fff);
-    color: var(--vch-text, #333);
-    border-radius: 6px;
+    color: var(--vch-text, #0a0a0a);
+    border-radius: var(--vch-radius-control, 6px);
     min-width: 28px;
     height: 28px;
     padding: 0 8px;
@@ -1231,29 +1237,26 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-lunch-nav-btn:hover {
-    background: color-mix(in srgb, var(--vch-text, #000) 6%, transparent);
+    background: var(--vch-raised, #eeeeee);
 }
 
 .vch-lunch-today-btn {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .vch-lunch-card-date {
     padding: 8px 14px 0;
     font-size: 12px;
-    color: var(--vch-textMuted, #777);
+    color: var(--vch-textMuted, #6b6b6b);
     flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .vch-lunch-card-body {
     padding: 8px 14px 12px;
     overflow: auto;
     min-height: 0;
-}
-
-.vch-lunch-card-body.is-lunch-enter {
-    animation: vch-lunch-body-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .vch-lunch-skeleton {
@@ -1265,15 +1268,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 
 .vch-lunch-skel-line {
     height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(
-        90deg,
-        color-mix(in srgb, var(--vch-text, #333) 8%, var(--vch-surface, #fff)) 0%,
-        color-mix(in srgb, var(--vch-text, #333) 14%, var(--vch-surface, #fff)) 45%,
-        color-mix(in srgb, var(--vch-text, #333) 8%, var(--vch-surface, #fff)) 100%
-    );
-    background-size: 200% 100%;
-    animation: vch-lunch-shimmer 1.15s ease-in-out infinite;
+    border-radius: 4px;
+    background: var(--vch-raised, #eeeeee);
 }
 
 .vch-lunch-skel-station {
@@ -1290,54 +1286,15 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     width: 54%;
 }
 
-@keyframes vch-lunch-card-enter {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-
-@keyframes vch-lunch-body-enter {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-
-@keyframes vch-lunch-shimmer {
-    0% {
-        background-position: 100% 0;
-    }
-    100% {
-        background-position: -100% 0;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .vch-lunch-card,
-    .vch-lunch-card-body.is-lunch-enter,
-    .vch-lunch-skel-line {
-        animation: none !important;
-    }
-}
-
 .vch-lunch-card-footer {
     padding: 8px 14px 12px;
-    border-top: 1px solid var(--vch-border, #e5e7eb);
+    border-top: 1px solid var(--vch-border, #e6e6e6);
     flex-shrink: 0;
 }
 
 .vch-lunch-menu-link,
 .vch-lunch-modal-footer a {
-    color: var(--vch-link, #1976d2);
+    color: var(--vch-data, #1d5fbf);
     font-size: 13px;
     text-decoration: none;
 }
@@ -1348,25 +1305,26 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-lunch-station {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--vch-textMuted, #777);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--vch-textMuted, #6b6b6b);
     margin: 0 0 4px;
 }
 
 .vch-lunch-primary {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     margin: 0 0 10px;
     line-height: 1.35;
+    color: var(--vch-text, #0a0a0a);
 }
 
 .vch-lunch-status {
     margin: 8px 0;
     font-size: 13px;
-    color: var(--vch-textMuted, #777);
+    color: var(--vch-textMuted, #6b6b6b);
 }
 
 .vch-lunch-cat {
@@ -1374,11 +1332,11 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-lunch-cat-name {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--vch-textMuted, #777);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--vch-textMuted, #6b6b6b);
     margin-bottom: 4px;
 }
 
@@ -1409,15 +1367,15 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     margin: 0 0 4px 0 !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    padding: 2px 4px 2px 6px !important;
-    border: 1px solid color-mix(in srgb, var(--vch-accent, #e67e22) 35%, var(--vch-border, #d0d5dd)) !important;
-    border-left: 3px solid var(--vch-accent, #e67e22) !important;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--vch-accent, #e67e22) 10%, var(--vch-surface, #fff));
-    color: var(--vch-text, #333);
+    padding: 3px 6px 3px 8px !important;
+    border: 1px solid var(--vch-border, #e6e6e6) !important;
+    border-left: 3px solid var(--vch-data, #1d5fbf) !important;
+    border-radius: var(--vch-radius-chip, 4px);
+    background: var(--vch-surface, #fff);
+    color: var(--vch-text, #0a0a0a);
     font: inherit;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 500;
     line-height: 1.25;
     text-align: left !important;
     cursor: pointer;
@@ -1443,17 +1401,17 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-lunch-header-chip:hover {
-    background: color-mix(in srgb, var(--vch-accent, #e67e22) 18%, var(--vch-surface, #fff));
+    background: var(--vch-ground, #f2f4f7);
 }
 
 .vch-lunch-header-chip--empty {
     pointer-events: none;
-    font-weight: 500;
-    font-style: italic;
-    color: var(--vch-textMuted, #777) !important;
-    border-color: color-mix(in srgb, var(--vch-border, #d0d5dd) 70%, transparent) !important;
-    border-left-color: color-mix(in srgb, var(--vch-textMuted, #777) 45%, transparent) !important;
-    background: color-mix(in srgb, var(--vch-text, #000) 4%, var(--vch-surface, #fff)) !important;
+    font-weight: 400;
+    font-style: normal;
+    color: var(--vch-textMuted, #6b6b6b) !important;
+    border-color: var(--vch-border, #e6e6e6) !important;
+    border-left-color: var(--vch-control, #d4d4d4) !important;
+    background: var(--vch-ground, #f2f4f7) !important;
 }
 
 .vch-lunch-modal {
@@ -1464,12 +1422,13 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     align-items: center;
     justify-content: center;
     padding: 16px;
+    font-family: var(--vch-font);
 }
 
 .vch-lunch-modal-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(10, 10, 10, 0.4);
 }
 
 .vch-lunch-modal-panel {
@@ -1480,10 +1439,10 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     display: flex;
     flex-direction: column;
     background: var(--vch-surface, #fff);
-    color: var(--vch-text, #333);
-    border: 1px solid var(--vch-border, #d0d5dd);
-    border-radius: 10px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+    color: var(--vch-text, #0a0a0a);
+    border: 1px solid var(--vch-border, #e6e6e6);
+    border-radius: var(--vch-radius-card, 8px);
+    box-shadow: 0 16px 40px rgba(10, 10, 10, 0.18);
     overflow: hidden;
 }
 
@@ -1493,25 +1452,26 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     justify-content: space-between;
     gap: 12px;
     padding: 14px 16px;
-    background: var(--vch-surfaceAlt, #f4f6f8);
-    border-bottom: 1px solid var(--vch-border, #e5e7eb);
+    background: var(--vch-ground, #f2f4f7);
+    border-bottom: 1px solid var(--vch-border, #e6e6e6);
 }
 
 .vch-lunch-modal-title {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .vch-lunch-modal-date {
     font-size: 12px;
-    color: var(--vch-textMuted, #777);
+    color: var(--vch-textMuted, #6b6b6b);
     margin-top: 2px;
+    font-variant-numeric: tabular-nums;
 }
 
 .vch-lunch-modal-close {
     border: 0;
     background: transparent;
-    color: var(--vch-textMuted, #777);
+    color: var(--vch-textMuted, #6b6b6b);
     font-size: 22px;
     line-height: 1;
     cursor: pointer;
@@ -1526,7 +1486,7 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 
 .vch-lunch-modal-footer {
     padding: 10px 16px 14px;
-    border-top: 1px solid var(--vch-border, #e5e7eb);
+    border-top: 1px solid var(--vch-border, #e6e6e6);
 }
 
 /* Update tour. Coach stays readable; previews sit above the dim layer. */
@@ -1534,7 +1494,7 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     position: fixed;
     inset: 0;
     z-index: 2147483646;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--vch-font);
     color-scheme: light;
 }
 
@@ -1630,11 +1590,11 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-radius: 14px;
+    border-radius: var(--vch-radius-card, 8px);
     background: #fff !important;
-    color: #1c1c1e !important;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    color: #0a0a0a !important;
+    border: 1px solid #e6e6e6;
+    box-shadow: 0 16px 40px rgba(10, 10, 10, 0.16);
     transition: box-shadow 320ms ease, max-height 420ms ease;
 }
 
@@ -1723,10 +1683,10 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 
 .vch-whats-new-theme-stage {
     padding: 14px;
-    border-radius: 14px;
+    border-radius: var(--vch-radius-card, 8px);
     background: #fff;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+    border: 1px solid #e6e6e6;
+    box-shadow: 0 16px 40px rgba(10, 10, 10, 0.16);
 }
 
 .vch-whats-new-theme-stage .vch-whats-new-stage-label {
@@ -1754,13 +1714,10 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     max-height: min(460px, 70vh) !important;
     z-index: 6 !important;
     background: #ffffff !important;
-    color: #14161a !important;
-    border: 1px solid #c5c9d0 !important;
-    box-shadow:
-        0 18px 48px rgba(0, 0, 0, 0.24),
-        0 0 0 0 rgba(28, 28, 30, 0.12) !important;
+    color: #0a0a0a !important;
+    border: 1px solid #e6e6e6 !important;
+    box-shadow: 0 16px 40px rgba(10, 10, 10, 0.16) !important;
     pointer-events: auto;
-    animation: vch-wn-demo-glow 1.4s ease-out 180ms 1 both;
 }
 
 .vch-tour-preview.vch-lunch-card .vch-lunch-card-body {
@@ -1821,30 +1778,30 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 }
 
 .vch-whats-new-eyebrow {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #8a8a93;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #6b6b6b;
 }
 
 .vch-whats-new-title {
     margin: 2px 0 0;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.02em;
     line-height: 1.2;
-    color: #1c1c1e;
+    color: #0a0a0a;
 }
 
 .vch-whats-new-badge {
     align-self: center;
     padding: 3px 8px;
-    border-radius: 999px;
-    background: #f2f2f4;
-    color: #5c5c66;
+    border-radius: 4px;
+    background: #eeeeee;
+    color: #3d3d3d;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
 }
 
@@ -1915,10 +1872,10 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     gap: 8px;
     min-height: 34px;
     padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid #e6e6ea;
-    background: #fafafa;
-    color: #1c1c1e;
+    border-radius: 6px;
+    border: 1px solid #e6e6e6;
+    background: #f2f4f7;
+    color: #0a0a0a;
     text-shadow: none;
     cursor: pointer;
     text-align: left;
@@ -1928,8 +1885,7 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     animation: vch-wn-swatch-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
     transition:
         background 160ms ease,
-        border-color 160ms ease,
-        transform 160ms ease;
+        border-color 160ms ease;
 }
 
 .vch-whats-new-swatch:nth-child(1) { animation-delay: 40ms; }
@@ -1963,17 +1919,12 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 
 .vch-whats-new-swatch:hover {
     background: #fff;
-    border-color: #d0d0d6;
-    transform: translateY(-1px);
-}
-
-.vch-whats-new-swatch:hover .vch-whats-new-swatch-dot {
-    transform: scale(1.12);
+    border-color: #d4d4d4;
 }
 
 .vch-whats-new-swatch.is-active {
     background: #fff;
-    border-color: #1c1c1e;
+    border-color: #0a0a0a;
 }
 
 .vch-whats-new-swatch.is-active .vch-whats-new-swatch-dot {
@@ -2059,29 +2010,28 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 /* Beat Veracross `button[type="button"]` (white bg) which out-specs a lone class. */
 .vch-whats-new button.vch-whats-new-next {
     border: 0 !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     padding: 8px 14px !important;
-    background: #1c1c1e !important;
+    background: #141414 !important;
     color: #fff !important;
     -webkit-text-fill-color: #fff !important;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     box-shadow: none !important;
     text-shadow: none !important;
     opacity: 1 !important;
-    transition: background 160ms ease, transform 160ms ease;
+    transition: background 160ms ease;
 }
 
 .vch-whats-new button.vch-whats-new-next:hover {
-    background: #2c2c30 !important;
+    background: #2a2a2a !important;
     color: #fff !important;
     -webkit-text-fill-color: #fff !important;
-    transform: translateY(-1px);
 }
 
 .vch-whats-new button.vch-whats-new-next:active {
-    transform: translateY(0);
+    background: #0a0a0a !important;
 }
 
 @keyframes vch-wn-panel-enter {

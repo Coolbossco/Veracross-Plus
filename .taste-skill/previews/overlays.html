@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Veracross Plus — Overlay preview</title>
+    <link rel="stylesheet" href="../../../src/content/styles.css" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #dfe3ea;
+        font-family: var(--vch-font);
+        color: var(--vch-text);
+      }
+      .stage {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 24px;
+      }
+      .vch-home-widget,
+      .vch-lunch-card {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        right: auto !important;
+        width: 340px !important;
+        max-height: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="margin:16px 24px 0;font-size:18px;font-weight:500">Home widgets</h1>
+    <div class="stage">
+      <section class="vch-home-widget">
+        <header class="vch-home-widget-header" title="Drag to move">
+          <span class="vch-panel-title">Upcoming &amp; past due</span>
+          <button type="button" class="vch-panel-toggle">Hide</button>
+        </header>
+        <div class="vch-home-widget-body">
+          <section class="vch-home-group" data-vch-group="past-due">
+            <h3>Past due</h3>
+            <ul class="vch-home-list">
+              <li class="vch-home-item">
+                <span class="vch-task-wrap" data-type="homework"><input class="vch-checkbox" type="checkbox" /></span>
+                <button type="button" class="vch-home-title">Lab report draft</button>
+                <div class="vch-home-meta">Biology · due yesterday</div>
+              </li>
+            </ul>
+          </section>
+          <section class="vch-home-group" data-vch-group="upcoming">
+            <h3>Upcoming</h3>
+            <ul class="vch-home-list">
+              <li class="vch-home-item">
+                <span class="vch-task-wrap" data-type="test"><input class="vch-checkbox" type="checkbox" /></span>
+                <button type="button" class="vch-home-title">Chapter 4 quiz</button>
+                <div class="vch-home-meta">History · tomorrow</div>
+              </li>
+              <li class="vch-home-item">
+                <span class="vch-task-wrap" data-type="custom"><input class="vch-checkbox" type="checkbox" /></span>
+                <button type="button" class="vch-home-title">College essay outline</button>
+                <div class="vch-home-meta">Home · Fri</div>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="vch-lunch-card">
+        <header class="vch-lunch-card-header">
+          <div class="vch-lunch-card-title-wrap">
+            <span class="vch-lunch-card-title">Lunch</span>
+          </div>
+          <div class="vch-lunch-card-nav">
+            <button type="button" class="vch-lunch-nav-btn" aria-label="Previous day">‹</button>
+            <button type="button" class="vch-lunch-nav-btn vch-lunch-today-btn">Today</button>
+            <button type="button" class="vch-lunch-nav-btn" aria-label="Next day">›</button>
+            <button type="button" class="vch-panel-toggle">Hide</button>
+          </div>
+        </header>
+        <div class="vch-lunch-card-date">Tuesday, Nov 3</div>
+        <div class="vch-lunch-card-body">
+          <div class="vch-lunch-station">Main</div>
+          <p class="vch-lunch-primary">Herb roasted chicken with rice pilaf</p>
+          <div class="vch-lunch-cat">
+            <div class="vch-lunch-cat-name">Sides</div>
+            <ul class="vch-lunch-cat-items">
+              <li>Steamed broccoli</li>
+              <li>Garden salad</li>
+            </ul>
+          </div>
+        </div>
+        <div class="vch-lunch-card-footer">
+          <a class="vch-lunch-menu-link" href="#">Full Sage menu</a>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

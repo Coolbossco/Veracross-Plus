@@ -71,7 +71,7 @@ function tourSteps(version) {
       id: "intro",
       layout: "center",
       kicker: "Veracross Plus",
-      title: "What's new",
+      title: "What’s new",
       badge: `v${version}`,
       html: `<ul class="vch-whats-new-list">${bullets
         .map((item) => `<li>${escapeHtml(item)}</li>`)
@@ -82,7 +82,7 @@ function tourSteps(version) {
       layout: "coach",
       kicker: "Step 1",
       title: "Choose a theme",
-      html: `<p class="vch-whats-new-copy">Themes restyle Veracross while you stay on this page. Pick one on the right. You can change it later in the toolbar popup.</p>`,
+      html: `<p class="vch-whats-new-copy">Themes restyle Veracross on this page. Pick one on the right — change it anytime from the toolbar popup.</p>`,
       stage: "themes",
     },
     {
@@ -90,7 +90,7 @@ function tourSteps(version) {
       layout: "pair",
       kicker: "Step 2",
       title: "Homework on home",
-      html: `<p class="vch-whats-new-copy">Homepage Widget lists upcoming and past-due work on the student home page. Try the preview beside this card — check items, hide it, or drag it.</p>`,
+      html: `<p class="vch-whats-new-copy">The homepage widget lists past-due and upcoming work. Try the preview: check items, hide the panel, or drag it.</p>`,
       stage: "homework",
     },
     {
@@ -98,7 +98,7 @@ function tourSteps(version) {
       layout: "pair",
       kicker: "Step 3",
       title: "Lunch on home",
-      html: `<p class="vch-whats-new-copy">Lunch on Home puts the day’s menu on the student home page. Flip days in the preview next to this card.</p>`,
+      html: `<p class="vch-whats-new-copy">Lunch on Home shows today’s menu on the student home page. Flip days in the preview beside this card.</p>`,
       stage: "lunch",
     },
   ];

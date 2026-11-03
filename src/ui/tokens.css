@@ -1,0 +1,66 @@
+/* Veracross Plus — achromatic-ledger tokens (Taste Skill sheet seed 1910437094) */
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/geist-sans-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/geist-sans-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/geist-sans-latin-700-normal.woff2") format("woff2");
+}
+
+:root {
+  --vch-ground: #f2f4f7;
+  --vch-surface: #ffffff;
+  --vch-surfaceAlt: #f2f4f7;
+  --vch-raised: #eeeeee;
+  --vch-border: #e6e6e6;
+  --vch-rule: #f0f0f0;
+  --vch-control: #d4d4d4;
+  --vch-text: #0a0a0a;
+  --vch-textMuted: #6b6b6b;
+  --vch-faint: #6b6b6b;
+  --vch-accent: #141414;
+  --vch-accentText: #ffffff;
+  --vch-primary: #141414;
+  --vch-link: #1d5fbf;
+  --vch-data: #1d5fbf;
+  --vch-positive: #2e7d32;
+  --vch-negative: #c4242a;
+  --vch-warning: #92400e;
+  --vch-danger: #c4242a;
+  --vch-shadow: rgba(10, 10, 10, 0.08);
+  --vch-radius-card: 8px;
+  --vch-radius-control: 6px;
+  --vch-radius-chip: 4px;
+  --vch-gap: 12px;
+  --vch-pad: 16px;
+  --vch-control-height: 36px;
+  --vch-fs-title: 18px;
+  --vch-fs-section: 14px;
+  --vch-fs-body: 14px;
+  --vch-fs-small: 12px;
+  --vch-font: "Geist", "Segoe UI", system-ui, sans-serif;
+  --vch-pill-positive-bg: #dcfae5;
+  --vch-pill-positive-ink: #04250e;
+  --vch-pill-negative-bg: #ffedea;
+  --vch-pill-negative-ink: #831c1e;
+  --vch-pill-warning-bg: #fffbeb;
+  --vch-pill-warning-ink: #92400e;
+  --vch-pill-neutral-bg: #eeeeee;
+  --vch-pill-neutral-ink: #3d3d3d;
+}

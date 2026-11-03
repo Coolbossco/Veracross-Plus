@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Veracross Plus — Settings preview</title>
+    <link rel="stylesheet" href="../../../src/popup/popup.css" />
+    <style>
+      html,
+      body {
+        width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        background: #e8eaee;
+      }
+      .frame {
+        width: 360px;
+        margin: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="container">
+        <header class="header">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">V+</span>
+            <h1>Veracross Plus</h1>
+          </div>
+          <span class="header-sub">Settings</span>
+        </header>
+        <div class="content">
+          <div class="section-label">Assignments</div>
+          <div class="feature-card">
+            <div class="feature-header">
+              <div class="feature-title">Homework checkboxes</div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="feature-description">
+              Mark homework and classwork done on the timeline and daily schedule.
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-header">
+              <div class="feature-title">Homepage widget</div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="feature-description">
+              Past-due and upcoming school and custom work on the student home page.
+            </div>
+          </div>
+          <div class="section-label">Lunch</div>
+          <div class="feature-card">
+            <div class="feature-header">
+              <div class="feature-title">Lunch on home</div>
+              <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+            </div>
+            <div class="feature-description">
+              Day-switchable lunch card from Cincinnati Country Day’s Sage Dining menu.
+            </div>
+          </div>
+          <div class="section-label">Appearance</div>
+          <div class="feature-card">
+            <div class="feature-header"><div class="feature-title">Theme</div></div>
+            <div class="feature-description">Restyle portal pages. Default keeps the stock Veracross look.</div>
+            <label class="field-label" for="theme">Active theme</label>
+            <select id="theme" class="field-select">
+              <option>Default (Veracross)</option>
+              <option>Halloween</option>
+            </select>
+          </div>
+        </div>
+        <div class="footer">Changes save automatically</div>
+      </div>
+    </div>
+  </body>
+</html>

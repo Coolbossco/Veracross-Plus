@@ -516,6 +516,8 @@ function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
 function renderGroup(title, items) {
   const section = document.createElement("section");
   section.className = "vch-home-group";
+  const groupKey = title.toLowerCase().replace(/\s+/g, "-");
+  section.dataset.vchGroup = groupKey;
   const heading = document.createElement("h3");
   heading.textContent = title;
   section.appendChild(heading);
