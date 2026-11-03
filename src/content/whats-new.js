@@ -405,11 +405,15 @@ async function buildHomeworkDemo() {
   }
   if (!items.length) items = SAMPLE_HW_ITEMS;
 
-  const open = items.filter((item) => !item.checked);
+  const pastDue = items.filter((item) => !item.checked && item.pastDue);
+  const upcoming = items.filter((item) => !item.checked && !item.pastDue);
   const done = items.filter((item) => item.checked);
   const groups = [];
-  if (open.length) {
-    groups.push({ title: "Upcoming", items: open });
+  if (pastDue.length) {
+    groups.push({ title: "Past due", items: pastDue });
+  }
+  if (upcoming.length) {
+    groups.push({ title: "Upcoming", items: upcoming });
   }
   if (done.length) {
     groups.push({ title: "Completed", items: done });
@@ -445,7 +449,7 @@ async function buildHomeworkDemo() {
 }
 
 /**
- * @param {{ title: string, className: string, dueLabel: string, type: string, checked: boolean }} item
+ * @param {{ title: string, className: string, dueLabel: string, type: string, checked: boolean, pastDue?: boolean }} item
  */
 function homeworkItemHtml(item) {
   const meta = [item.className, item.dueLabel].filter(Boolean).join(" · ");

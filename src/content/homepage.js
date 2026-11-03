@@ -18,6 +18,11 @@ import {
   setPanelManualCollapse,
 } from "./overlay-layout.js";
 import {
+  groupHomeworkNearToday,
+  isPastDue as isPastDueNearToday,
+  startOfDay,
+} from "./homework-near-today.js";
+import {
   assignmentColor,
   getStorage,
   isExtensionAlive,
@@ -76,7 +81,8 @@ let memorySchoolItems = null;
  *   className: string,
  *   dueLabel: string,
  *   type: string,
- *   checked: boolean
+ *   checked: boolean,
+ *   pastDue: boolean
  * }>>}
  */
 export async function loadTourHomeworkItems({ limit = 5 } = {}) {
@@ -115,14 +121,16 @@ export async function loadTourHomeworkItems({ limit = 5 } = {}) {
 
     if (!items.length) return [];
 
-    const open = sortGroup(items.filter((item) => !item.checked));
-    const done = sortGroup(items.filter((item) => item.checked));
-    return [...open, ...done].slice(0, cap).map((item) => ({
+    const { pastDue, upcoming, completed } = groupHomeworkNearToday(items, {
+      limit: cap,
+    });
+    return [...upcoming, ...pastDue, ...completed].map((item) => ({
       title: item.title || "Untitled",
       className: item.className || "",
       dueLabel: formatDue(item),
       type: item.type || "homework",
       checked: !!item.checked,
+      pastDue: !item.checked && isPastDueNearToday(item),
     }));
   } catch {
     return [];
@@ -464,12 +472,11 @@ function renderWidgetError(widget, _error) {
 
 function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
   const showCompleted = !!homepageSettings.homepageShowCompleted;
+  const { pastDue, upcoming, completed: completedAll } = groupHomeworkNearToday(
+    items,
+  );
+  const completed = showCompleted ? completedAll : [];
   const openItems = items.filter((item) => !item.checked);
-  const completed = showCompleted
-    ? sortGroup(items.filter((item) => item.checked))
-    : [];
-  const pastDue = sortGroup(openItems.filter((item) => isPastDue(item)));
-  const upcoming = sortGroup(openItems.filter((item) => !isPastDue(item)));
   const body = widget.querySelector(".vch-home-widget-body");
   const hasVisible = openItems.length > 0 || completed.length > 0;
 
@@ -898,34 +905,13 @@ function parseAssignmentDate(value) {
 
 function normalizeYear(date, guessedYear) {
   if (!guessedYear || Number.isNaN(date.getTime())) return date;
-  const today = startOfToday();
+  const today = startOfDay();
   const sixMonthsAgo = new Date(today);
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   if (date < sixMonthsAgo) {
     date.setFullYear(date.getFullYear() + 1);
   }
   return date;
-}
-
-function startOfToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-function isPastDue(item) {
-  if (item.forcedPastDue) return true;
-  if (!item.dueDate || Number.isNaN(item.dueDate.getTime())) return false;
-  return item.dueDate < startOfToday();
-}
-
-function sortGroup(items) {
-  return [...items].sort((a, b) => {
-    if (!!a.checked !== !!b.checked) return a.checked ? 1 : -1;
-    const aTime = a.dueDate ? a.dueDate.getTime() : Number.POSITIVE_INFINITY;
-    const bTime = b.dueDate ? b.dueDate.getTime() : Number.POSITIVE_INFINITY;
-    if (aTime !== bTime) return aTime - bTime;
-    return a.title.localeCompare(b.title);
-  });
 }
 
 function dedupeItems(items) {
