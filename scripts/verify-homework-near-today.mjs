@@ -3,6 +3,8 @@
  * Run: node scripts/verify-homework-near-today.mjs
  */
 import {
+  formatDayHeading,
+  groupHomeworkByCalendarDay,
   groupHomeworkNearToday,
   isPastDue,
 } from "../src/content/homework-near-today.js";
@@ -72,6 +74,83 @@ assert(
 assert(
   isPastDue({ dueDate: d(2026, 10, 3) }, today) === false,
   "due today is not past due",
+);
+
+const byDay = groupHomeworkByCalendarDay(yearList, {
+  now: today,
+  includeCompleted: true,
+});
+assert(
+  byDay.dayGroups[0].label === "Yesterday" &&
+    byDay.dayGroups[0].items.map((i) => i.title).join("|") ===
+      "Reading response",
+  "first day group is Yesterday with nearest past-due",
+);
+assert(
+  byDay.dayGroups.some(
+    (g) =>
+      g.dayKey === "2026-08-19" &&
+      g.items.length === 2 &&
+      g.kind === "past-due",
+  ),
+  "Aug 19 past-due items share one day heading",
+);
+assert(
+  byDay.dayGroups.some(
+    (g) =>
+      g.dayKey === "2026-08-20" &&
+      g.items.length === 2 &&
+      g.kind === "past-due",
+  ),
+  "Aug 20 past-due items share one day heading",
+);
+const upcomingDays = byDay.dayGroups.filter((g) => g.kind === "upcoming");
+assert(
+  upcomingDays[0]?.dayKey === "2026-11-04" &&
+    upcomingDays[0].items[0].title === "Problem set 4",
+  "upcoming day groups start with soonest due day",
+);
+assert(
+  upcomingDays.map((g) => g.dayKey).join("|") === "2026-11-04|2026-11-10",
+  "upcoming days ordered soonest-first",
+);
+assert(
+  formatDayHeading(d(2026, 10, 3), today) === "Today",
+  "formatDayHeading Today",
+);
+assert(
+  formatDayHeading(d(2026, 10, 4), today) === "Tomorrow",
+  "formatDayHeading Tomorrow",
+);
+assert(
+  byDay.completed.length === 1 && byDay.completed[0].title === "Old quiz (done)",
+  "completed section preserved when includeCompleted",
+);
+
+const limitedDays = groupHomeworkByCalendarDay(yearList, {
+  limit: 5,
+  now: today,
+});
+assert(
+  limitedDays.dayGroups.flatMap((g) => g.items).length === 5,
+  "day grouping respects the near-today limit",
+);
+// Limit prefers upcoming first, then fills with past-due; display order still
+// lists past-due day headings before upcoming.
+assert(
+  limitedDays.dayGroups.map((g) => g.kind).join("|").startsWith("past-due"),
+  "day group list still places past-due days before upcoming days",
+);
+assert(
+  limitedDays.dayGroups[0].label === "Yesterday",
+  "limited past-due days still lead with nearest overdue day",
+);
+assert(
+  limitedDays.dayGroups
+    .filter((g) => g.kind === "upcoming")
+    .map((g) => g.dayKey)
+    .join("|") === "2026-11-04|2026-11-10",
+  "limited upcoming days are the soonest two",
 );
 
 if (failed) {

@@ -1122,7 +1122,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
     border-left-color: var(--vch-negative, #c4242a);
 }
 
-.vch-home-group[data-vch-group="upcoming"] .vch-home-item {
+.vch-home-group[data-vch-group="upcoming"] .vch-home-item,
+.vch-home-group[data-vch-group="undated"] .vch-home-item {
     border-left-color: var(--vch-data, #1d5fbf);
 }
 

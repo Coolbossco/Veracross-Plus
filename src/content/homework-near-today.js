@@ -12,6 +12,41 @@ export function startOfDay(date = new Date()) {
 }
 
 /**
+ * Stable calendar key for a local date (YYYY-MM-DD), or "undated".
+ * @param {Date | null | undefined} date
+ * @returns {string}
+ */
+export function dayKey(date) {
+  if (!date || Number.isNaN(date.getTime())) return "undated";
+  const day = startOfDay(date);
+  const y = day.getFullYear();
+  const m = String(day.getMonth() + 1).padStart(2, "0");
+  const d = String(day.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Heading for a calendar day relative to today.
+ * @param {Date | null | undefined} date
+ * @param {Date} [today]
+ * @returns {string}
+ */
+export function formatDayHeading(date, today = startOfDay()) {
+  if (!date || Number.isNaN(date.getTime())) return "No due date";
+  const day = startOfDay(date);
+  const base = startOfDay(today);
+  const diffDays = Math.round((day.getTime() - base.getTime()) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays === -1) return "Yesterday";
+  return day.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
  * @param {{ dueDate?: Date | null, forcedPastDue?: boolean }} item
  * @param {Date} [today]
  * @returns {boolean}
@@ -102,4 +137,78 @@ export function groupHomeworkNearToday(items, { limit = null, now = new Date() }
     upcoming: limitedUpcoming,
     completed: limitedCompleted,
   };
+}
+
+/**
+ * @typedef {{
+ *   dayKey: string,
+ *   label: string,
+ *   kind: "past-due" | "upcoming" | "undated" | "completed",
+ *   items: unknown[]
+ * }} HomeworkDayGroup
+ */
+
+/**
+ * Bucket near-today ordered homework into calendar-day sections.
+ * Past-due days come first (nearest today), then upcoming days (soonest),
+ * then an optional Completed section.
+ *
+ * @template {{ dueDate?: Date | null, checked?: boolean, title?: string, forcedPastDue?: boolean }} T
+ * @param {T[]} items
+ * @param {{ limit?: number | null, now?: Date, includeCompleted?: boolean }} [opts]
+ * @returns {{ dayGroups: Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>, completed: T[] }}
+ */
+export function groupHomeworkByCalendarDay(
+  items,
+  { limit = null, now = new Date(), includeCompleted = false } = {},
+) {
+  const today = startOfDay(now);
+  const { pastDue, upcoming, completed } = groupHomeworkNearToday(items, {
+    limit,
+    now,
+  });
+
+  /** @type {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
+  const dayGroups = [
+    ...bucketItemsByDay(pastDue, "past-due", today),
+    ...bucketItemsByDay(upcoming, "upcoming", today),
+  ];
+
+  return {
+    dayGroups,
+    completed: includeCompleted ? completed : [],
+  };
+}
+
+/**
+ * @template {{ dueDate?: Date | null, title?: string }} T
+ * @param {T[]} items
+ * @param {"past-due" | "upcoming"} kind
+ * @param {Date} today
+ * @returns {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>}
+ */
+function bucketItemsByDay(items, kind, today) {
+  /** @type {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
+  const groups = [];
+  /** @type {Map<string, { dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
+  const byKey = new Map();
+
+  for (const item of items) {
+    const key = dayKey(item.dueDate);
+    let group = byKey.get(key);
+    if (!group) {
+      const groupKind = key === "undated" ? "undated" : kind;
+      group = {
+        dayKey: key,
+        label: formatDayHeading(item.dueDate, today),
+        kind: groupKind,
+        items: [],
+      };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+
+  return groups;
 }
