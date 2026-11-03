@@ -80,11 +80,23 @@ const byDay = groupHomeworkByCalendarDay(yearList, {
   now: today,
   includeCompleted: true,
 });
+const pastDueDays = byDay.dayGroups.filter((g) => g.kind === "past-due");
 assert(
-  byDay.dayGroups[0].label === "Yesterday" &&
-    byDay.dayGroups[0].items.map((i) => i.title).join("|") ===
+  pastDueDays.map((g) => g.dayKey).join("|") ===
+    "2026-08-19|2026-08-20|2026-08-21|2026-10-28|2026-11-02",
+  "past-due day groups are oldest-first, closest-to-today last",
+);
+assert(
+  pastDueDays[0]?.dayKey === "2026-08-19" &&
+    pastDueDays[0].items.map((i) => i.title).join("|") ===
+      "C'est la rentrée|First Day of School!",
+  "oldest past-due day leads (Aug 19)",
+);
+assert(
+  pastDueDays.at(-1)?.label === "Yesterday" &&
+    pastDueDays.at(-1).items.map((i) => i.title).join("|") ===
       "Reading response",
-  "first day group is Yesterday with nearest past-due",
+  "Yesterday is the last past-due day group (closest to today)",
 );
 assert(
   byDay.dayGroups.some(
@@ -135,15 +147,23 @@ assert(
   limitedDays.dayGroups.flatMap((g) => g.items).length === 5,
   "day grouping respects the near-today limit",
 );
-// Limit prefers upcoming first, then fills with past-due; display order still
-// lists past-due day headings before upcoming.
+// Limit prefers upcoming first, then fills with past-due nearest today;
+// display still lists past-due day headings before upcoming, oldest→newest.
 assert(
   limitedDays.dayGroups.map((g) => g.kind).join("|").startsWith("past-due"),
   "day group list still places past-due days before upcoming days",
 );
 assert(
-  limitedDays.dayGroups[0].label === "Yesterday",
-  "limited past-due days still lead with nearest overdue day",
+  limitedDays.dayGroups
+    .filter((g) => g.kind === "past-due")
+    .map((g) => g.dayKey)
+    .join("|") === "2026-08-21|2026-10-28|2026-11-02",
+  "limited past-due days are oldest-first among the nearest filled slots",
+);
+assert(
+  limitedDays.dayGroups.filter((g) => g.kind === "past-due").at(-1)?.label ===
+    "Yesterday",
+  "limited past-due days still end with closest overdue day (Yesterday)",
 );
 assert(
   limitedDays.dayGroups

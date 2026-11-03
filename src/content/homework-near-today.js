@@ -150,8 +150,8 @@ export function groupHomeworkNearToday(items, { limit = null, now = new Date() }
 
 /**
  * Bucket near-today ordered homework into calendar-day sections.
- * Past-due days come first (nearest today), then upcoming days (soonest),
- * then an optional Completed section.
+ * Past-due days come first (oldest → closest to today), then upcoming
+ * days (soonest-first), then an optional Completed section.
  *
  * @template {{ dueDate?: Date | null, checked?: boolean, title?: string, forcedPastDue?: boolean }} T
  * @param {T[]} items
@@ -168,9 +168,14 @@ export function groupHomeworkByCalendarDay(
     now,
   });
 
+  // pastDue items are nearest-today-first (for limit fill); reverse day
+  // buckets so headings read oldest → Yesterday (closest last).
+  const pastDueDays = bucketItemsByDay(pastDue, "past-due", today);
+  pastDueDays.reverse();
+
   /** @type {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
   const dayGroups = [
-    ...bucketItemsByDay(pastDue, "past-due", today),
+    ...pastDueDays,
     ...bucketItemsByDay(upcoming, "upcoming", today),
   ];
 
