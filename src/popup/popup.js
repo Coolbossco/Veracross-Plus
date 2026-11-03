@@ -6,7 +6,6 @@ import {
   THEME_GROUP_ORDER,
   THEMES,
 } from "../themes/registry.js";
-import bundledBrandIcon from "./brand-icon.png";
 
 const POPUP_DEFAULTS = {
   enableChecklist: false,
@@ -192,24 +191,13 @@ function bindToggle(id) {
 function bindBrandIcon() {
   const img = document.getElementById("brandIcon");
   if (!img) return;
-  // Prefer the same packaged toolbar icon Chrome/Edge shows, then the
-  // Vite-bundled brand asset, then the relative HTML fallback.
-  const candidates = [];
+  // Prefer the packaged action icon URL so the path works whether the popup
+  // HTML is opened from dist/src/popup/ or rewritten by the bundler.
   try {
-    candidates.push(browser.runtime.getURL("icons/48.png"));
-    candidates.push(browser.runtime.getURL("icons/32.png"));
+    img.src = browser.runtime.getURL("icons/32.png");
   } catch {
-    // runtime unavailable outside the extension page
+    img.src = "../../icons/32.png";
   }
-  if (bundledBrandIcon) candidates.push(bundledBrandIcon);
-  candidates.push("./brand-icon.png");
-
-  const tryNext = (index) => {
-    if (index >= candidates.length) return;
-    img.onerror = () => tryNext(index + 1);
-    img.src = candidates[index];
-  };
-  tryNext(0);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
