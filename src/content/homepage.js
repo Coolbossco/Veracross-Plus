@@ -20,7 +20,6 @@ import {
 import {
   groupHomeworkNearToday,
   isPastDue as isPastDueNearToday,
-  sortUpcoming,
   startOfDay,
 } from "./homework-near-today.js";
 import {
@@ -913,14 +912,6 @@ function normalizeYear(date, guessedYear) {
     date.setFullYear(date.getFullYear() + 1);
   }
   return date;
-}
-
-function isPastDue(item) {
-  return isPastDueNearToday(item);
-}
-
-function sortGroup(items) {
-  return sortUpcoming(items);
 }
 
 function dedupeItems(items) {
