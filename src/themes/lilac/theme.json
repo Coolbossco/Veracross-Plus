@@ -1,0 +1,22 @@
+{
+  "id": "lilac",
+  "name": "Lilac",
+  "description": "Pale lavender with deep ink text",
+  "group": "light",
+  "tokens": {
+    "bg": "#f3eef8",
+    "surface": "#fcfaff",
+    "surfaceAlt": "#e4d9f2",
+    "text": "#120c18",
+    "textMuted": "#2a2233",
+    "border": "#8d7aa3",
+    "accent": "#4a1678",
+    "accentText": "#ffffff",
+    "headerBg": "#dccfec",
+    "headerText": "#120c18",
+    "link": "#3b1064",
+    "today": "#eadcf8",
+    "danger": "#9a2748",
+    "shadow": "rgba(36, 20, 56, 0.14)"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "galaxy",
+  "name": "Galaxy",
+  "description": "Deep space purple with neon accent",
+  "group": "fun",
+  "tokens": {
+    "bg": "#0b0714",
+    "surface": "#160e24",
+    "surfaceAlt": "#241838",
+    "text": "#f0e8ff",
+    "textMuted": "#a894c4",
+    "border": "#3a2a55",
+    "accent": "#b56bff",
+    "accentText": "#12081c",
+    "headerBg": "#080510",
+    "headerText": "#e8dcff",
+    "link": "#d4a4ff",
+    "today": "#3a2858",
+    "danger": "#ff6b8a",
+    "shadow": "rgba(0, 0, 0, 0.5)"
+  }
+}

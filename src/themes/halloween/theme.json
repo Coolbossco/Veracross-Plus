@@ -1,0 +1,22 @@
+{
+  "id": "halloween",
+  "name": "Halloween",
+  "description": "Orange and black seasonal skin",
+  "group": "seasonal",
+  "tokens": {
+    "bg": "#1a1020",
+    "surface": "#2a1830",
+    "surfaceAlt": "#3a2240",
+    "text": "#f5e6d3",
+    "textMuted": "#e0c9a8",
+    "border": "#5a3a20",
+    "accent": "#ff6b1a",
+    "accentText": "#1a1020",
+    "headerBg": "#3a1848",
+    "headerText": "#f5e6d3",
+    "link": "#ff9a4a",
+    "today": "#5c3518",
+    "danger": "#e74c3c",
+    "shadow": "rgba(0, 0, 0, 0.35)"
+  }
+}

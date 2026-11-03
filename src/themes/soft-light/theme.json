@@ -1,0 +1,22 @@
+{
+  "id": "soft-light",
+  "name": "Soft Light",
+  "description": "Warm paper with near-black text",
+  "group": "light",
+  "tokens": {
+    "bg": "#f3efe6",
+    "surface": "#fffcf7",
+    "surfaceAlt": "#e7e1d4",
+    "text": "#111111",
+    "textMuted": "#242424",
+    "border": "#8d8678",
+    "accent": "#143a5c",
+    "accentText": "#ffffff",
+    "headerBg": "#ddd4c4",
+    "headerText": "#111111",
+    "link": "#0d3154",
+    "today": "#efe2b8",
+    "danger": "#9d2f28",
+    "shadow": "rgba(30, 24, 16, 0.14)"
+  }
+}

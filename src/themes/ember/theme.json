@@ -1,0 +1,22 @@
+{
+  "id": "ember",
+  "name": "Ember",
+  "description": "Warm charcoal with sunset orange accents",
+  "group": "dark",
+  "tokens": {
+    "bg": "#1a1210",
+    "surface": "#261a16",
+    "surfaceAlt": "#36241e",
+    "text": "#f8eee6",
+    "textMuted": "#c0a090",
+    "border": "#4a3228",
+    "accent": "#e67a3a",
+    "accentText": "#1a100c",
+    "headerBg": "#120c0a",
+    "headerText": "#f3e4d8",
+    "link": "#f0a56a",
+    "today": "#5a3820",
+    "danger": "#e85a4a",
+    "shadow": "rgba(0, 0, 0, 0.48)"
+  }
+}

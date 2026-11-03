@@ -1,0 +1,22 @@
+{
+  "id": "forest",
+  "name": "Forest",
+  "description": "Deep woodland greens with moss accents",
+  "group": "dark",
+  "tokens": {
+    "bg": "#0e1612",
+    "surface": "#162119",
+    "surfaceAlt": "#213328",
+    "text": "#e8f0e7",
+    "textMuted": "#93a898",
+    "border": "#2f4638",
+    "accent": "#6faf6a",
+    "accentText": "#0a120e",
+    "headerBg": "#0a110d",
+    "headerText": "#dce8db",
+    "link": "#9fd49a",
+    "today": "#3a4d28",
+    "danger": "#e06b5a",
+    "shadow": "rgba(0, 0, 0, 0.45)"
+  }
+}

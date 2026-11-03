@@ -1,0 +1,22 @@
+{
+  "id": "dark",
+  "name": "Dark",
+  "description": "Neutral dark surfaces with a blue accent",
+  "group": "dark",
+  "tokens": {
+    "bg": "#13111c",
+    "surface": "#1c1a28",
+    "surfaceAlt": "#282634",
+    "text": "#f7f7f8",
+    "textMuted": "#a1a0ab",
+    "border": "#33323e",
+    "accent": "#2b5d8c",
+    "accentText": "#ffffff",
+    "headerBg": "#0b0b0f",
+    "headerText": "#e2ddf2",
+    "link": "#b3d6f6",
+    "today": "#514824",
+    "danger": "#ea5c3c",
+    "shadow": "rgba(0, 0, 0, 0.45)"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "ocean",
+  "name": "Ocean",
+  "description": "Deep navy surfaces with teal accents",
+  "group": "dark",
+  "tokens": {
+    "bg": "#0b1520",
+    "surface": "#122233",
+    "surfaceAlt": "#1a3147",
+    "text": "#e8f2fa",
+    "textMuted": "#8eacbf",
+    "border": "#274560",
+    "accent": "#2aa8b8",
+    "accentText": "#061018",
+    "headerBg": "#081018",
+    "headerText": "#d7ebf6",
+    "link": "#7ad4e0",
+    "today": "#1f4a52",
+    "danger": "#ef6a5b",
+    "shadow": "rgba(0, 0, 0, 0.45)"
+  }
+}

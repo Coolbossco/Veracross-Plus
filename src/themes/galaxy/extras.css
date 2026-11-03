@@ -1,0 +1,75 @@
+/* Deep-space accents — only when Galaxy is selected.
+   Use one SVG star tile + separate full-viewport nebulas so
+   background-repeat/size stay aligned (multi-gradient vars break that). */
+
+html[data-vch-theme="galaxy"] {
+  /* Sparse white/violet dots on transparent — tileable, no nebula in the tile. */
+  --vch-galaxy-stars: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Ccircle cx='18' cy='32' r='1' fill='%23ffffff' fill-opacity='0.55'/%3E%3Ccircle cx='64' cy='88' r='1.2' fill='%23e8d0ff' fill-opacity='0.5'/%3E%3Ccircle cx='112' cy='24' r='0.9' fill='%23ffffff' fill-opacity='0.45'/%3E%3Ccircle cx='156' cy='70' r='1' fill='%23d4b8ff' fill-opacity='0.5'/%3E%3Ccircle cx='204' cy='40' r='1.1' fill='%23ffffff' fill-opacity='0.4'/%3E%3Ccircle cx='42' cy='140' r='0.9' fill='%23ffffff' fill-opacity='0.5'/%3E%3Ccircle cx='96' cy='168' r='1.2' fill='%23f0e0ff' fill-opacity='0.45'/%3E%3Ccircle cx='148' cy='128' r='1' fill='%23ffffff' fill-opacity='0.55'/%3E%3Ccircle cx='198' cy='156' r='0.9' fill='%23c8b0ff' fill-opacity='0.45'/%3E%3Ccircle cx='28' cy='200' r='1' fill='%23ffffff' fill-opacity='0.4'/%3E%3Ccircle cx='80' cy='220' r='1.1' fill='%23e8d0ff' fill-opacity='0.5'/%3E%3Ccircle cx='176' cy='208' r='0.9' fill='%23ffffff' fill-opacity='0.45'/%3E%3Ccircle cx='220' cy='100' r='1' fill='%23ffffff' fill-opacity='0.35'/%3E%3Ccircle cx='130' cy='190' r='0.8' fill='%23d4b8ff' fill-opacity='0.4'/%3E%3C/svg%3E");
+}
+
+html[data-vch-theme="galaxy"] .vx-nav,
+html[data-vch-theme="galaxy"] .vx-system-nav {
+  background-color: #080510 !important;
+  background-image: none !important;
+  box-shadow: inset 0 -2px 0 var(--vch-accent) !important;
+}
+
+html[data-vch-theme="galaxy"] .vx-portal-nav {
+  background-color: #160e24 !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme="galaxy"]
+  body:not(:has(#login-form)):not(:has(.account-form-container)):not(
+    :has(#planner)
+  ) {
+  background-color: var(--vch-bg) !important;
+  background-image: var(--vch-galaxy-stars),
+    radial-gradient(
+      ellipse 80% 50% at 18% 12%,
+      rgba(120, 40, 180, 0.3),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 70% 45% at 88% 88%,
+      rgba(40, 20, 120, 0.32),
+      transparent 55%
+    ) !important;
+  /* Exactly 3 layers: stars tile, nebulas stretch once each. */
+  background-repeat: repeat, no-repeat, no-repeat !important;
+  background-size: 240px 240px, 100% 100%, 100% 100% !important;
+  background-position: 0 0, 0 0, 0 0 !important;
+  background-attachment: fixed, fixed, fixed !important;
+}
+
+html[data-vch-theme="galaxy"] .app-container,
+html[data-vch-theme="galaxy"] .app-container.full-width,
+html[data-vch-theme="galaxy"] .portal-background {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme="galaxy"] .screen-component,
+html[data-vch-theme="galaxy"] .portal-screen-block,
+html[data-vch-theme="galaxy"] .ae-grid__item,
+html[data-vch-theme="galaxy"] .component-my-events-student,
+html[data-vch-theme="galaxy"] .vch-home-widget {
+  background-color: var(--vch-surface) !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme="galaxy"] .screen-toolbar {
+  border-bottom: 2px solid var(--vch-accent) !important;
+}
+
+html[data-vch-theme="galaxy"] .vch-home-widget {
+  border-color: var(--vch-accent);
+}
+
+html[data-vch-theme="galaxy"] .vch-home-widget-header {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--vch-accent) 28%, var(--vch-surfaceAlt)),
+    var(--vch-surfaceAlt)
+  );
+}

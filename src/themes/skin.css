@@ -1,0 +1,1536 @@
+/*
+ * Shared Veracross skin for curated themes.
+ * Selector coverage inspired by a thorough Stylus dark mode,
+ * but mapped to --vch-* tokens and kept as a skin (not a redesign).
+ */
+
+/* Typed tokens so theme switches can interpolate when View Transitions
+   aren't available. Initials must stay light — registered props override
+   `var(--vch-*, fallback)` fallbacks even with no theme selected. */
+@property --vch-bg { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --vch-surface { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --vch-surfaceAlt { syntax: "<color>"; inherits: true; initial-value: #f4f6f8; }
+@property --vch-text { syntax: "<color>"; inherits: true; initial-value: #333333; }
+@property --vch-textMuted { syntax: "<color>"; inherits: true; initial-value: #777777; }
+@property --vch-border { syntax: "<color>"; inherits: true; initial-value: #d0d5dd; }
+@property --vch-accent { syntax: "<color>"; inherits: true; initial-value: #1976d2; }
+@property --vch-accentText { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --vch-headerBg { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --vch-headerText { syntax: "<color>"; inherits: true; initial-value: #333333; }
+@property --vch-link { syntax: "<color>"; inherits: true; initial-value: #1976d2; }
+@property --vch-today { syntax: "<color>"; inherits: true; initial-value: #e3f2fd; }
+@property --vch-danger { syntax: "<color>"; inherits: true; initial-value: #dc3545; }
+@property --vch-shadow { syntax: "<color>"; inherits: true; initial-value: #00000029; }
+
+html[data-vch-theme] {
+  transition:
+    --vch-bg 0.5s ease,
+    --vch-surface 0.5s ease,
+    --vch-surfaceAlt 0.5s ease,
+    --vch-text 0.5s ease,
+    --vch-textMuted 0.5s ease,
+    --vch-border 0.5s ease,
+    --vch-accent 0.5s ease,
+    --vch-accentText 0.5s ease,
+    --vch-headerBg 0.5s ease,
+    --vch-headerText 0.5s ease,
+    --vch-link 0.5s ease,
+    --vch-today 0.5s ease,
+    --vch-danger 0.5s ease,
+    --vch-shadow 0.5s ease;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-vch-theme] {
+    transition: none;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.01s;
+  }
+}
+
+html[data-vch-theme] {
+  color-scheme: dark;
+}
+
+/* Light packs need a light color-scheme or text and controls stay pale. */
+html[data-vch-theme="soft-light"],
+html[data-vch-theme="lilac"],
+html[data-vch-theme="matcha"] {
+  color-scheme: light;
+}
+
+html[data-vch-theme]:not(:has(#login-form)):not(:has(.account-form-container)),
+html[data-vch-theme]:not(:has(#login-form)):not(:has(.account-form-container)) body,
+html[data-vch-theme] #page,
+html[data-vch-theme] #container,
+html[data-vch-theme] #main,
+html[data-vch-theme] #main-content {
+  background-color: var(--vch-bg) !important;
+  color: var(--vch-text) !important;
+}
+
+/* Login: do not paint html (or force dark color-scheme). Otherwise the
+   campus photo stops covering the canvas and black bars appear. */
+html[data-vch-theme]:has(#login-form),
+html[data-vch-theme]:has(.account-form-container) {
+  color: var(--vch-text) !important;
+  color-scheme: light !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme] ::selection {
+  background: var(--vch-accent);
+  color: var(--vch-accentText);
+}
+
+html[data-vch-theme] * {
+  scrollbar-color: var(--vch-border) transparent;
+}
+
+/* ---- Top chrome ----
+   Two steps from the theme, so seasonal packs tint the header too. */
+html[data-vch-theme] .vx-nav,
+html[data-vch-theme] .vx-hover-menu,
+html[data-vch-theme] .vx-system-nav {
+  background-color: var(--vch-headerBg) !important;
+  border-color: transparent !important;
+  color: var(--vch-headerText) !important;
+}
+
+html[data-vch-theme] .vx-portal-nav {
+  background-color: color-mix(in srgb, var(--vch-surface) 82%, var(--vch-headerBg)) !important;
+  color: var(--vch-headerText) !important;
+}
+
+html[data-vch-theme] .vx-nav-school,
+html[data-vch-theme] .vx-nav-school a,
+html[data-vch-theme] .vx-nav-school *,
+html[data-vch-theme] .vx-nav-button,
+html[data-vch-theme] .vx-nav-button i,
+html[data-vch-theme] .vx-portal-nav__item-link {
+  color: var(--vch-headerText) !important;
+}
+
+html[data-vch-theme] .vx-portal-nav__item-link i,
+html[data-vch-theme] .vx-nav-right > .vx-nav-button i {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-portal-nav__item-link:hover,
+html[data-vch-theme] .vx-portal-nav__item-link:focus,
+html[data-vch-theme] .vx-nav-button:hover,
+html[data-vch-theme] .vx-nav-button:hover i {
+  background-color: color-mix(in srgb, var(--vch-text) 8%, transparent) !important;
+  color: var(--vch-text) !important;
+  text-decoration: none !important;
+}
+
+html[data-vch-theme] .vx-nav-center__portal {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vx-nav-center__portal:hover {
+  background: color-mix(in srgb, var(--vch-text) 10%, var(--vch-surfaceAlt)) !important;
+  text-decoration: none !important;
+  filter: none;
+}
+
+html[data-vch-theme] .vx-nav-center__portal i {
+  color: var(--vch-text) !important;
+}
+
+/* Keep stock chevron geometry; recolor to match themed portal fill */
+html[data-vch-theme] .vx-nav-center__portal::before,
+html[data-vch-theme] .vx-nav-center__portal::after {
+  border-bottom-color: var(--vch-surfaceAlt) !important;
+}
+
+html[data-vch-theme] .vx-nav-center__triangle-left::after {
+  border-color: transparent var(--vch-surfaceAlt) transparent transparent !important;
+}
+
+html[data-vch-theme] .vx-nav-center__triangle-right::after {
+  border-color: transparent transparent transparent var(--vch-surfaceAlt) !important;
+}
+
+html[data-vch-theme] .vx-nav-center__triangle-left::before {
+  border-color: transparent var(--vch-border) transparent transparent !important;
+}
+
+html[data-vch-theme] .vx-nav-center__triangle-right::before {
+  border-color: transparent transparent transparent var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vx-nav-center__portals-button {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vx-nav-center__portals-button i {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-nav-center__portals-button img {
+  filter: brightness(1.35);
+}
+
+html[data-vch-theme] .vx-nav-account,
+html[data-vch-theme] .nav-account,
+html[data-vch-theme] .vx-nav-right > .nav-account,
+html[data-vch-theme] .vx-nav-right .vx-nav-account {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Portal switcher / account modal */
+html[data-vch-theme] .vx-account-modal,
+html[data-vch-theme] .vx-account-modal__content,
+html[data-vch-theme] .vx-overlay {
+  background: color-mix(in srgb, var(--vch-bg) 92%, transparent) !important;
+}
+
+html[data-vch-theme] .vx-account-modal__header {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vx-account-modal__header *,
+html[data-vch-theme] .vx-account-modal__header .vx-heading-1,
+html[data-vch-theme] .vx-account-modal__header h1,
+html[data-vch-theme] .vx-account-modal__header h2 {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vx-account-modal .vx-page-tabs,
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab,
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab a,
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab span {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab--active,
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab--active a,
+html[data-vch-theme] .vx-account-modal .vx-page-tabs__tab--active span {
+  background: color-mix(in srgb, var(--vch-text) 10%, transparent) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vx-account-modal__content,
+html[data-vch-theme] .vx-account-modal__instructions,
+html[data-vch-theme] .vx-account-info,
+html[data-vch-theme] .vx-portal-list__portal-description {
+  background: var(--vch-surface) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vx-portal-list__portal {
+  background: transparent !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vx-portal-list__portal:hover {
+  background: color-mix(in srgb, var(--vch-text) 6%, transparent) !important;
+}
+
+html[data-vch-theme] .vx-portal-list__portal-icon {
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] .app-container,
+html[data-vch-theme] .app-container.full-width,
+html[data-vch-theme] .container .content,
+html[data-vch-theme] .content,
+html[data-vch-theme] .content-area,
+html[data-vch-theme] .iframe-loading,
+html[data-vch-theme] body.chromeless .container {
+  background-color: var(--vch-surface) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .screen-toolbar {
+  background: transparent !important;
+  border-bottom: 1px solid var(--vch-border) !important;
+}
+
+html[data-vch-theme] .screen-title {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .app-container h1,
+html[data-vch-theme] .app-container h2,
+html[data-vch-theme] .app-container h3,
+html[data-vch-theme] .app-container h4,
+html[data-vch-theme] .app-container .heading-text,
+html[data-vch-theme] .heading-text,
+html[data-vch-theme] .vx-heading-1,
+html[data-vch-theme] .vx-heading-2,
+html[data-vch-theme] .vx-heading-3,
+html[data-vch-theme] .vx-subtitle {
+  color: var(--vch-text) !important;
+}
+
+/* Keep calendar/home event category colors (inline on .event-link / .fc-event) */
+html[data-vch-theme] .app-container a:not(.event-link):not(.fc-event) {
+  color: var(--vch-link);
+}
+
+html[data-vch-theme] .app-container i,
+html[data-vch-theme] .app-container .nc-icon-outline,
+html[data-vch-theme] .app-container .nc-icon-glyph {
+  color: var(--vch-textMuted) !important;
+}
+
+/* ---- Secondary tabs (Student Overview / Daily Schedule / …) ----
+   Light mode: gray strip, active tab is the white one. */
+html[data-vch-theme] .vx-tab-bar,
+html[data-vch-theme] .vx-tab-bar__heading {
+  background: var(--vch-surfaceAlt) !important;
+  border-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
+}
+
+html[data-vch-theme] .vx-tab-bar {
+  border-bottom: 1px solid var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab .vx-tab-bar__description {
+  color: var(--vch-textMuted) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab i {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab:hover {
+  background: color-mix(in srgb, var(--vch-text) 6%, transparent) !important;
+  text-decoration: none !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab:hover .vx-tab-bar__description,
+html[data-vch-theme] .vx-tab-bar__tab:hover i {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab--active,
+html[data-vch-theme] .vx-tab-bar__tab--active:hover {
+  background: color-mix(in srgb, var(--vch-text) 9%, var(--vch-surfaceAlt)) !important;
+  box-shadow: inset 0 -2px 0 var(--vch-accent) !important;
+  border: 0 !important;
+  border-bottom: 2px solid transparent !important;
+}
+
+/* Kill stock white underline that stacks on our accent inset */
+html[data-vch-theme] .vx-tab-bar__tab--active::before,
+html[data-vch-theme] .vx-tab-bar__tab--active::after,
+html[data-vch-theme] .vx-tab-bar__tab--active .vx-tab-bar__description::before,
+html[data-vch-theme] .vx-tab-bar__tab--active .vx-tab-bar__description::after,
+html[data-vch-theme] .vx-tab-bar__tab--active .vx-tab-bar__icon::before,
+html[data-vch-theme] .vx-tab-bar__tab--active .vx-tab-bar__icon::after {
+  display: none !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab--active .vx-tab-bar__description {
+  color: var(--vch-text) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+html[data-vch-theme] .vx-tab-bar__tab--active i {
+  color: var(--vch-link) !important;
+}
+
+/* Active / Future / Past */
+html[data-vch-theme] .vx-page-tabs {
+  border-color: transparent !important;
+}
+
+html[data-vch-theme] .vx-page-tabs__tab {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+html[data-vch-theme] .app-container .vx-page-tabs__tab a {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .app-container .vx-page-tabs__tab a:hover {
+  color: var(--vch-text) !important;
+  text-decoration: none !important;
+}
+
+html[data-vch-theme] .vx-page-tabs__tab--active {
+  background: var(--vch-accent) !important;
+  border-color: transparent !important;
+  color: var(--vch-accentText) !important;
+}
+
+html[data-vch-theme] .app-container .vx-page-tabs__tab--active a {
+  color: var(--vch-accentText) !important;
+}
+
+/* Buttons / badges / tags */
+html[data-vch-theme] .vx-tag,
+html[data-vch-theme] .vx-badge,
+html[data-vch-theme] .notification-badge,
+html[data-vch-theme] .vx-tag.message-count {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-textMuted) !important;
+  border-color: transparent !important;
+}
+
+html[data-vch-theme] .app-container .vx-button,
+html[data-vch-theme] .vx-button,
+html[data-vch-theme] .vx-button-group .vx-button,
+html[data-vch-theme] .button {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html[data-vch-theme] .app-container .vx-button i {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .app-container .vx-button:hover,
+html[data-vch-theme] .vx-button:hover {
+  background: color-mix(in srgb, var(--vch-accent) 28%, var(--vch-surfaceAlt)) !important;
+  text-decoration: none !important;
+}
+
+html[data-vch-theme] .app-container .vx-button--active,
+html[data-vch-theme] .app-container .vx-button--active:hover,
+html[data-vch-theme] .vx-button--active,
+html[data-vch-theme] .vx-button--primary,
+html[data-vch-theme] .daily-schedule .schedule-type-selection .vx-button--active {
+  background: var(--vch-accent) !important;
+  color: var(--vch-accentText) !important;
+  border-color: transparent !important;
+}
+
+/* ---- Overview / classes / home ---- */
+html[data-vch-theme] .vx-list__item,
+html[data-vch-theme] .course,
+html[data-vch-theme] .course-list-item,
+html[data-vch-theme] .ae-grid__item,
+html[data-vch-theme] .portal-screen-block,
+html[data-vch-theme] .screen-component {
+  background: transparent !important;
+  border-color: var(--vch-border) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .course:hover,
+html[data-vch-theme] .course-list-item:hover,
+html[data-vch-theme] .vx-list__item:hover {
+  background: color-mix(in srgb, var(--vch-text) 5%, transparent) !important;
+}
+
+html[data-vch-theme] .course-list-item .course-description,
+html[data-vch-theme] .course .course-name,
+html[data-vch-theme] .student-overview .course-description {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .course-teacher,
+html[data-vch-theme] .course-teacher *,
+html[data-vch-theme] .notification-label,
+html[data-vch-theme] .meeting-today,
+html[data-vch-theme] .meeting-today i,
+html[data-vch-theme] .report-group .vx-subtitle,
+html[data-vch-theme] .report-group i,
+html[data-vch-theme] .item-detail-label,
+html[data-vch-theme] .item-detail-icon {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .app-container .course-links a,
+html[data-vch-theme] .app-container .website-link,
+html[data-vch-theme] .course-list-grade-link,
+html[data-vch-theme] .course-grade {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .app-container .course-links a:hover,
+html[data-vch-theme] .app-container .website-link:hover,
+html[data-vch-theme] .app-container .assignments-link,
+html[data-vch-theme] .app-container .notifications-link,
+html[data-vch-theme] .student-overview .reports .report-group a {
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] .app-container .meeting-today.today {
+  background: var(--vch-accent) !important;
+  border: 0 !important;
+  color: var(--vch-accentText) !important;
+}
+
+html[data-vch-theme] .app-container .meeting-today.today,
+html[data-vch-theme] .app-container .meeting-today.today * {
+  color: var(--vch-accentText) !important;
+}
+
+html[data-vch-theme] .component-my-events-student .day {
+  background: transparent !important;
+  border-color: var(--vch-border) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .component-my-events-student .day-header {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-textMuted) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .component-my-events-student .day.today {
+  background: color-mix(in srgb, var(--vch-accent) 14%, transparent) !important;
+}
+
+html[data-vch-theme] .component-my-events-student .day.today .day-header,
+html[data-vch-theme] .day-header[style*="FFF1DD"],
+html[data-vch-theme] .day-header[style*="fff1dd"] {
+  background: var(--vch-today) !important;
+  color: var(--vch-text) !important;
+}
+
+/* Do not flatten .event-link — category colors come from inline style */
+html[data-vch-theme] .component-my-events-student .event-link .start-time,
+html[data-vch-theme] .component-my-events-student .start-time {
+  color: var(--vch-textMuted) !important;
+}
+
+/* Home resource tiles — neutralize school inline fills into theme surfaces */
+html[data-vch-theme] .component-notification-link a.link,
+html[data-vch-theme] .component-icon-link,
+html[data-vch-theme] .component-unread-messages-count {
+  background-color: var(--vch-surfaceAlt) !important;
+  background-image: none !important;
+  color: var(--vch-text) !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+html[data-vch-theme] .component-icon-link a,
+html[data-vch-theme] .component-icon-link .icon-block,
+html[data-vch-theme] .component-notification-link .icon {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .component-notification-link a.link:hover,
+html[data-vch-theme] .component-icon-link:hover,
+html[data-vch-theme] .component-unread-messages-count:hover {
+  background-color: color-mix(in srgb, var(--vch-text) 8%, var(--vch-surfaceAlt)) !important;
+  text-decoration: none !important;
+}
+
+html[data-vch-theme] .component-notification-link .title,
+html[data-vch-theme] .component-icon-link .icon-description,
+html[data-vch-theme] .component-unread-messages-count .notification-text {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .component-notification-link .message,
+html[data-vch-theme] .component-notification-link .icon i,
+html[data-vch-theme] .component-icon-link i,
+html[data-vch-theme] .component-unread-messages-count i {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .mail-icon .highlight {
+  background: var(--vch-accent) !important;
+}
+
+/* ---- Daily schedule ---- */
+html[data-vch-theme] .day-selection {
+  background: var(--vch-surfaceAlt) !important;
+  border-color: transparent !important;
+}
+
+html[data-vch-theme] .day-selection h4 {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .app-container .day-selection .day {
+  color: var(--vch-textMuted) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .app-container .day-selection .day:hover {
+  background: var(--vch-bg) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .daily-schedule,
+html[data-vch-theme] .vx-schedule-item,
+html[data-vch-theme] .vx-schedule-item table,
+html[data-vch-theme] .vx-schedule-item td {
+  background: transparent !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vx-schedule-item:hover {
+  background: color-mix(in srgb, var(--vch-text) 5%, transparent) !important;
+}
+
+html[data-vch-theme] .vx-schedule-item .item-time,
+html[data-vch-theme] .vx-schedule-item .item-subtitle,
+html[data-vch-theme] .start-time,
+html[data-vch-theme] .day-number,
+html[data-vch-theme] .day-week {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-schedule-item .item-main-description {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vx-schedule-item .item-type.class,
+html[data-vch-theme] .vx-schedule-item .item-type.class::before {
+  background: var(--vch-accent) !important;
+}
+
+html[data-vch-theme] .daily-schedule .now-indicator {
+  color: var(--vch-danger) !important;
+}
+
+html[data-vch-theme] .item-detail-data {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .recent-updates .vx-list__item {
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .update-link:hover .vx-list__item {
+  background: color-mix(in srgb, var(--vch-text) 5%, transparent) !important;
+}
+
+/* ---- Timeline / planner ----
+   Light mode steps: white grid, gray header, paler class column, cream today.
+   Keep those steps; don't flatten them to one navy. */
+html[data-vch-theme] #planner,
+html[data-vch-theme] .timeline .timeline-table,
+html[data-vch-theme] .timeline .timeline-records,
+html[data-vch-theme] .timeline-records-inner,
+html[data-vch-theme] .timeline-table-wrapper,
+html[data-vch-theme] .timeline-records-wrapper {
+  background: var(--vch-bg) !important;
+  border-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-x,
+html[data-vch-theme] .timeline .timeline-header-intersect,
+html[data-vch-theme] .timeline .timeline-header-y,
+html[data-vch-theme] .timeline .timeline-row.header {
+  background: var(--vch-surfaceAlt) !important;
+  border-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-row.header.summary,
+html[data-vch-theme] .timeline .timeline-row.header.summary .timeline-cell {
+  background: var(--vch-surface) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-row,
+html[data-vch-theme] .timeline .timeline-cell,
+html[data-vch-theme] .timeline-cell.divider {
+  border-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-cell.divider,
+html[data-vch-theme] .timeline-cell.divider {
+  border-right-color: color-mix(in srgb, var(--vch-text) 45%, var(--vch-bg)) !important;
+}
+
+/* Class column: stock draws a border on the pane and again on the cell. Keep one. */
+html[data-vch-theme] .timeline .timeline-header-y {
+  border-right: 1px solid color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
+  outline: none !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-y-inner,
+html[data-vch-theme] .timeline .timeline-header-intersect,
+html[data-vch-theme] .timeline .timeline-header-y .timeline-cell,
+html[data-vch-theme] .timeline .timeline-header-y .timeline-row,
+html[data-vch-theme] .timeline .timeline-header-intersect .timeline-cell,
+html[data-vch-theme] .timeline .timeline-header-intersect .timeline-row {
+  border-right: 0 !important;
+  outline: none !important;
+}
+
+html[data-vch-theme] .timeline .timeline-row.header h4 {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-row.header.summary {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-row.header.summary .count,
+html[data-vch-theme] #planner.timeline .timeline-row.header .count,
+html[data-vch-theme] .timeline-row.header .count {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: transparent !important;
+}
+
+/* Stock sticky-header fade reads as a white glow on dark — use a dark edge or none */
+html[data-vch-theme] #planner,
+html[data-vch-theme] .timeline,
+html[data-vch-theme] .timeline .timeline-header-x,
+html[data-vch-theme] .timeline .timeline-header-x-inner,
+html[data-vch-theme] .timeline .timeline-header-y,
+html[data-vch-theme] .timeline .timeline-header-y-inner,
+html[data-vch-theme] .timeline .timeline-header-intersect,
+html[data-vch-theme] .timeline .timeline-records,
+html[data-vch-theme] .timeline-records-inner,
+html[data-vch-theme] .timeline-records-wrapper,
+html[data-vch-theme] .timeline-table-wrapper,
+html[data-vch-theme] .timeline .timeline-row.header,
+html[data-vch-theme] .timeline .timeline-row.header.summary,
+html[data-vch-theme] .timeline .timeline-row.header.summary .timeline-cell {
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-x::before,
+html[data-vch-theme] .timeline .timeline-header-x::after,
+html[data-vch-theme] .timeline .timeline-header-y::before,
+html[data-vch-theme] .timeline .timeline-header-y::after,
+html[data-vch-theme] .timeline .timeline-records::before,
+html[data-vch-theme] .timeline .timeline-records::after,
+html[data-vch-theme] .timeline-records-inner::before,
+html[data-vch-theme] .timeline-records-inner::after,
+html[data-vch-theme] .timeline .timeline-row.header.summary::before,
+html[data-vch-theme] .timeline .timeline-row.header.summary::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+/* Keep a dark sticky edge under the due-count header (not white) */
+html[data-vch-theme] .timeline .timeline-row.header.summary {
+  box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.75) !important;
+  -webkit-box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.75) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-y .title,
+html[data-vch-theme] #planner .timeline-controls a,
+html[data-vch-theme] .timeline-controls .navigate a,
+html[data-vch-theme] #planner a.toggle-rows,
+html[data-vch-theme] #planner .toggle-rows a {
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-y .subtitle,
+html[data-vch-theme] .timeline .timeline-header-y .tools a {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-y .tools a:hover,
+html[data-vch-theme] #planner .timeline-controls a:hover {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .timeline .timeline-header-y img.expand,
+html[data-vch-theme] .timeline .timeline-header-y img.collapse {
+  filter: invert(1) opacity(0.65);
+}
+
+html[data-vch-theme] .timeline-cell.today,
+html[data-vch-theme] .timeline .timeline-cell.current,
+html[data-vch-theme] .vch-custom-timeline-row .timeline-cell.today,
+html[data-vch-theme] .vch-custom-timeline-row .timeline-cell.current,
+html[data-vch-theme] td.today,
+html[data-vch-theme] th.today,
+html[data-vch-theme] .timeline-row.today,
+html[data-vch-theme] .vch-custom-timeline-row.today {
+  background: var(--vch-today) !important;
+  background-image: none !important;
+  color: var(--vch-text) !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .timeline-cell.today::before,
+html[data-vch-theme] .vch-custom-timeline-row .timeline-cell.today::before {
+  background: var(--vch-today) !important;
+}
+
+/* Assignment chips — dark drop shadow (stock light-mode glow), no white halo */
+html[data-vch-theme] #planner .timeline-cell .assignment,
+html[data-vch-theme] #planner .timeline-cell.scrollable .assignment,
+html[data-vch-theme] .timeline-cell .assignment,
+html[data-vch-theme] .timeline-cell .homework,
+html[data-vch-theme] .timeline-cell .test,
+html[data-vch-theme] .timeline-cell .paper,
+html[data-vch-theme] .timeline-cell .quiz,
+html[data-vch-theme] .timeline-cell .classwork,
+html[data-vch-theme] .timeline-cell [data-assignment-id],
+html[data-vch-theme] .timeline-cell.today .assignment,
+html[data-vch-theme] .vch-custom-timeline-row .timeline-cell.today .assignment,
+html[data-vch-theme] .assignment.vch-decorated,
+html[data-vch-theme] .vch-custom-assignment.assignment {
+  background: color-mix(in srgb, var(--vch-text) 9%, var(--vch-surfaceAlt)) !important;
+  border: 0 !important;
+  border-radius: 4px !important;
+  color: var(--vch-text) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55) !important;
+  -webkit-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55) !important;
+  text-shadow: none !important;
+  filter: none !important;
+  outline: none !important;
+  overflow: hidden !important;
+}
+
+html[data-vch-theme] #planner .assignment .assignment-type,
+html[data-vch-theme] .assignment .assignment-type {
+  background-color: transparent !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  color: var(--vch-text) !important;
+}
+
+/* Kill white inset/halo leftovers on chip children (keep chip's own dark shadow) */
+html[data-vch-theme] .timeline-cell .assignment *,
+html[data-vch-theme] .timeline-cell .assignment::before,
+html[data-vch-theme] .timeline-cell .assignment::after,
+html[data-vch-theme] #planner .assignment *,
+html[data-vch-theme] #planner .assignment::before,
+html[data-vch-theme] #planner .assignment::after,
+html[data-vch-theme] .timeline-row.header.summary,
+html[data-vch-theme] .timeline-row.header.summary .timeline-cell,
+html[data-vch-theme] .timeline-row.header.summary .count {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-vch-theme] #planner .assignment .assignment-description,
+html[data-vch-theme] .assignment .assignment-description,
+html[data-vch-theme] #planner .upcoming li .assignment-description,
+html[data-vch-theme] .assignment-list .assignment-description {
+  background: transparent !important;
+  text-shadow: none !important;
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] #planner .assignment .badge.due,
+html[data-vch-theme] .assignment .badge.due,
+html[data-vch-theme] .badge.due {
+  background: color-mix(in srgb, var(--vch-accent) 22%, transparent) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] #planner .upcoming h4 {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] #planner .assignment .vch-task-wrap,
+html[data-vch-theme] .assignment .vch-task-wrap,
+html[data-vch-theme] .vch-task-wrap,
+html[data-vch-theme] .vch-task-wrap:hover {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  padding: 3px !important;
+  margin: 0 6px 0 2px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transform: none !important;
+  cursor: pointer !important;
+}
+
+html[data-vch-theme] #planner .assignment .vch-task-wrap::before,
+html[data-vch-theme] .assignment .vch-task-wrap::before,
+html[data-vch-theme] .vch-task-wrap::before {
+  display: none !important;
+  box-shadow: none !important;
+}
+
+/* Themed checkboxes — visible stroke + larger hit target, not white blobs */
+html[data-vch-theme] .vch-checkbox,
+html[data-vch-theme] input.vch-checkbox {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  position: relative !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  border: 1.5px solid color-mix(in srgb, var(--vch-text) 55%, transparent) !important;
+  border-radius: 3px !important;
+  background: color-mix(in srgb, var(--vch-text) 6%, transparent) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  cursor: pointer !important;
+}
+
+html[data-vch-theme] .vch-checkbox:hover,
+html[data-vch-theme] input.vch-checkbox:hover {
+  border-color: var(--vch-link) !important;
+  background: color-mix(in srgb, var(--vch-link) 12%, transparent) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+html[data-vch-theme] .vch-checkbox:checked,
+html[data-vch-theme] input.vch-checkbox:checked,
+html[data-vch-theme] .vch-done .vch-checkbox,
+html[data-vch-theme] .vch-done input.vch-checkbox {
+  background: var(--vch-accent) !important;
+  border-color: var(--vch-accent) !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vch-checkbox:checked::after,
+html[data-vch-theme] input.vch-checkbox:checked::after,
+html[data-vch-theme] .vch-done .vch-checkbox::after,
+html[data-vch-theme] .vch-done input.vch-checkbox::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 7px !important;
+  height: 4px !important;
+  margin: 0 !important;
+  border: solid var(--vch-accentText) !important;
+  border-width: 0 0 1.5px 1.5px !important;
+  background: none !important;
+  box-shadow: none !important;
+  transform: translate(-50%, -65%) rotate(-45deg) !important;
+}
+
+html[data-vch-theme] #planner .timeline-cell .assignment,
+html[data-vch-theme] #planner .timeline-cell.scrollable .assignment,
+html[data-vch-theme] .timeline-cell .assignment,
+html[data-vch-theme] .assignment.vch-decorated {
+  filter: none !important;
+  outline: none !important;
+}
+
+/* ---- Forms / modals / calendar chrome ---- */
+html[data-vch-theme] body:not(:has(#login-form)):not(:has(.account-form-container))
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html[data-vch-theme] body:not(:has(#login-form)):not(:has(.account-form-container)) select,
+html[data-vch-theme] body:not(:has(#login-form)):not(:has(.account-form-container)) textarea,
+html[data-vch-theme] .vx-form-control .vx-text-field__input,
+html[data-vch-theme] .vx-form-control .vx-date-field__input,
+html[data-vch-theme] .vx-form-control .vx-text-area__input {
+  background-color: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+/* Popups / facebox / modals — theme immediately so loading doesn't flash light UI */
+html[data-vch-theme] .popup,
+html[data-vch-theme] .popup .body,
+html[data-vch-theme] .popup .content,
+html[data-vch-theme] #facebox,
+html[data-vch-theme] #facebox .body,
+html[data-vch-theme] #facebox .content,
+html[data-vch-theme] #facebox .popup,
+html[data-vch-theme] .dropdown,
+html[data-vch-theme] .modal-body,
+html[data-vch-theme] .vx-modal,
+html[data-vch-theme] .vx-modal__content,
+html[data-vch-theme] .vx-modal__footer,
+html[data-vch-theme] .vx-overlay + .vx-modal,
+html[data-vch-theme] .qtip-content,
+html[data-vch-theme] .qtip-titlebar,
+html[data-vch-theme] .tippy-box {
+  background: var(--vch-surface) !important;
+  background-image: none !important;
+  color: var(--vch-text) !important;
+  border: 1px solid var(--vch-border) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55) !important;
+  -webkit-box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55) !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+html[data-vch-theme] .vx-overlay {
+  background: rgba(6, 6, 10, 0.62) !important;
+}
+
+html[data-vch-theme] .popup *,
+html[data-vch-theme] #facebox *,
+html[data-vch-theme] .vx-modal *,
+html[data-vch-theme] .dropdown *,
+html[data-vch-theme] .qtip-content *,
+html[data-vch-theme] .tippy-box * {
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+  text-shadow: none !important;
+}
+
+html[data-vch-theme] .popup i,
+html[data-vch-theme] #facebox i,
+html[data-vch-theme] .vx-modal i,
+html[data-vch-theme] .vx-data-field__icon,
+html[data-vch-theme] .vx-data-field__icon::before {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-record-header,
+html[data-vch-theme] .vx-record-body,
+html[data-vch-theme] .vx-data-field,
+html[data-vch-theme] .vx-data-field__data,
+html[data-vch-theme] .detail-assignment,
+html[data-vch-theme] .detail-event {
+  background: transparent !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vx-record-header .vx-record-header__title,
+html[data-vch-theme] .vx-record-header .vx-record-header__course-description,
+html[data-vch-theme] .vx-record-body .vx-record-title,
+html[data-vch-theme] .vx-data-field .vx-data-field__data,
+html[data-vch-theme] .vx-data-field .vx-subtitle,
+html[data-vch-theme] .vx-data-field .vx-form-label,
+html[data-vch-theme] .vx-record-header .vx-subtitle,
+html[data-vch-theme] .vx-record-header .vx-record-header__type {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vx-data-field .vx-subtitle,
+html[data-vch-theme] .vx-data-field .vx-form-label,
+html[data-vch-theme] .vx-record-header .vx-subtitle,
+html[data-vch-theme] .vx-record-header .vx-record-header__type {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vx-modal .vx-modal__footer {
+  background: transparent !important;
+  border-top: 1px solid var(--vch-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .fc .fc-button,
+html[data-vch-theme] .control-calendar .fc-toolbar .fc-button {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html[data-vch-theme] .fc-unthemed td,
+html[data-vch-theme] .fc-unthemed th,
+html[data-vch-theme] .fc-view-container,
+html[data-vch-theme] .control-calendar .fc-view th,
+html[data-vch-theme] .control-calendar .fc-content td {
+  background-color: var(--vch-bg) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .control-calendar .fc-unthemed .fc-day.fc-today {
+  background: var(--vch-today) !important;
+}
+
+/* Inline leftovers (cover common white banner flashes while popups mount) */
+html[data-vch-theme] [style*="background-color: white"],
+html[data-vch-theme] [style*="background-color:#fff" i],
+html[data-vch-theme] [style*="background-color: #fff" i],
+html[data-vch-theme] [style*="background-color:#ffffff" i],
+html[data-vch-theme] [style*="background-color: #ffffff" i],
+html[data-vch-theme] [style*="background-color:rgb(255"],
+html[data-vch-theme] [style*="background-color: rgb(255"],
+html[data-vch-theme] [style*="background-color:rgb(255,255,255"],
+html[data-vch-theme] [style*="background-color: rgb(255, 255, 255"],
+html[data-vch-theme] [style*="background: white"],
+html[data-vch-theme] [style*="background:#fff" i],
+html[data-vch-theme] [style*="background: #fff" i],
+html[data-vch-theme] [style*="background:#ffffff" i],
+html[data-vch-theme] [style*="background: #ffffff" i] {
+  background-color: var(--vch-surfaceAlt) !important;
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+}
+
+/* Only flatten obvious body-text blacks/greys — not category accent hues */
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color:#000" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color: #000" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color:black" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color: black" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color:#333" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color: #333" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color:#666" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color: #666" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color:#444" i],
+html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color: #444" i] {
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] [style*="FFF1DD"],
+html[data-vch-theme] [style*="fff1dd"],
+html[data-vch-theme] [style*="fffee0"],
+html[data-vch-theme] [style*="FFFEE0"] {
+  background-color: var(--vch-today) !important;
+  background: var(--vch-today) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] iframe.old-portals-iframe,
+html[data-vch-theme] iframe {
+  background-color: var(--vch-bg) !important;
+  color-scheme: dark;
+}
+
+html[data-vch-theme="soft-light"] iframe,
+html[data-vch-theme="lilac"] iframe,
+html[data-vch-theme="matcha"] iframe {
+  color-scheme: light;
+}
+
+/* ---- Plus UI ---- */
+html[data-vch-theme] .vch-modal-content,
+html[data-vch-theme] [data-vch-modal-content],
+html[data-vch-theme] .vch-vc-card,
+html[data-vch-theme] .vch-home-widget,
+html[data-vch-theme] .vch-lunch-card,
+html[data-vch-theme] .vch-lunch-modal-panel {
+  background: var(--vch-surface) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme] .vch-home-widget-header,
+html[data-vch-theme] .vch-vc-body,
+html[data-vch-theme] .vch-inline-confirm,
+html[data-vch-theme] .vch-lunch-card-header,
+html[data-vch-theme] .vch-lunch-modal-header {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] .vch-lunch-nav-btn,
+html[data-vch-theme] .vch-panel-toggle,
+html[data-vch-theme] .vch-panel-chip {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vch-panel-toggle {
+  background: transparent !important;
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vch-lunch-card-date,
+html[data-vch-theme] .vch-lunch-status,
+html[data-vch-theme] .vch-lunch-cat-name,
+html[data-vch-theme] .vch-lunch-station,
+html[data-vch-theme] .vch-lunch-modal-date {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vch-lunch-menu-link,
+html[data-vch-theme] .vch-lunch-modal-footer a {
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] .vch-lunch-header-chip {
+  display: block !important;
+  float: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+  background: color-mix(in srgb, #e67e22 14%, var(--vch-surface)) !important;
+  border-color: color-mix(in srgb, #e67e22 40%, var(--vch-border)) !important;
+  border-left-color: #e67e22 !important;
+  color: var(--vch-text) !important;
+  text-align: left !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vch-lunch-header-chip:hover {
+  background: color-mix(in srgb, #e67e22 22%, var(--vch-surface)) !important;
+}
+
+html[data-vch-theme] .vch-lunch-header-chip--empty {
+  color: var(--vch-textMuted) !important;
+  border-color: color-mix(in srgb, var(--vch-border) 70%, transparent) !important;
+  border-left-color: color-mix(in srgb, var(--vch-textMuted) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--vch-text) 6%, var(--vch-surface)) !important;
+}
+
+html[data-vch-theme] .vch-home-meta,
+html[data-vch-theme] .vch-home-title {
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] .vch-home-meta {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] .vch-btn-secondary {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-link) !important;
+  border-color: var(--vch-accent) !important;
+}
+
+html[data-vch-theme] .vch-btn-primary,
+html[data-vch-theme] .vch-add-assignment-btn {
+  background: var(--vch-accent) !important;
+  color: var(--vch-accentText) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] .vch-btn-danger {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-danger) !important;
+  border-color: var(--vch-danger) !important;
+}
+
+/* ---- Academic documents (report cards on documents.veracross.com) ---- */
+html[data-vch-theme] #container,
+html[data-vch-theme] #document,
+html[data-vch-theme] #nav {
+  background: var(--vch-bg) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] #nav a.print,
+html[data-vch-theme] #nav a.print span,
+html[data-vch-theme] #nav .pdf {
+  color: var(--vch-link) !important;
+  background: transparent !important;
+}
+
+html[data-vch-theme] #document .header,
+html[data-vch-theme] #document .title,
+html[data-vch-theme] #document .subheader,
+html[data-vch-theme] #document .student-name,
+html[data-vch-theme] #document .label-content,
+html[data-vch-theme] #document .label-content dt,
+html[data-vch-theme] #document .label-content dd,
+html[data-vch-theme] #document .numeric-grades-table-section,
+html[data-vch-theme] #document .class-detail-section,
+html[data-vch-theme] #document .class,
+html[data-vch-theme] #document .class-title,
+html[data-vch-theme] #document .comments,
+html[data-vch-theme] #document .comment {
+  background: transparent !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] #document .label-content dt {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] #document .data_table,
+html[data-vch-theme] #document .data_table caption {
+  background: transparent !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] #document .data_table thead th,
+html[data-vch-theme] #document .data_table thead td {
+  background: var(--vch-accent) !important;
+  color: var(--vch-accentText) !important;
+  border-color: color-mix(in srgb, var(--vch-accent) 70%, black) !important;
+}
+
+html[data-vch-theme] #document .data_table tbody tr,
+html[data-vch-theme] #document .data_table tbody tr td {
+  background: var(--vch-surface) !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] #document .data_table tbody tr.alt,
+html[data-vch-theme] #document .data_table tbody tr.alt td,
+html[data-vch-theme] #document .data_table tbody tr:nth-child(even),
+html[data-vch-theme] #document .data_table tbody tr:nth-child(even) td {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] #document .grade-container {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-text) !important;
+  border: 1px solid var(--vch-border) !important;
+}
+
+html[data-vch-theme] #document .class-title {
+  color: var(--vch-text) !important;
+  border-bottom-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] #document .pdf-footer,
+html[data-vch-theme] #document .pdf-footer table,
+html[data-vch-theme] #document .pdf-footer td {
+  background: transparent !important;
+  color: var(--vch-textMuted) !important;
+  border-color: var(--vch-border) !important;
+}
+
+/*
+ * Login / accounts — preserve stock layout:
+ * body margin 8em, .banner.round white disc + margin:-70px overlap.
+ * Only recolor the card/form; never touch banner geometry.
+ */
+html[data-vch-theme] body:has(#login-form),
+html[data-vch-theme] body:has(.account-form-container) {
+  /* Keep the school's background-image. Don't set background-color —
+     that plus html color-scheme was letterboxing the photo. */
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .ae-container,
+html[data-vch-theme] body:has(.account-form-container) .ae-container,
+html[data-vch-theme] body:has(#login-form) .ae-grid,
+html[data-vch-theme] body:has(.account-form-container) .ae-grid {
+  background: transparent !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .card,
+html[data-vch-theme] body:has(.account-form-container) .card {
+  background: var(--vch-surface) !important;
+  color: var(--vch-text) !important;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Stock white disc. The hawk jpg is light blue on white, so blending it
+   into the dark card hides the image. Leave the plate and the photo alone. */
+html[data-vch-theme] body:has(#login-form) .banner.round,
+html[data-vch-theme] body:has(.account-form-container) .banner.round {
+  background: #ffffff !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .banner.round .school-image,
+html[data-vch-theme] body:has(.account-form-container) .banner.round .school-image {
+  mix-blend-mode: normal !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .account-form-container,
+html[data-vch-theme] body:has(.account-form-container) .account-form-container,
+html[data-vch-theme] body:has(#login-form) .card-header,
+html[data-vch-theme] body:has(.account-form-container) .card-header {
+  background: transparent !important;
+  color: var(--vch-text) !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .card-header-title,
+html[data-vch-theme] body:has(.account-form-container) .card-header-title {
+  color: #6db3ff !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .vx-MessageBanner.warning,
+html[data-vch-theme] body:has(.account-form-container) .vx-MessageBanner.warning {
+  background: #5c4a1f !important;
+  border: 1px solid #7a6328 !important;
+  color: #f6e7b2 !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] #login-form .vx-FormLabel,
+html[data-vch-theme] #login-form label {
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] #login-form .vx-TextField_Input,
+html[data-vch-theme] #login-form input[type="text"],
+html[data-vch-theme] #login-form input[type="password"],
+html[data-vch-theme] #login-form input[type="email"] {
+  background: var(--vch-bg) !important;
+  color: var(--vch-text) !important;
+  border: 1px solid var(--vch-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] #login-form .vx-TextField_Input:focus,
+html[data-vch-theme] #login-form input:focus {
+  border-color: #6db3ff !important;
+}
+
+html[data-vch-theme] #login-form .vx-Button,
+html[data-vch-theme] #login-form input[type="submit"] {
+  background: var(--vch-accent) !important;
+  color: var(--vch-accentText) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-vch-theme] #login-form .vx-Button:disabled,
+html[data-vch-theme] #login-form input[type="submit"]:disabled {
+  background: var(--vch-surfaceAlt) !important;
+  color: var(--vch-textMuted) !important;
+}
+
+html[data-vch-theme] #login-form .forgot-link {
+  color: var(--vch-link) !important;
+}
+
+html[data-vch-theme] body:has(#login-form) .card-footer,
+html[data-vch-theme] body:has(.account-form-container) .card-footer,
+html[data-vch-theme] body:has(#login-form) .card-footer a,
+html[data-vch-theme] body:has(.account-form-container) .card-footer a {
+  background: transparent !important;
+  color: var(--vch-textMuted) !important;
+  text-shadow: none !important;
+  border: 0 !important;
+}
+
+/* Light themes: school UI often keeps white/pale text after fills are cleared.
+   Force near-black copy across the portal (except accent badges). */
+html:is(
+    [data-vch-theme="soft-light"],
+    [data-vch-theme="lilac"],
+    [data-vch-theme="matcha"]
+  )
+  .app-container,
+html:is(
+    [data-vch-theme="soft-light"],
+    [data-vch-theme="lilac"],
+    [data-vch-theme="matcha"]
+  )
+  .app-container
+  :is(
+    div,
+    span,
+    p,
+    a,
+    li,
+    td,
+    th,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    label,
+    button,
+    i
+  ) {
+  color: #111111 !important;
+  -webkit-text-fill-color: #111111 !important;
+  text-shadow: none !important;
+  opacity: 1 !important;
+}
+
+html:is(
+    [data-vch-theme="soft-light"],
+    [data-vch-theme="lilac"],
+    [data-vch-theme="matcha"]
+  )
+  .app-container
+  :is(.meeting-today.today, .meeting-today.today *, .vx-button--active, .vx-button--primary) {
+  color: var(--vch-accentText) !important;
+  -webkit-text-fill-color: var(--vch-accentText) !important;
+}
+
+html:is(
+    [data-vch-theme="soft-light"],
+    [data-vch-theme="lilac"],
+    [data-vch-theme="matcha"]
+  )
+  :is(
+    .component-notification-link a.link,
+    .component-icon-link,
+    .component-unread-messages-count
+  ) {
+  background: #fff !important;
+  border: 1px solid #5f5f5f !important;
+}
+
+html:is(
+    [data-vch-theme="soft-light"],
+    [data-vch-theme="lilac"],
+    [data-vch-theme="matcha"]
+  )
+  :is(.vch-home-widget, .vch-lunch-card) {
+  background: #fff !important;
+  color: #111111 !important;
+  border: 1px solid #5f5f5f !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18) !important;
+}
+
+html:is(
+    [data-vch-theme="soft-light"],
+    [data-vch-theme="lilac"],
+    [data-vch-theme="matcha"]
+  )
+  :is(.vch-home-widget, .vch-lunch-card)
+  * {
+  color: #111111 !important;
+  -webkit-text-fill-color: #111111 !important;
+}

@@ -1,0 +1,22 @@
+{
+  "id": "matcha",
+  "name": "Matcha",
+  "description": "Soft sage with dark forest text",
+  "group": "light",
+  "tokens": {
+    "bg": "#eef3ea",
+    "surface": "#fbfdf8",
+    "surfaceAlt": "#dce6d4",
+    "text": "#101610",
+    "textMuted": "#243028",
+    "border": "#7d9478",
+    "accent": "#145028",
+    "accentText": "#ffffff",
+    "headerBg": "#d3e2c8",
+    "headerText": "#101610",
+    "link": "#0e3d1e",
+    "today": "#e4efc4",
+    "danger": "#9a3228",
+    "shadow": "rgba(18, 32, 20, 0.14)"
+  }
+}

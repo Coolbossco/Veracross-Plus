@@ -1,0 +1,76 @@
+/* Northern-lights gradient — only when Aurora is selected.
+   Page background only; do not transform body (breaks planner iframe). */
+
+html[data-vch-theme="aurora"] .vx-nav,
+html[data-vch-theme="aurora"] .vx-system-nav {
+  background-color: #051018 !important;
+  background-image: none !important;
+  box-shadow: inset 0 -2px 0 var(--vch-accent) !important;
+}
+
+html[data-vch-theme="aurora"] .vx-portal-nav {
+  background-color: #0f222c !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme="aurora"]
+  body:not(:has(#login-form)):not(:has(.account-form-container)):not(
+    :has(#planner)
+  ) {
+  background-color: var(--vch-bg) !important;
+  background-image: linear-gradient(
+      125deg,
+      rgba(70, 214, 176, 0.22) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      210deg,
+      rgba(80, 140, 255, 0.2) 0%,
+      transparent 48%
+    ),
+    linear-gradient(
+      320deg,
+      rgba(180, 90, 220, 0.18) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse 90% 60% at 50% 120%,
+      rgba(46, 180, 160, 0.15),
+      transparent 55%
+    ) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  background-attachment: fixed !important;
+}
+
+html[data-vch-theme="aurora"] .app-container,
+html[data-vch-theme="aurora"] .app-container.full-width,
+html[data-vch-theme="aurora"] .portal-background {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme="aurora"] .screen-component,
+html[data-vch-theme="aurora"] .portal-screen-block,
+html[data-vch-theme="aurora"] .ae-grid__item,
+html[data-vch-theme="aurora"] .component-my-events-student,
+html[data-vch-theme="aurora"] .vch-home-widget {
+  background-color: var(--vch-surface) !important;
+  background-image: none !important;
+}
+
+html[data-vch-theme="aurora"] .screen-toolbar {
+  border-bottom: 2px solid var(--vch-accent) !important;
+}
+
+html[data-vch-theme="aurora"] .vch-home-widget {
+  border-color: var(--vch-accent);
+}
+
+html[data-vch-theme="aurora"] .vch-home-widget-header {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--vch-accent) 26%, var(--vch-surfaceAlt)),
+    color-mix(in srgb, #7aefe0 18%, var(--vch-surfaceAlt))
+  );
+}

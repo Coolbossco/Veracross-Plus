@@ -1,298 +1,201 @@
 # Veracross Plus - Cross-Browser Development Guide
 
-## Overview
+Veracross Plus uses one Manifest V3 codebase and one build for both Chrome and
+Firefox 140+. Firefox-specific settings are nested under
+`browser_specific_settings`, which Chrome ignores.
 
-Veracross Plus now supports both **Chrome** and **Firefox** browsers using a dual manifest approach. This ensures maximum compatibility while maintaining a single codebase.
+## Build
 
-## Project Structure
+Install dependencies and generate the shared unpacked extension:
 
-```
-v+/
-├── content.js              # Main content script (universal)
-├── popup.js               # Popup launcher (universal)
-├── window.js              # Settings window logic (universal)
-├── styles.css             # Extension styles (universal)
-├── popup.html             # Popup HTML (universal)
-├── window.html            # Settings window HTML (universal)
-├── options.html           # Options page (universal)
-├── manifest-chrome.json   # Chrome-specific manifest (Manifest V3)
-├── manifest-firefox.json  # Firefox-specific manifest (Manifest V2)
-├── package.json           # Build configuration
-├── build.sh              # Unix/Linux/Mac build script
-├── build.bat             # Windows build script
-└── dist/                 # Generated distribution files
-    ├── chrome/           # Chrome extension files
-    ├── firefox/          # Firefox extension files
-    ├── veracross-plus-chrome.zip
-    └── veracross-plus-firefox.zip
-```
-
-## Quick Start
-
-### Building for Both Browsers
-
-**Option 1: Using npm scripts (recommended)**
 ```bash
-npm run build           # Build both Chrome and Firefox versions
-npm run build:chrome    # Build Chrome version only
-npm run build:firefox   # Build Firefox version only
-```
-
-**Option 2: Using shell scripts**
-```bash
-# Unix/Linux/Mac
-./build.sh
-
-# Windows
-build.bat
-```
-
-### Development Workflow
-
-1. **Make changes** to the universal files (`*.js`, `*.css`, `*.html`)
-2. **Test in Chrome** during development (uses `manifest.json` symlink)
-3. **Build and test** both versions before deployment
-4. **Deploy** the appropriate ZIP files to each store
-
-## Browser Differences
-
-### Manifest Versions
-- **Chrome**: Uses Manifest V3 (`manifest-chrome.json`)
-- **Firefox**: Uses Manifest V2 (`manifest-firefox.json`)
-
-### Key Differences
-| Feature | Chrome (V3) | Firefox (V2) |
-|---------|-------------|--------------|
-| Action | `action` | `browser_action` |
-| Host Permissions | `host_permissions` | Included in `permissions` |
-| Service Workers | Supported | Uses background scripts |
-| API Namespace | `chrome.*` | `browser.*` (but `chrome.*` works too) |
-
-### Code Compatibility
-The extension code is **100% compatible** between browsers because:
-- Firefox supports the `chrome.*` API namespace for compatibility
-- All used APIs (`storage`, `windows`, `runtime`) work identically
-- No browser-specific code changes needed
-
-## Development Commands
-
-### Build Commands
-```bash
-# Full build process
+npm install
 npm run build
+```
 
-# Individual browser builds
-npm run build:chrome
-npm run build:firefox
+The generated extension is in `dist/`. The `build:chrome` and `build:firefox`
+commands are aliases for the same build; they exist for convenience.
 
-# Development builds (no ZIP packaging)
+To build and launch the extension in a temporary browser profile, run:
+
+```bash
 npm run dev:chrome
 npm run dev:firefox
-
-# Clean build artifacts
-npm run clean
 ```
 
-### Testing
+The Firefox command targets Firefox Developer Edition. Close the temporary
+browser to stop the command.
+
+Run Firefox's extension validator with:
+
 ```bash
-# Validate extensions (placeholder for future validation tools)
-npm run validate
+npm run lint:firefox
 ```
 
-## Deployment Guide
+## Load as a developer extension
 
-### Chrome Web Store
-1. Build Chrome version: `npm run build:chrome`
-2. Upload `dist/veracross-plus-chrome.zip` to Chrome Developer Dashboard
-3. Follow Chrome Web Store review process
+### Chrome
 
-### Firefox Add-ons (AMO)
-1. Build Firefox version: `npm run build:firefox`
-2. Upload `dist/veracross-plus-firefox.zip` to Firefox Add-on Developer Hub
-3. Follow Mozilla Add-ons review process
+For an isolated test profile, run `npm run dev:chrome`. To load it in your
+regular Chrome profile instead:
 
-### Manual Installation (Development)
+1. Run `npm run build`.
+2. Open `chrome://extensions/`.
+3. Enable **Developer mode**.
+4. Click **Load unpacked** and select this project's `dist/` directory.
 
-**Chrome:**
-1. Run `npm run dev:chrome`
-2. Open `chrome://extensions/`
-3. Enable "Developer mode"
-4. Click "Load unpacked" and select `dist/chrome/`
+After rebuilding, click the extension's reload button on
+`chrome://extensions/`.
 
-**Firefox:**
-1. Run `npm run dev:firefox`
-2. Open `about:debugging`
-3. Click "This Firefox" → "Load Temporary Add-on"
-4. Select `dist/firefox/manifest.json`
+### Firefox
 
-## Features Supported
+For an isolated test profile, run `npm run dev:firefox`. To load it in your
+regular Firefox Developer Edition profile instead:
 
-All features work identically in both browsers:
-- ✅ Homework Checkboxes (Timeline & Daily Schedule)
-- ✅ Grade Estimator
-- ✅ Home Page Redirect
-- ✅ Custom Assignments
-- ✅ Custom Popup Window
-- ✅ Settings Persistence
-- ✅ Veracross Domain Injection
+1. Run `npm run build`.
+2. Open `about:debugging#/runtime/this-firefox`.
+3. Click **Load Temporary Add-on**.
+4. Select `dist/manifest.json`.
+5. Allow optional technical and interaction data if you want analytics enabled
+   during the test. The extension works without it.
 
-## Browser API Compatibility
+Firefox removes temporary add-ons when the browser closes. After rebuilding,
+click **Reload** for Veracross Plus on the debugging page.
 
-| API | Chrome | Firefox | Notes |
-|-----|--------|---------|-------|
-| `chrome.storage.sync` | ✅ | ✅ | Works with `chrome.*` namespace |
-| `chrome.windows.create` | ✅ | ✅ | Popup window creation |
-| `chrome.runtime.getURL` | ✅ | ✅ | Resource URL resolution |
-| Content Scripts | ✅ | ✅ | DOM injection and manipulation |
-| CSS Injection | ✅ | ✅ | Style application |
+## Browser compatibility
 
-## Troubleshooting
+The source imports `webextension-polyfill` and uses APIs available in both
+browsers: `storage`, `runtime`, `tabs`, `alarms`, and `notifications`. Firefox's
+add-on ID keeps `storage.sync` stable, while its built-in optional data
+permission controls analytics. Chrome retains the existing analytics behavior
+because it does not implement Firefox's `data_collection` permission field.
 
-### Build Issues
-- **Permission denied on build.sh**: Run `chmod +x build.sh`
-- **Missing dist directory**: Build scripts create it automatically
-- **ZIP creation fails**: Ensure you have `zip` (Unix) or PowerShell (Windows)
+## Project structure
 
-### Extension Issues
-- **Storage not syncing**: Check browser sync settings
-- **Popup not opening**: Verify manifest permissions
-- **Content script not injecting**: Check URL patterns in manifest
-
-### Browser-Specific Issues
-
-**Chrome:**
-- Ensure Manifest V3 compliance
-- Check `host_permissions` syntax
-
-**Firefox:**
-- Ensure Manifest V2 format
-- Check `permissions` includes all URLs
-- Verify `web_accessible_resources` if needed
-
-## Contributing
-
-When making changes:
-1. Edit the universal files (`*.js`, `*.css`, `*.html`)
-2. Update both manifest files if permissions change
-3. Test in both browsers before committing
-4. Update version numbers in all manifest files and `package.json`
-
-## Version Management
-
-Update versions in these files:
-- `package.json`
-- `manifest-chrome.json`
-- `manifest-firefox.json`
-
-Keep all version numbers synchronized.
-
-## Custom Assignments Feature
-
-The Custom Assignments feature allows users to create and manage their own assignments within the Veracross timeline.
-
-### Feature Overview
-
-**Custom Assignments** can be:
-1. **New Assignments**: Custom assignments that appear in a dedicated row at the top of the timeline
-### How It Works
-
-1. **Enable the Feature**: Toggle "Custom Assignments" in the extension popup
-2. **Add Assignments**: Click "Add Custom Assignment" to create new assignments
-3. **Assignment Types**:
-   - Assignments appear in a blue-highlighted row at the top
-4. **Management**: Edit or delete assignments from the popup interface
-
-### Assignment Properties
-
-Each custom assignment includes:
-- **Title**: The assignment name (required)
-- **Description**: Optional details about the assignment
-- **Due Date**: When the assignment is due (required)
-- **Class/Subject**: Optional class or subject name
-
-
-### Visual Design
-
-**Regular Custom Assignments**:
-- Appear in a dedicated row with blue styling (`#f8f9fa` background, `#007bff` border)
-- Individual assignments have light blue backgrounds (`#e3f2fd`)
-- Hover effects for better interactivity
-
-
-
-### Technical Implementation
-
-**Storage**: Custom assignments are stored in Chrome sync storage as `customAssignments` array
-
-**Injection Logic**:
-- Regular assignments: Injected at the top of the timeline table
-- Date matching: Assignments appear in appropriate timeline columns
-
-**Integration**: Works seamlessly with existing checkbox system for task completion tracking
-
-## Daily Schedule Page Checkboxes
-
-The extension now adds interactive checkboxes to assignments on the **Daily Schedule** page (`/student/student/daily-schedule`), in addition to the existing timeline view support.
-
-### Feature Overview
-
-**Daily Schedule Checkboxes** provide:
-1. **Visual Task Tracking**: Check off assignments as you complete them
-2. **Assignment Type Indicators**: Color-coded bars (green for homework, grey for classwork, orange for papers)
-3. **Persistent State**: Checkbox states are saved and synced across devices
-4. **Visual Feedback**: Completed assignments show with strikethrough and reduced opacity
-
-### How It Works
-
-1. **Automatic Injection**: Checkboxes automatically appear next to assignments in the daily schedule table
-2. **Type Detection**: The extension reads the assignment type tag (Homework, Classwork, Paper, etc.)
-3. **Smart Filtering**: Test and exam assignments are excluded from checkboxes
-4. **Click to Complete**: Click any checkbox to mark an assignment as complete
-5. **Persistent Storage**: Completion status is saved automatically
-
-### Visual Design
-
-**Assignment Types**:
-- **Homework**: Green indicator bar
-- **Classwork**: Grey indicator bar  
-- **Paper/Essay**: Orange indicator bar
-- **Test/Exam**: No checkbox (informational only)
-
-**Completed Assignments**:
-- Checkbox shows green checkmark
-- Assignment link has strikethrough effect
-- Text opacity reduced to 70%
-- Color-coded indicator bar slightly faded
-
-### Supported Pages
-
-The checkbox feature works on:
-- ✅ **Timeline View** (`/student/overview`)
-- ✅ **Daily Schedule** (`/student/student/daily-schedule`)
-- ✅ **Upcoming Assignments** (standard assignment pages)
-
-### Technical Details
-
-**DOM Targeting**:
-- Selects `td.assignment-description` cells within `table.assignments`
-- Injects checkbox before the assignment link
-- Preserves existing HTML structure and functionality
-
-**Checkbox Placement**:
-```
-[Type Badge] [✓ Checkbox] [Assignment Link]
+```text
+manifest.json                 Shared Chrome/Firefox Manifest V3 definition
+src/content/content.js        Boot, observers, and feature flags
+src/content/checklist.js      Homework / assessment checkboxes
+src/content/custom-assignments.js  Custom rows, chips, and modals
+src/content/homepage.js       Student home assignment widget
+src/content/lunch.js          Sage Dining fetch + week cache
+src/content/lunch-home.js     Draggable home lunch card
+src/content/lunch-timeline.js Planner date-header lunch chips
+src/content/theme.js          Theme apply + storage listener
+src/content/theme-boot.js     Early theme boot (document_start)
+src/content/storage.js        Sync storage defaults and helpers
+src/content/styles.css        Content-script styles
+src/themes/                   Curated theme packs + shared skin.css
+src/popup/                    Conventional toolbar popup settings UI
+src/options.html              Short note pointing at the toolbar popup
+public/icons/                 Extension icons
+dist/                         Generated unpacked extension (not committed)
 ```
 
-**CSS Integration**:
-- Checkboxes are 12px × 12px for compact design
-- Proper vertical alignment with table cells
-- Hover effects for better interactivity
-- Responsive design for mobile devices
+## Development workflow
 
-**State Management**:
-- Checkbox state keyed by assignment URL and text hash
-- Stored in `chrome.storage.sync` under `vc_checked_assignments`
-- Syncs across all devices logged into the same browser account
+1. Edit files under `src/` or the shared `manifest.json`.
+2. Run `npm run build`.
+3. Reload the extension in each browser.
+4. Run `npm run lint:firefox` before sharing a Firefox test build.
+
+Keep the versions in `package.json` and `manifest.json` synchronized.
+
+## Settings
+
+Feature toggles and the theme picker live in the conventional toolbar popup (click the extension icon). Feature toggles default to off. Theme defaults to stock Veracross.
+
+- **Homework Checkboxes**: adds checkboxes to homework, classwork, labs, participation, and papers
+- **Tests & Projects**: also adds checkboxes to tests, quizzes, exams, and projects (requires Homework Checkboxes)
+- **Homepage Widget**: on the student home page, lists past-due and upcoming school and custom assignments
+- **Show completed**: optional homepage control that keeps checked items in a Completed group at the bottom of the widget (off by default)
+- **Assessment reminders**: browser notifications for unchecked tests, quizzes, exams, and projects due within 24 hours (uses a cache refreshed when you visit Veracross)
+- **Lunch on Home**: draggable lunch card on the student home page, with day switching (Sage Dining)
+- **Lunch on Timeline**: lunch chips above each day’s assignments-due count
+- **Theme**: restyles every matched Veracross page (including embed iframes). Default plus curated Light, Dark, Seasonal, and Fun packs
+- **Custom Assignments**: adds user-owned timeline rows and a floating button to create assignments
+
+After an extension update, the next Veracross visit starts a one-time tour: changelog, then a lighter overlay with the coach in the top left and live previews (themes, homepage homework, lunch) in front of it. Skip ends the tour.
+
+On the timeline, checked items stay visible with strikethrough. The homepage widget hides checked items by default so it works as a reminder list; turn on **Show completed** to keep them in a Completed group. The extension does not hide completed, past, or far-future work on the timeline.
+
+## Custom assignments and rows
+
+Enable **Custom Assignments**, then use the floating button on the Veracross page to add an assignment. Click a custom row name in the sidebar to rename, recolor, or delete that row. **Add row** creates extras such as Home.
+
+Each assignment can have:
+
+- **Title** and **due date** (required)
+- **Description** and **class/subject** (optional)
+- **Row** to appear on
+- **Color** for the left accent on the timeline chip (defaults to the row color, or `#1976d2`)
+
+Timeline chips use the same markup as native Veracross assignments so collapsed and expanded states match.
+
+Deleting a row asks what to do with its assignments: delete them, or move them to a specific remaining row. The last custom row cannot be deleted.
+
+**Storage** (`chrome.storage.sync`):
+
+- `customRows`: `[{ id, name, color }]`, default one row named Custom Assignments
+- `customAssignments`: items with `rowId` (older items migrate onto the default row)
+- `vc_checked_assignments`: checkbox state for school and custom items
+
+## Checkboxes
+
+Checkboxes appear on the timeline, daily schedule, and upcoming-assignments pages. Completed items get a strikethrough and reduced opacity. State is keyed by assignment id or a text hash and stored in `vc_checked_assignments`.
+
+Type colors:
+
+- **Homework**: green
+- **Classwork / labs / participation**: black
+- **Paper / essay**: orange
+- **Quiz**: `#F90`
+- **Test / exam**: red
+- **Project**: indigo
+
+Tests, quizzes, exams, and projects only get checkboxes when **Tests & Projects** is on.
+
+## Homepage widget
+
+Enable **Homepage Widget** to pin a draggable overlay on the Veracross student home / Student Overview page. It sits to the left of the main portal when there is room, and remembers where you drag it. Each time that page loads, a background script fetches the class list from the student portal and each class’s assignments from `portals-embed.veracross.com` (same endpoints as the grade snapshot). Custom assignments are merged in. A spinner shows while those requests run.
+
+Checked items are hidden from the widget by default so it stays a reminder list. Enable **Show completed** to keep them in a Completed group at the bottom with the usual strikethrough styling. Checking a box writes the same `vc_checked_assignments` keys used on the timeline. School titles open the Veracross assignment; custom titles open the existing details popup. If the fetch fails, the card shows an error and a Retry button instead of disappearing.
+
+Assessment items from that fetch are also written to `chrome.storage.local` (`vch_assessment_cache`) so the background worker can send reminder notifications without scraping Veracross in the background.
+
+## Lunch menus
+
+Enable **Lunch on Home** and/or **Lunch on Timeline**. Menus come from Cincinnati Country Day’s Sage Dining feed (`menuId` 137389). The extension caches each school week in `chrome.storage.local` for about 12 hours. Lunch chips are not checkable.
+
+## Themes
+
+Pick a theme in settings. **Default (Veracross)** leaves the stock portal look. Curated packs set CSS variables on `html` and restyle portal chrome through a shared skin:
+
+- **Light**: Soft Light, Lilac, Matcha (dark text on pale surfaces)
+- **Dark**: Dark, Ocean, Forest, Ember
+- **Seasonal**: Halloween
+- **Fun**: Galaxy, Aurora (Galaxy/Aurora include extras.css backgrounds)
+
+Themes apply on every matched Veracross host and frame, even when other features are off. School-branded inline colors on Home widgets may not all change.
+
+Storage: `selectedTheme` (`"none"` | theme id).
+
+## What’s new popup
+
+On `runtime.onInstalled` with `reason === "update"`, the background script sets `storage.local.vch_whats_new` to `{ version, pending: true }`. The top-frame content script runs a short tour once for that version (changelog from [`src/whats-new/changelog.js`](src/whats-new/changelog.js)): intro, then a lighter overlay with the coach in the top left and previews for themes (including Default and Dark), homepage homework, and lunch. Skip or Done clears `pending`.
+
+## Assessment reminders
+
+Enable **Assessment reminders** in the toolbar popup. About once an hour, the background script reads `vch_assessment_cache`, skips checked items (`vc_checked_assignments`), and notifies once per assessment on the local calendar day before it is due and throughout the due day. Clicking a notification focuses an open Veracross tab or opens the portals host. Reminders only stay accurate if students visit Veracross often enough to refresh the cache — there is no background CSRF scrape.
+
+### Adding a theme
+
+1. Create `src/themes/<id>/theme.json` with `id`, `name`, optional `description`, optional `group` (`light` | `dark` | `seasonal` | `fun`), and a `tokens` object using the keys in `src/themes/registry.js` (`bg`, `surface`, `text`, `accent`, …).
+2. Import the JSON in [`src/themes/registry.js`](src/themes/registry.js) and add it to the `THEMES` array.
+3. Optional: add `src/themes/<id>/extras.css` scoped under `html[data-vch-theme="<id>"]`, and import it from [`src/content/theme.js`](src/content/theme.js) and [`src/content/theme-boot.js`](src/content/theme-boot.js).
+4. Run `npm run build` and reload the extension. The settings picker fills from the registry automatically (grouped by `group`).
+
+Do not copy Veracross selectors into each pack — put durable overrides in [`src/themes/skin.css`](src/themes/skin.css) so every theme inherits them.
 
 ---
 

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { crx } from '@crxjs/vite-plugin';
+import { resolve } from 'path';
 import manifest from './manifest.json';
 
 export default defineConfig({
@@ -13,6 +14,14 @@ export default defineConfig({
       origin: /chrome-extension:\/\//,
     },
     origin: 'http://localhost:5173',
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        popup: resolve(__dirname, 'src/popup/popup.html'),
+        options: resolve(__dirname, 'src/options.html'),
+      },
+    },
   },
   plugins: [crx({ manifest })],
 });
