@@ -1,12 +1,14 @@
 /**
  * Early theme boot at document_start to reduce unthemed flash.
- * Applies selectedTheme tokens as soon as storage is available.
+ * Applies selectedTheme tokens only when staged rollout is enabled; otherwise
+ * strips any theme attrs so non-beta / CWS legacy never keeps beta chrome.
  */
 import browser from "webextension-polyfill";
 import {
   DEFAULT_THEME_ID,
   getTheme,
   resolveThemeId,
+  TOKEN_KEYS,
   tokensToCssVars,
 } from "../themes/registry.js";
 import { shouldSkipTheme } from "../themes/pages.js";
@@ -18,6 +20,9 @@ import "../themes/aurora/extras.css";
 function clearTheme(root) {
   delete root.dataset.vchTheme;
   root.removeAttribute("data-vch-theme");
+  for (const key of TOKEN_KEYS) {
+    root.style.removeProperty(`--vch-${key}`);
+  }
 }
 
 /**
@@ -45,17 +50,34 @@ function apply(themeId) {
   }
 }
 
-try {
-  browser.storage.sync
-    .get({ selectedTheme: DEFAULT_THEME_ID })
-    .then((stored) => {
-      apply(stored.selectedTheme || DEFAULT_THEME_ID);
-    })
-    .catch(() => {
-      apply(DEFAULT_THEME_ID);
+async function boot() {
+  const root = document.documentElement;
+  try {
+    const local = await browser.storage.local.get({ rolloutEnabled: false });
+    // Safe default matches dual-experience: legacy until Worker says otherwise.
+    if (local.rolloutEnabled !== true) {
+      clearTheme(root);
+      return;
+    }
+  } catch {
+    clearTheme(root);
+    return;
+  }
+
+  try {
+    const stored = await browser.storage.sync.get({
+      selectedTheme: DEFAULT_THEME_ID,
     });
-} catch {
-  apply(DEFAULT_THEME_ID);
+    apply(stored.selectedTheme || DEFAULT_THEME_ID);
+  } catch {
+    apply(DEFAULT_THEME_ID);
+  }
 }
 
-// Live theme changes are handled by theme.js so transitions run once.
+try {
+  void boot();
+} catch {
+  clearTheme(document.documentElement);
+}
+
+// Live theme + rollout changes are handled by theme.js after document_end.

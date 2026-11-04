@@ -16,7 +16,12 @@ import {
 } from "./lunch-timeline.js";
 import { initRollout } from "./rollout.js";
 import { getStorage, isExtensionAlive, loadSettings } from "./storage.js";
-import { initTheme } from "./theme.js";
+import {
+  bindRolloutThemeGate,
+  initTheme,
+  setThemesAllowed,
+} from "./theme.js";
+import { clearThemesFromDocument } from "./theme-clear.js";
 import { initWhatsNew } from "./whats-new.js";
 
 // Safe default: legacy CWS UI until the Worker says otherwise (no modern flash).
@@ -416,17 +421,24 @@ async function initModernExperience() {
   try {
     // Paint exact CWS (8815883) CSS immediately — no modern flash.
     applyExperienceStyles(false);
+    // Drop any theme-boot leftovers until we know rollout status.
+    clearThemesFromDocument();
+    bindRolloutThemeGate();
+
     const rollout = await initRollout();
     const modern = rollout.enabled === true;
 
     if (!modern) {
-      // Exact pre-redesign app: checklist, custom assignments, estimator, FAB/modals.
+      // Stock CWS: no themes, no redesign chrome.
+      setThemesAllowed(false);
+      clearThemesFromDocument();
       const { initLegacyApp } = await import("./legacy-app.js");
       await initLegacyApp();
       return;
     }
 
     applyExperienceStyles(true);
+    setThemesAllowed(true);
     await initModernExperience();
   } catch {
     // Silent error handling

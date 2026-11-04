@@ -12,14 +12,19 @@ import "../themes/halloween/extras.css";
 import "../themes/galaxy/extras.css";
 import "../themes/aurora/extras.css";
 import { isExtensionAlive } from "./storage.js";
+import { clearThemesFromDocument } from "./theme-clear.js";
 import {
   bindThemeHarden,
   scheduleThemeHarden,
-  unbindThemeHarden,
 } from "./theme-harden.js";
 
+export { clearThemesFromDocument };
+
 let themeBound = false;
+let rolloutThemeBound = false;
 let applyGeneration = 0;
+/** Matches dual-experience default: themes off until rollout enables modern. */
+let themesAllowed = false;
 
 /**
  * Apply a theme id to the current document (every frame).
@@ -56,6 +61,11 @@ export function applyThemeToDocument(themeId, { transition = false } = {}) {
  * @param {string | null | undefined} themeId
  */
 function applyThemeImmediate(themeId) {
+  if (!themesAllowed) {
+    clearThemesFromDocument();
+    return;
+  }
+
   const root = document.documentElement;
   const resolvedId = resolveThemeId(themeId);
   const theme = shouldSkipTheme() ? null : getTheme(resolvedId);
@@ -65,9 +75,7 @@ function applyThemeImmediate(themeId) {
   }
 
   if (!theme) {
-    delete root.dataset.vchTheme;
-    root.removeAttribute("data-vch-theme");
-    unbindThemeHarden();
+    clearThemesFromDocument();
     return;
   }
 
@@ -78,6 +86,37 @@ function applyThemeImmediate(themeId) {
   }
   bindThemeHarden();
   scheduleThemeHarden(0);
+}
+
+/**
+ * Gate themes behind staged rollout. When disallowed, strip any active theme
+ * (including leftover CSS vars / harden inline styles) so legacy matches CWS.
+ * @param {boolean} allowed
+ */
+export function setThemesAllowed(allowed) {
+  themesAllowed = allowed === true;
+  if (!themesAllowed) {
+    clearThemesFromDocument();
+  }
+}
+
+/**
+ * Keep themes in sync if rolloutEnabled flips mid-session (e.g. allowlist edit).
+ */
+export function bindRolloutThemeGate() {
+  if (rolloutThemeBound) return;
+  rolloutThemeBound = true;
+
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.rolloutEnabled || !isExtensionAlive()) {
+      return;
+    }
+    const enabled = changes.rolloutEnabled.newValue === true;
+    setThemesAllowed(enabled);
+    if (enabled) {
+      void applySelectedTheme();
+    }
+  });
 }
 
 export async function applySelectedTheme() {
@@ -111,6 +150,8 @@ export function bindThemeListeners() {
 }
 
 export async function initTheme() {
+  setThemesAllowed(true);
   bindThemeListeners();
+  bindRolloutThemeGate();
   await applySelectedTheme();
 }
