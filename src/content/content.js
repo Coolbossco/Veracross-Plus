@@ -14,6 +14,10 @@ import {
   applyLunchTimeline,
   scheduleLunchTimelineRefresh,
 } from "./lunch-timeline.js";
+import {
+  readRolloutThemeCache,
+  writeRolloutThemeCache,
+} from "./rollout-cache.js";
 import { initRollout } from "./rollout.js";
 import { getStorage, isExtensionAlive, loadSettings } from "./storage.js";
 import {
@@ -419,19 +423,37 @@ async function initModernExperience() {
 
 (async function init() {
   try {
-    // Paint exact CWS (8815883) CSS immediately — no modern flash.
-    applyExperienceStyles(false);
-    // Drop any theme-boot leftovers until we know rollout status.
-    clearThemesFromDocument();
     bindRolloutThemeGate();
+
+    // Prefer last-known beta from session / storage so we do NOT wipe
+    // theme-boot's document_start paint while awaiting the Worker.
+    const sessionHint = readRolloutThemeCache();
+    let storedRollout = sessionHint?.rolloutEnabled === true;
+    try {
+      const local = await browser.storage.local.get({ rolloutEnabled: false });
+      storedRollout = local.rolloutEnabled === true;
+    } catch {
+      // keep session hint
+    }
+
+    if (storedRollout) {
+      applyExperienceStyles(true);
+      setThemesAllowed(true);
+    } else {
+      applyExperienceStyles(false);
+      setThemesAllowed(false);
+      clearThemesFromDocument();
+    }
 
     const rollout = await initRollout();
     const modern = rollout.enabled === true;
+    writeRolloutThemeCache({ rolloutEnabled: modern });
 
     if (!modern) {
       // Stock CWS: no themes, no redesign chrome.
       setThemesAllowed(false);
       clearThemesFromDocument();
+      applyExperienceStyles(false);
       const { initLegacyApp } = await import("./legacy-app.js");
       await initLegacyApp();
       return;

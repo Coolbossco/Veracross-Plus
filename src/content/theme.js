@@ -11,6 +11,7 @@ import "../themes/skin.css";
 import "../themes/halloween/extras.css";
 import "../themes/galaxy/extras.css";
 import "../themes/aurora/extras.css";
+import { writeRolloutThemeCache } from "./rollout-cache.js";
 import { isExtensionAlive } from "./storage.js";
 import { clearThemesFromDocument } from "./theme-clear.js";
 import {
@@ -70,19 +71,31 @@ function applyThemeImmediate(themeId) {
   const resolvedId = resolveThemeId(themeId);
   const theme = shouldSkipTheme() ? null : getTheme(resolvedId);
 
-  for (const key of TOKEN_KEYS) {
-    root.style.removeProperty(`--vch-${key}`);
-  }
-
   if (!theme) {
     clearThemesFromDocument();
     return;
   }
 
-  root.dataset.vchTheme = theme.id;
+  // Already painted by theme-boot — don't strip vars then re-set (FOUC).
+  if (root.dataset.vchTheme === theme.id) {
+    const vars = tokensToCssVars(theme.tokens);
+    for (const [name, value] of Object.entries(vars)) {
+      root.style.setProperty(name, value);
+    }
+    bindThemeHarden();
+    scheduleThemeHarden(0);
+    return;
+  }
+
   const vars = tokensToCssVars(theme.tokens);
+  const keep = new Set(Object.keys(vars));
+  root.dataset.vchTheme = theme.id;
   for (const [name, value] of Object.entries(vars)) {
     root.style.setProperty(name, value);
+  }
+  for (const key of TOKEN_KEYS) {
+    const name = `--vch-${key}`;
+    if (!keep.has(name)) root.style.removeProperty(name);
   }
   bindThemeHarden();
   scheduleThemeHarden(0);
@@ -97,6 +110,9 @@ export function setThemesAllowed(allowed) {
   themesAllowed = allowed === true;
   if (!themesAllowed) {
     clearThemesFromDocument();
+    writeRolloutThemeCache({ rolloutEnabled: false });
+  } else {
+    writeRolloutThemeCache({ rolloutEnabled: true });
   }
 }
 
@@ -134,6 +150,10 @@ export async function applySelectedTheme() {
   } catch {
     themeId = DEFAULT_THEME_ID;
   }
+  writeRolloutThemeCache({
+    rolloutEnabled: themesAllowed,
+    themeId,
+  });
   applyThemeToDocument(themeId);
 }
 

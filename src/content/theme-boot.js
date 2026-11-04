@@ -1,7 +1,10 @@
 /**
  * Early theme boot at document_start to reduce unthemed flash.
- * Applies selectedTheme tokens only when staged rollout is enabled; otherwise
- * strips any theme attrs so non-beta / CWS legacy never keeps beta chrome.
+ *
+ * Order:
+ * 1. Sync session cache (same-tab navigations) — apply before first paint when possible
+ * 2. Parallel chrome.storage read — confirm / correct
+ * Never wait on the rollout Worker here. Non-beta clears themes.
  */
 import browser from "webextension-polyfill";
 import {
@@ -12,6 +15,10 @@ import {
   tokensToCssVars,
 } from "../themes/registry.js";
 import { shouldSkipTheme } from "../themes/pages.js";
+import {
+  readRolloutThemeCache,
+  writeRolloutThemeCache,
+} from "./rollout-cache.js";
 import "../themes/skin.css";
 import "../themes/halloween/extras.css";
 import "../themes/galaxy/extras.css";
@@ -43,39 +50,58 @@ function apply(themeId) {
     return;
   }
 
+  // Set attrs/vars without clearing first — avoids a one-frame unthemed flash.
   root.dataset.vchTheme = theme.id;
   const vars = tokensToCssVars(theme.tokens);
+  const keep = new Set(Object.keys(vars));
   for (const [name, value] of Object.entries(vars)) {
     root.style.setProperty(name, value);
   }
+  for (const key of TOKEN_KEYS) {
+    const name = `--vch-${key}`;
+    if (!keep.has(name)) root.style.removeProperty(name);
+  }
 }
 
-async function boot() {
+// 1) Synchronous session hint (best chance before first paint on SPA / reload in-tab)
+try {
+  const cached = readRolloutThemeCache();
+  if (cached?.rolloutEnabled && cached.themeId && cached.themeId !== "none") {
+    apply(cached.themeId);
+  } else if (cached && cached.rolloutEnabled === false) {
+    clearTheme(document.documentElement);
+  }
+} catch {
+  // ignore
+}
+
+async function bootFromStorage() {
   const root = document.documentElement;
   try {
-    const local = await browser.storage.local.get({ rolloutEnabled: false });
-    // Safe default matches dual-experience: legacy until Worker says otherwise.
-    if (local.rolloutEnabled !== true) {
+    const [local, sync] = await Promise.all([
+      browser.storage.local.get({ rolloutEnabled: false }),
+      browser.storage.sync.get({ selectedTheme: DEFAULT_THEME_ID }),
+    ]);
+
+    const enabled = local.rolloutEnabled === true;
+    const themeId = resolveThemeId(sync.selectedTheme || DEFAULT_THEME_ID);
+    writeRolloutThemeCache({ rolloutEnabled: enabled, themeId });
+
+    if (!enabled) {
       clearTheme(root);
       return;
     }
-  } catch {
-    clearTheme(root);
-    return;
-  }
 
-  try {
-    const stored = await browser.storage.sync.get({
-      selectedTheme: DEFAULT_THEME_ID,
-    });
-    apply(stored.selectedTheme || DEFAULT_THEME_ID);
+    apply(themeId);
   } catch {
-    apply(DEFAULT_THEME_ID);
+    // Keep session-cache paint if any; otherwise stay clear.
+    const cached = readRolloutThemeCache();
+    if (!cached?.rolloutEnabled) clearTheme(root);
   }
 }
 
 try {
-  void boot();
+  void bootFromStorage();
 } catch {
   clearTheme(document.documentElement);
 }
