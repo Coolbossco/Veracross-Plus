@@ -435,45 +435,51 @@ async function buildHomeworkDemo() {
   }
   if (!items.length) items = sampleHomeworkItems();
 
-  const { dayGroups, completed } = groupHomeworkByCalendarDay(items, {
+  let { sections, completed } = groupHomeworkByCalendarDay(items, {
     includeCompleted: true,
   });
-  /** @type {Array<{ title: string, kind: string, items: typeof items, hideDue: boolean }>} */
-  const groups = dayGroups.map((group) => ({
-    title: group.label,
-    kind: group.kind,
-    items: group.items,
-    hideDue: group.kind !== "undated",
-  }));
-  if (completed.length) {
-    groups.push({
-      title: "Completed",
-      kind: "completed",
-      items: completed,
-      hideDue: false,
-    });
-  }
-  if (!groups.length) {
-    const fallback = sampleHomeworkItems();
-    const again = groupHomeworkByCalendarDay(fallback, {
+  if (!sections.length && !completed.length) {
+    const again = groupHomeworkByCalendarDay(sampleHomeworkItems(), {
       includeCompleted: true,
     });
-    for (const group of again.dayGroups) {
-      groups.push({
-        title: group.label,
-        kind: group.kind,
-        items: group.items,
-        hideDue: group.kind !== "undated",
-      });
-    }
-    if (again.completed.length) {
-      groups.push({
-        title: "Completed",
-        kind: "completed",
-        items: again.completed,
-        hideDue: false,
-      });
-    }
+    sections = again.sections;
+    completed = again.completed;
+  }
+
+  /** @type {string[]} */
+  const groupHtml = sections.map(
+    (section) => `
+          <section class="vch-home-group" data-vch-group="${escapeHtml(section.kind)}">
+            <h3>${escapeHtml(section.title)}</h3>
+            ${section.days
+              .map(
+                (day) => `
+            <div class="vch-home-day" data-vch-day="${escapeHtml(day.dayKey)}">
+              <h4 class="vch-home-day-heading">${escapeHtml(day.label)}</h4>
+              <ul class="vch-home-list">
+                ${day.items
+                  .map((item) =>
+                    homeworkItemHtml(item, {
+                      hideDue: day.dayKey !== "undated",
+                    }),
+                  )
+                  .join("")}
+              </ul>
+            </div>`,
+              )
+              .join("")}
+          </section>`,
+  );
+  if (completed.length) {
+    groupHtml.push(`
+          <section class="vch-home-group" data-vch-group="completed">
+            <h3>Completed</h3>
+            <ul class="vch-home-list">
+              ${completed
+                .map((item) => homeworkItemHtml(item, { hideDue: false }))
+                .join("")}
+            </ul>
+          </section>`);
   }
 
   return `
@@ -486,19 +492,7 @@ async function buildHomeworkDemo() {
         <span class="vch-panel-chip-label">Due</span>
       </button>
       <div class="vch-home-widget-body">
-        ${groups
-          .map(
-            (group) => `
-          <section class="vch-home-group" data-vch-group="${escapeHtml(group.kind)}">
-            <h3>${escapeHtml(group.title)}</h3>
-            <ul class="vch-home-list">
-              ${group.items
-                .map((item) => homeworkItemHtml(item, { hideDue: group.hideDue }))
-                .join("")}
-            </ul>
-          </section>`,
-          )
-          .join("")}
+        ${groupHtml.join("")}
       </div>
     </section>
   `;

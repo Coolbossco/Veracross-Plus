@@ -479,7 +479,7 @@ function renderWidgetError(widget, _error) {
 
 function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
   const showCompleted = !!homepageSettings.homepageShowCompleted;
-  const { dayGroups, completed } = groupHomeworkByCalendarDay(items, {
+  const { sections, completed } = groupHomeworkByCalendarDay(items, {
     includeCompleted: showCompleted,
   });
   const openItems = items.filter((item) => !item.checked);
@@ -501,17 +501,12 @@ function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
     note.textContent = warning;
     body.appendChild(note);
   }
-  for (const group of dayGroups) {
-    body.appendChild(
-      renderGroup(group.label, group.items, {
-        groupKey: group.kind,
-        hideDueInMeta: group.kind !== "undated",
-      }),
-    );
+  for (const section of sections) {
+    body.appendChild(renderSection(section));
   }
   if (completed.length) {
     body.appendChild(
-      renderGroup("Completed", completed, {
+      renderFlatGroup("Completed", completed, {
         groupKey: "completed",
         hideDueInMeta: false,
       }),
@@ -527,11 +522,46 @@ function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
 }
 
 /**
+ * Past due / Upcoming section with day headings underneath.
+ * @param {{ title: string, kind: string, days: Array<{ dayKey: string, label: string, items: object[] }> }} section
+ */
+function renderSection(section) {
+  const el = document.createElement("section");
+  el.className = "vch-home-group";
+  el.dataset.vchGroup = section.kind;
+  const heading = document.createElement("h3");
+  heading.textContent = section.title;
+  el.appendChild(heading);
+
+  for (const day of section.days) {
+    const dayBlock = document.createElement("div");
+    dayBlock.className = "vch-home-day";
+    dayBlock.dataset.vchDay = day.dayKey;
+    const dayHeading = document.createElement("h4");
+    dayHeading.className = "vch-home-day-heading";
+    dayHeading.textContent = day.label;
+    dayBlock.appendChild(dayHeading);
+
+    const list = document.createElement("ul");
+    list.className = "vch-home-list";
+    const hideDueInMeta = day.dayKey !== "undated";
+    day.items.forEach((item) =>
+      list.appendChild(renderItem(item, { hideDueInMeta })),
+    );
+    dayBlock.appendChild(list);
+    el.appendChild(dayBlock);
+  }
+
+  return el;
+}
+
+/**
+ * Flat section (Completed) without day sub-headings.
  * @param {string} title
  * @param {object[]} items
  * @param {{ groupKey?: string, hideDueInMeta?: boolean }} [opts]
  */
-function renderGroup(title, items, { groupKey, hideDueInMeta = false } = {}) {
+function renderFlatGroup(title, items, { groupKey, hideDueInMeta = false } = {}) {
   const section = document.createElement("section");
   section.className = "vch-home-group";
   section.dataset.vchGroup =

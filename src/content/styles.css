@@ -1093,6 +1093,19 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 .vch-home-group h3 {
     margin: 12px 0 6px;
     font-size: 12px;
+    font-weight: 600;
+    color: var(--vch-textMuted, #6b6b6b);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.vch-home-day + .vch-home-day {
+    margin-top: 4px;
+}
+
+.vch-home-day-heading {
+    margin: 4px 0 2px;
+    font-size: 11px;
     font-weight: 500;
     color: var(--vch-textMuted, #6b6b6b);
     text-transform: none;
@@ -1751,7 +1764,8 @@ html:not([data-vch-theme]) .vch-custom-timeline-row .timeline-cell.today .assign
 .vch-whats-new .vch-tour-preview .vch-home-title,
 .vch-whats-new .vch-tour-preview .vch-home-meta,
 .vch-whats-new .vch-tour-preview .vch-lunch-primary,
-.vch-whats-new .vch-tour-preview .vch-home-group h3 {
+.vch-whats-new .vch-tour-preview .vch-home-group h3,
+.vch-whats-new .vch-tour-preview .vch-home-day-heading {
     color: #14161a;
 }
 

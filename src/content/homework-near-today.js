@@ -143,20 +143,31 @@ export function groupHomeworkNearToday(items, { limit = null, now = new Date() }
  * @typedef {{
  *   dayKey: string,
  *   label: string,
- *   kind: "past-due" | "upcoming" | "undated" | "completed",
  *   items: unknown[]
- * }} HomeworkDayGroup
+ * }} HomeworkDayBucket
  */
 
 /**
- * Bucket near-today ordered homework into calendar-day sections.
- * Past-due days come first (oldest → closest to today), then upcoming
- * days (soonest-first), then an optional Completed section.
+ * @typedef {{
+ *   title: string,
+ *   kind: "past-due" | "upcoming",
+ *   days: HomeworkDayBucket[]
+ * }} HomeworkSection
+ */
+
+/**
+ * Bucket near-today ordered homework into Past due / Upcoming sections,
+ * each with calendar-day headings underneath.
+ * Past-due days: oldest → closest to today. Upcoming days: soonest-first.
+ * Optional Completed list is returned separately (flat, no day headings).
  *
  * @template {{ dueDate?: Date | null, checked?: boolean, title?: string, forcedPastDue?: boolean }} T
  * @param {T[]} items
  * @param {{ limit?: number | null, now?: Date, includeCompleted?: boolean }} [opts]
- * @returns {{ dayGroups: Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>, completed: T[] }}
+ * @returns {{
+ *   sections: Array<{ title: string, kind: "past-due" | "upcoming", days: Array<{ dayKey: string, label: string, items: T[] }> }>,
+ *   completed: T[]
+ * }}
  */
 export function groupHomeworkByCalendarDay(
   items,
@@ -170,17 +181,21 @@ export function groupHomeworkByCalendarDay(
 
   // pastDue items are nearest-today-first (for limit fill); reverse day
   // buckets so headings read oldest → Yesterday (closest last).
-  const pastDueDays = bucketItemsByDay(pastDue, "past-due", today);
+  const pastDueDays = bucketItemsByDay(pastDue, today);
   pastDueDays.reverse();
+  const upcomingDays = bucketItemsByDay(upcoming, today);
 
-  /** @type {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
-  const dayGroups = [
-    ...pastDueDays,
-    ...bucketItemsByDay(upcoming, "upcoming", today),
-  ];
+  /** @type {Array<{ title: string, kind: "past-due" | "upcoming", days: Array<{ dayKey: string, label: string, items: T[] }> }>} */
+  const sections = [];
+  if (pastDueDays.length) {
+    sections.push({ title: "Past due", kind: "past-due", days: pastDueDays });
+  }
+  if (upcomingDays.length) {
+    sections.push({ title: "Upcoming", kind: "upcoming", days: upcomingDays });
+  }
 
   return {
-    dayGroups,
+    sections,
     completed: includeCompleted ? completed : [],
   };
 }
@@ -188,25 +203,22 @@ export function groupHomeworkByCalendarDay(
 /**
  * @template {{ dueDate?: Date | null, title?: string }} T
  * @param {T[]} items
- * @param {"past-due" | "upcoming"} kind
  * @param {Date} today
- * @returns {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>}
+ * @returns {Array<{ dayKey: string, label: string, items: T[] }>}
  */
-function bucketItemsByDay(items, kind, today) {
-  /** @type {Array<{ dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
+function bucketItemsByDay(items, today) {
+  /** @type {Array<{ dayKey: string, label: string, items: T[] }>} */
   const groups = [];
-  /** @type {Map<string, { dayKey: string, label: string, kind: "past-due" | "upcoming" | "undated", items: T[] }>} */
+  /** @type {Map<string, { dayKey: string, label: string, items: T[] }>} */
   const byKey = new Map();
 
   for (const item of items) {
     const key = dayKey(item.dueDate);
     let group = byKey.get(key);
     if (!group) {
-      const groupKind = key === "undated" ? "undated" : kind;
       group = {
         dayKey: key,
         label: formatDayHeading(item.dueDate, today),
-        kind: groupKind,
         items: [],
       };
       byKey.set(key, group);
