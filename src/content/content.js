@@ -14,6 +14,7 @@ import {
   applyLunchTimeline,
   scheduleLunchTimelineRefresh,
 } from "./lunch-timeline.js";
+import { initRollout } from "./rollout.js";
 import { getStorage, isExtensionAlive, loadSettings } from "./storage.js";
 import { initTheme } from "./theme.js";
 import { initWhatsNew } from "./whats-new.js";
@@ -226,6 +227,10 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 (async function init() {
   try {
+    // Staged beta channel: sets dataset.vchRollout + storage.rolloutEnabled.
+    // 0.7.0 ships the redesign UI to everyone who receives the package;
+    // Worker allowlist / published gates betaChannel and [data-vch-beta] surfaces.
+    await initRollout();
     await initTheme();
     await initWhatsNew();
     const settings = await loadSettings();

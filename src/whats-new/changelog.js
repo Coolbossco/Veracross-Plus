@@ -4,6 +4,12 @@
  * @type {Record<string, string[]>}
  */
 export const CHANGELOG = {
+  "0.7.0": [
+    "Redesigned settings popup and overlay chrome with Geist type and shared tokens",
+    "Homepage homework grouped by calendar day under Past due and Upcoming",
+    "Official Veracross Plus toolbar and store icons",
+    "Staged rollout channel for beta surfaces (allowlist before publish)",
+  ],
   "0.6.0": [
     "Themes: Default, Soft Light, Lilac, Matcha, Dark, Ocean, Forest, Ember, Halloween, Galaxy, and Aurora",
     "Homepage widget for upcoming and past-due homework",

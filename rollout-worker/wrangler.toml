@@ -1,0 +1,21 @@
+# Veracross Plus staged rollout Worker (read-only GET).
+# Deploy after creating a KV namespace in the Cloudflare dashboard and
+# replacing the placeholder id below.
+#
+#   npx wrangler deploy
+#
+# Bindings and keys are edited in the dashboard — this Worker has no write API.
+
+name = "veracross-plus-rollout"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Public hostname after you attach a custom domain / route in the dashboard:
+#   https://rollout.codegraph.cc
+
+[[kv_namespaces]]
+binding = "ROLLOUT_KV"
+# Replace with the id from Cloudflare → Workers & Pages → KV → your namespace
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+# Optional preview binding for `wrangler dev`:
+# preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"

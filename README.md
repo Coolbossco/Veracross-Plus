@@ -74,7 +74,10 @@ because it does not implement Firefox's `data_collection` permission field.
 
 ```text
 manifest.json                 Shared Chrome/Firefox Manifest V3 definition
+docs/staged-rollout.md        CWS + Worker staged rollout runbook
+rollout-worker/               Cloudflare Worker (read-only GET + KV)
 src/content/content.js        Boot, observers, and feature flags
+src/content/rollout.js        Worker beta-channel client
 src/content/checklist.js      Homework / assessment checkboxes
 src/content/custom-assignments.js  Custom rows, chips, and modals
 src/content/homepage.js       Student home assignment widget
@@ -99,7 +102,9 @@ dist/                         Generated unpacked extension (not committed)
 3. Reload the extension in each browser.
 4. Run `npm run lint:firefox` before sharing a Firefox test build.
 
-Keep the versions in `package.json` and `manifest.json` synchronized.
+Keep the versions in `package.json` and `manifest.json` synchronized. For
+Chrome Web Store releases, follow [docs/staged-rollout.md](docs/staged-rollout.md)
+(Worker allowlist + CWS gradual %).
 
 ## Settings
 
