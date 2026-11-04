@@ -18,6 +18,8 @@ import {
   setPanelManualCollapse,
 } from "./overlay-layout.js";
 import {
+  formatDayHeading,
+  groupHomeworkByCalendarDay,
   groupHomeworkNearToday,
   isPastDue as isPastDueNearToday,
   startOfDay,
@@ -82,7 +84,9 @@ let memorySchoolItems = null;
  *   dueLabel: string,
  *   type: string,
  *   checked: boolean,
- *   pastDue: boolean
+ *   pastDue: boolean,
+ *   dueDate: Date | null,
+ *   dayLabel: string
  * }>>}
  */
 export async function loadTourHomeworkItems({ limit = 5 } = {}) {
@@ -121,6 +125,7 @@ export async function loadTourHomeworkItems({ limit = 5 } = {}) {
 
     if (!items.length) return [];
 
+    const today = startOfDay();
     const { pastDue, upcoming, completed } = groupHomeworkNearToday(items, {
       limit: cap,
     });
@@ -131,6 +136,8 @@ export async function loadTourHomeworkItems({ limit = 5 } = {}) {
       type: item.type || "homework",
       checked: !!item.checked,
       pastDue: !item.checked && isPastDueNearToday(item),
+      dueDate: item.dueDate || null,
+      dayLabel: formatDayHeading(item.dueDate, today),
     }));
   } catch {
     return [];
@@ -472,10 +479,9 @@ function renderWidgetError(widget, _error) {
 
 function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
   const showCompleted = !!homepageSettings.homepageShowCompleted;
-  const { pastDue, upcoming, completed: completedAll } = groupHomeworkNearToday(
-    items,
-  );
-  const completed = showCompleted ? completedAll : [];
+  const { sections, completed } = groupHomeworkByCalendarDay(items, {
+    includeCompleted: showCompleted,
+  });
   const openItems = items.filter((item) => !item.checked);
   const body = widget.querySelector(".vch-home-widget-body");
   const hasVisible = openItems.length > 0 || completed.length > 0;
@@ -495,14 +501,16 @@ function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
     note.textContent = warning;
     body.appendChild(note);
   }
-  if (pastDue.length) {
-    body.appendChild(renderGroup("Past due", pastDue));
-  }
-  if (upcoming.length) {
-    body.appendChild(renderGroup("Upcoming", upcoming));
+  for (const section of sections) {
+    body.appendChild(renderSection(section));
   }
   if (completed.length) {
-    body.appendChild(renderGroup("Completed", completed));
+    body.appendChild(
+      renderFlatGroup("Completed", completed, {
+        groupKey: "completed",
+        hideDueInMeta: false,
+      }),
+    );
   }
   if (loading) {
     const updating = document.createElement("p");
@@ -513,21 +521,69 @@ function renderWidgetLists(widget, items, warning, { loading = false } = {}) {
   }
 }
 
-function renderGroup(title, items) {
+/**
+ * Past due / Upcoming section with day headings underneath.
+ * @param {{ title: string, kind: string, days: Array<{ dayKey: string, label: string, items: object[] }> }} section
+ */
+function renderSection(section) {
+  const el = document.createElement("section");
+  el.className = "vch-home-group";
+  el.dataset.vchGroup = section.kind;
+  const heading = document.createElement("h3");
+  heading.textContent = section.title;
+  el.appendChild(heading);
+
+  for (const day of section.days) {
+    const dayBlock = document.createElement("div");
+    dayBlock.className = "vch-home-day";
+    dayBlock.dataset.vchDay = day.dayKey;
+    const dayHeading = document.createElement("h4");
+    dayHeading.className = "vch-home-day-heading";
+    dayHeading.textContent = day.label;
+    dayBlock.appendChild(dayHeading);
+
+    const list = document.createElement("ul");
+    list.className = "vch-home-list";
+    const hideDueInMeta = day.dayKey !== "undated";
+    day.items.forEach((item) =>
+      list.appendChild(renderItem(item, { hideDueInMeta })),
+    );
+    dayBlock.appendChild(list);
+    el.appendChild(dayBlock);
+  }
+
+  return el;
+}
+
+/**
+ * Flat section (Completed) without day sub-headings.
+ * @param {string} title
+ * @param {object[]} items
+ * @param {{ groupKey?: string, hideDueInMeta?: boolean }} [opts]
+ */
+function renderFlatGroup(title, items, { groupKey, hideDueInMeta = false } = {}) {
   const section = document.createElement("section");
   section.className = "vch-home-group";
+  section.dataset.vchGroup =
+    groupKey || title.toLowerCase().replace(/\s+/g, "-");
   const heading = document.createElement("h3");
   heading.textContent = title;
   section.appendChild(heading);
 
   const list = document.createElement("ul");
   list.className = "vch-home-list";
-  items.forEach((item) => list.appendChild(renderItem(item)));
+  items.forEach((item) =>
+    list.appendChild(renderItem(item, { hideDueInMeta })),
+  );
   section.appendChild(list);
   return section;
 }
 
-function renderItem(item) {
+/**
+ * @param {object} item
+ * @param {{ hideDueInMeta?: boolean }} [opts]
+ */
+function renderItem(item, { hideDueInMeta = false } = {}) {
   const li = document.createElement("li");
   li.className = "vch-home-item";
   if (item.checked) li.classList.add("vch-done");
@@ -577,9 +633,9 @@ function renderItem(item) {
 
   const meta = document.createElement("span");
   meta.className = "vch-home-meta";
-  meta.textContent = [formatType(item), item.className, formatDue(item)]
-    .filter(Boolean)
-    .join(" · ");
+  const metaParts = [formatType(item), item.className];
+  if (!hideDueInMeta) metaParts.push(formatDue(item));
+  meta.textContent = metaParts.filter(Boolean).join(" · ");
   li.appendChild(meta);
 
   return li;
@@ -593,7 +649,7 @@ async function toggleChecked(item, isChecked, row) {
     await setStorage({
       vc_checked_assignments: compactCheckedMap(checked),
     });
-    // Re-group Past due / Upcoming / Completed so toggles stay coherent.
+    // Re-group by calendar day so toggles stay coherent.
     scheduleHomepageRefresh({ reuseSchool: true });
   } catch {
     // Ignore invalidated extension context.

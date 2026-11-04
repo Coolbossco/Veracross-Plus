@@ -7,6 +7,11 @@ import {
 } from "../themes/registry.js";
 import { loadTourHomeworkItems } from "./homepage.js";
 import {
+  formatDayHeading,
+  groupHomeworkByCalendarDay,
+  startOfDay,
+} from "./homework-near-today.js";
+import {
   formatLunchDayLabel,
   loadLunchWeek,
   parseIsoDate,
@@ -71,7 +76,7 @@ function tourSteps(version) {
       id: "intro",
       layout: "center",
       kicker: "Veracross Plus",
-      title: "What's new",
+      title: "What’s new",
       badge: `v${version}`,
       html: `<ul class="vch-whats-new-list">${bullets
         .map((item) => `<li>${escapeHtml(item)}</li>`)
@@ -82,7 +87,7 @@ function tourSteps(version) {
       layout: "coach",
       kicker: "Step 1",
       title: "Choose a theme",
-      html: `<p class="vch-whats-new-copy">Themes restyle Veracross while you stay on this page. Pick one on the right. You can change it later in the toolbar popup.</p>`,
+      html: `<p class="vch-whats-new-copy">Themes restyle Veracross on this page. Pick one on the right — change it anytime from the toolbar popup.</p>`,
       stage: "themes",
     },
     {
@@ -90,7 +95,7 @@ function tourSteps(version) {
       layout: "pair",
       kicker: "Step 2",
       title: "Homework on home",
-      html: `<p class="vch-whats-new-copy">Homepage Widget lists upcoming and past-due work on the student home page. Try the preview beside this card — check items, hide it, or drag it.</p>`,
+      html: `<p class="vch-whats-new-copy">The homepage widget lists past-due and upcoming work. Try the preview: check items, hide the panel, or drag it.</p>`,
       stage: "homework",
     },
     {
@@ -98,7 +103,7 @@ function tourSteps(version) {
       layout: "pair",
       kicker: "Step 3",
       title: "Lunch on home",
-      html: `<p class="vch-whats-new-copy">Lunch on Home puts the day’s menu on the student home page. Flip days in the preview next to this card.</p>`,
+      html: `<p class="vch-whats-new-copy">Lunch on Home shows today’s menu on the student home page. Flip days in the preview beside this card.</p>`,
       stage: "lunch",
     },
   ];
@@ -348,29 +353,54 @@ async function buildThemeStage() {
   return wrap;
 }
 
-const SAMPLE_HW_ITEMS = [
-  {
-    title: "Reading response",
-    className: "English",
-    dueLabel: "Mon, Nov 2",
-    type: "homework",
-    checked: false,
-  },
-  {
-    title: "Newton's Laws TEST",
-    className: "Physics",
-    dueLabel: "Tue, Nov 10",
-    type: "test",
-    checked: false,
-  },
-  {
-    title: "Problem set 4",
-    className: "Trigonometry",
-    dueLabel: "Fri, Oct 30",
-    type: "homework",
-    checked: true,
-  },
-];
+function sampleHomeworkItems(now = new Date()) {
+  const today = startOfDay(now);
+  const daysAgo = (n) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - n);
+    return d;
+  };
+  const daysAhead = (n) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + n);
+    return d;
+  };
+  const yesterday = daysAgo(1);
+  const nextWeek = daysAhead(7);
+  const lastWeek = daysAgo(4);
+  return [
+    {
+      title: "Reading response",
+      className: "English",
+      dueLabel: formatDayHeading(yesterday, today),
+      type: "homework",
+      checked: false,
+      pastDue: true,
+      dueDate: yesterday,
+      dayLabel: formatDayHeading(yesterday, today),
+    },
+    {
+      title: "Newton's Laws TEST",
+      className: "Physics",
+      dueLabel: formatDayHeading(nextWeek, today),
+      type: "test",
+      checked: false,
+      pastDue: false,
+      dueDate: nextWeek,
+      dayLabel: formatDayHeading(nextWeek, today),
+    },
+    {
+      title: "Problem set 4",
+      className: "Trigonometry",
+      dueLabel: formatDayHeading(lastWeek, today),
+      type: "homework",
+      checked: true,
+      pastDue: false,
+      dueDate: lastWeek,
+      dayLabel: formatDayHeading(lastWeek, today),
+    },
+  ];
+}
 
 const SAMPLE_LUNCH_DAYS = [
   {
@@ -403,23 +433,53 @@ async function buildHomeworkDemo() {
   } catch {
     items = [];
   }
-  if (!items.length) items = SAMPLE_HW_ITEMS;
+  if (!items.length) items = sampleHomeworkItems();
 
-  const pastDue = items.filter((item) => !item.checked && item.pastDue);
-  const upcoming = items.filter((item) => !item.checked && !item.pastDue);
-  const done = items.filter((item) => item.checked);
-  const groups = [];
-  if (pastDue.length) {
-    groups.push({ title: "Past due", items: pastDue });
+  let { sections, completed } = groupHomeworkByCalendarDay(items, {
+    includeCompleted: true,
+  });
+  if (!sections.length && !completed.length) {
+    const again = groupHomeworkByCalendarDay(sampleHomeworkItems(), {
+      includeCompleted: true,
+    });
+    sections = again.sections;
+    completed = again.completed;
   }
-  if (upcoming.length) {
-    groups.push({ title: "Upcoming", items: upcoming });
-  }
-  if (done.length) {
-    groups.push({ title: "Completed", items: done });
-  }
-  if (!groups.length) {
-    groups.push({ title: "Upcoming", items: SAMPLE_HW_ITEMS });
+
+  /** @type {string[]} */
+  const groupHtml = sections.map(
+    (section) => `
+          <section class="vch-home-group" data-vch-group="${escapeHtml(section.kind)}">
+            <h3>${escapeHtml(section.title)}</h3>
+            ${section.days
+              .map(
+                (day) => `
+            <div class="vch-home-day" data-vch-day="${escapeHtml(day.dayKey)}">
+              <h4 class="vch-home-day-heading">${escapeHtml(day.label)}</h4>
+              <ul class="vch-home-list">
+                ${day.items
+                  .map((item) =>
+                    homeworkItemHtml(item, {
+                      hideDue: day.dayKey !== "undated",
+                    }),
+                  )
+                  .join("")}
+              </ul>
+            </div>`,
+              )
+              .join("")}
+          </section>`,
+  );
+  if (completed.length) {
+    groupHtml.push(`
+          <section class="vch-home-group" data-vch-group="completed">
+            <h3>Completed</h3>
+            <ul class="vch-home-list">
+              ${completed
+                .map((item) => homeworkItemHtml(item, { hideDue: false }))
+                .join("")}
+            </ul>
+          </section>`);
   }
 
   return `
@@ -432,17 +492,7 @@ async function buildHomeworkDemo() {
         <span class="vch-panel-chip-label">Due</span>
       </button>
       <div class="vch-home-widget-body">
-        ${groups
-          .map(
-            (group) => `
-          <section class="vch-home-group">
-            <h3>${escapeHtml(group.title)}</h3>
-            <ul class="vch-home-list">
-              ${group.items.map((item) => homeworkItemHtml(item)).join("")}
-            </ul>
-          </section>`,
-          )
-          .join("")}
+        ${groupHtml.join("")}
       </div>
     </section>
   `;
@@ -450,9 +500,12 @@ async function buildHomeworkDemo() {
 
 /**
  * @param {{ title: string, className: string, dueLabel: string, type: string, checked: boolean, pastDue?: boolean }} item
+ * @param {{ hideDue?: boolean }} [opts]
  */
-function homeworkItemHtml(item) {
-  const meta = [item.className, item.dueLabel].filter(Boolean).join(" · ");
+function homeworkItemHtml(item, { hideDue = false } = {}) {
+  const meta = [item.className, hideDue ? "" : item.dueLabel]
+    .filter(Boolean)
+    .join(" · ");
   return `
     <li class="vch-home-item${item.checked ? " vch-done" : ""}">
       <span class="vch-task-wrap" data-type="${escapeHtml(item.type || "homework")}">

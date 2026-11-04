@@ -37,3 +37,7 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Taste Skill working files (keep direction notes + media screenshots in repo)
+.taste-skill/inspect/
+.taste-skill/app/direction.json

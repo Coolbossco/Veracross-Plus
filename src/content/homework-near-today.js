@@ -12,6 +12,41 @@ export function startOfDay(date = new Date()) {
 }
 
 /**
+ * Stable calendar key for a local date (YYYY-MM-DD), or "undated".
+ * @param {Date | null | undefined} date
+ * @returns {string}
+ */
+export function dayKey(date) {
+  if (!date || Number.isNaN(date.getTime())) return "undated";
+  const day = startOfDay(date);
+  const y = day.getFullYear();
+  const m = String(day.getMonth() + 1).padStart(2, "0");
+  const d = String(day.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Heading for a calendar day relative to today.
+ * @param {Date | null | undefined} date
+ * @param {Date} [today]
+ * @returns {string}
+ */
+export function formatDayHeading(date, today = startOfDay()) {
+  if (!date || Number.isNaN(date.getTime())) return "No due date";
+  const day = startOfDay(date);
+  const base = startOfDay(today);
+  const diffDays = Math.round((day.getTime() - base.getTime()) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays === -1) return "Yesterday";
+  return day.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
  * @param {{ dueDate?: Date | null, forcedPastDue?: boolean }} item
  * @param {Date} [today]
  * @returns {boolean}
@@ -102,4 +137,95 @@ export function groupHomeworkNearToday(items, { limit = null, now = new Date() }
     upcoming: limitedUpcoming,
     completed: limitedCompleted,
   };
+}
+
+/**
+ * @typedef {{
+ *   dayKey: string,
+ *   label: string,
+ *   items: unknown[]
+ * }} HomeworkDayBucket
+ */
+
+/**
+ * @typedef {{
+ *   title: string,
+ *   kind: "past-due" | "upcoming",
+ *   days: HomeworkDayBucket[]
+ * }} HomeworkSection
+ */
+
+/**
+ * Bucket near-today ordered homework into Past due / Upcoming sections,
+ * each with calendar-day headings underneath.
+ * Past-due days: oldest → closest to today. Upcoming days: soonest-first.
+ * Optional Completed list is returned separately (flat, no day headings).
+ *
+ * @template {{ dueDate?: Date | null, checked?: boolean, title?: string, forcedPastDue?: boolean }} T
+ * @param {T[]} items
+ * @param {{ limit?: number | null, now?: Date, includeCompleted?: boolean }} [opts]
+ * @returns {{
+ *   sections: Array<{ title: string, kind: "past-due" | "upcoming", days: Array<{ dayKey: string, label: string, items: T[] }> }>,
+ *   completed: T[]
+ * }}
+ */
+export function groupHomeworkByCalendarDay(
+  items,
+  { limit = null, now = new Date(), includeCompleted = false } = {},
+) {
+  const today = startOfDay(now);
+  const { pastDue, upcoming, completed } = groupHomeworkNearToday(items, {
+    limit,
+    now,
+  });
+
+  // pastDue items are nearest-today-first (for limit fill); reverse day
+  // buckets so headings read oldest → Yesterday (closest last).
+  const pastDueDays = bucketItemsByDay(pastDue, today);
+  pastDueDays.reverse();
+  const upcomingDays = bucketItemsByDay(upcoming, today);
+
+  /** @type {Array<{ title: string, kind: "past-due" | "upcoming", days: Array<{ dayKey: string, label: string, items: T[] }> }>} */
+  const sections = [];
+  if (pastDueDays.length) {
+    sections.push({ title: "Past due", kind: "past-due", days: pastDueDays });
+  }
+  if (upcomingDays.length) {
+    sections.push({ title: "Upcoming", kind: "upcoming", days: upcomingDays });
+  }
+
+  return {
+    sections,
+    completed: includeCompleted ? completed : [],
+  };
+}
+
+/**
+ * @template {{ dueDate?: Date | null, title?: string }} T
+ * @param {T[]} items
+ * @param {Date} today
+ * @returns {Array<{ dayKey: string, label: string, items: T[] }>}
+ */
+function bucketItemsByDay(items, today) {
+  /** @type {Array<{ dayKey: string, label: string, items: T[] }>} */
+  const groups = [];
+  /** @type {Map<string, { dayKey: string, label: string, items: T[] }>} */
+  const byKey = new Map();
+
+  for (const item of items) {
+    const key = dayKey(item.dueDate);
+    let group = byKey.get(key);
+    if (!group) {
+      group = {
+        dayKey: key,
+        label: formatDayHeading(item.dueDate, today),
+        items: [],
+      };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+
+  return groups;
 }

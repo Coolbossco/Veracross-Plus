@@ -1,0 +1,232 @@
+@import "../ui/tokens.css";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 360px;
+  color: var(--vch-text);
+  background: var(--vch-ground);
+  font-family: var(--vch-font);
+  font-size: var(--vch-fs-body);
+  line-height: 1.4;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  width: 100%;
+  max-height: 560px;
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--vch-ground);
+}
+
+.header {
+  flex-shrink: 0;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--vch-border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.brand-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+.header h1 {
+  font-size: var(--vch-fs-title);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--vch-text);
+  line-height: 1.2;
+}
+
+.header-sub {
+  font-size: var(--vch-fs-small);
+  color: var(--vch-textMuted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--vch-text) 18%, transparent);
+  border-radius: 2px;
+}
+
+.section-label {
+  margin: 14px 0 8px;
+  font-size: var(--vch-fs-small);
+  font-weight: 500;
+  color: var(--vch-textMuted);
+}
+
+.section-label:first-child {
+  margin-top: 0;
+}
+
+.feature-card {
+  background: var(--vch-surface);
+  border: 1px solid var(--vch-border);
+  border-radius: var(--vch-radius-card);
+  padding: 12px 12px 12px 14px;
+  margin-bottom: 8px;
+}
+
+.feature-card:last-child {
+  margin-bottom: 0;
+}
+
+.feature-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.feature-title {
+  font-size: var(--vch-fs-section);
+  font-weight: 500;
+  color: var(--vch-text);
+}
+
+.feature-description {
+  font-size: 13px;
+  color: var(--vch-textMuted);
+  line-height: 1.45;
+}
+
+.feature-description + .feature-description {
+  margin-top: 6px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--vch-control);
+  transition: background-color 0.15s ease;
+  border-radius: 999px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #fff;
+  transition: transform 0.15s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+input:checked + .slider {
+  background: var(--vch-positive);
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+}
+
+input:focus-visible + .slider {
+  outline: 2px solid var(--vch-text);
+  outline-offset: 2px;
+}
+
+.field-label {
+  display: block;
+  margin-top: 10px;
+  font-size: var(--vch-fs-small);
+  font-weight: 500;
+  color: var(--vch-text);
+}
+
+.field-select {
+  width: 100%;
+  margin-top: 6px;
+  height: var(--vch-control-height);
+  padding: 0 10px;
+  border: 1px solid var(--vch-control);
+  border-radius: var(--vch-radius-control);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--vch-surface);
+  color: var(--vch-text);
+}
+
+.field-select:focus {
+  outline: none;
+  border-color: var(--vch-text);
+}
+
+.nested-toggle {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--vch-rule);
+}
+
+.footer {
+  text-align: left;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--vch-border);
+  font-size: var(--vch-fs-small);
+  color: var(--vch-textMuted);
+  flex-shrink: 0;
+}

@@ -1,226 +1,70 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Veracross Plus</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      html,
-      body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial, sans-serif;
-        background: #fff;
-        width: 360px;
-        color: #333;
-        overflow: hidden;
-      }
-
-      .container {
-        width: 100%;
-        max-height: 560px;
-        padding: 16px;
-        background: #fff;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      .header {
-        text-align: center;
-        margin-bottom: 14px;
-        flex-shrink: 0;
-      }
-
-      .header h1 {
-        font-size: 18px;
-        font-weight: 600;
-        color: #2c3e50;
-      }
-
-      .content {
-        flex: 1;
-        overflow-y: auto;
-        padding-right: 2px;
-      }
-
-      .content::-webkit-scrollbar {
-        width: 4px;
-      }
-
-      .content::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .content::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 2px;
-      }
-
-      .feature-card {
-        background: #fff;
-        border: 1px solid #e9ecef;
-        border-radius: 12px;
-        padding: 14px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      }
-
-      .feature-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        gap: 10px;
-      }
-
-      .feature-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #2c3e50;
-      }
-
-      .feature-description {
-        font-size: 12px;
-        color: #6c757d;
-        line-height: 1.4;
-      }
-
-      .switch {
-        position: relative;
-        display: inline-block;
-        width: 44px;
-        height: 24px;
-        flex-shrink: 0;
-      }
-
-      .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-      }
-
-      .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: 0.3s;
-        border-radius: 24px;
-      }
-
-      .slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: 0.3s;
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      }
-
-      input:checked + .slider {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      }
-
-      input:checked + .slider:before {
-        transform: translateX(20px);
-      }
-
-      .field-label {
-        display: block;
-        margin-top: 10px;
-        font-size: 12px;
-        color: #6c757d;
-      }
-
-      .field-select {
-        width: 100%;
-        margin-top: 6px;
-        padding: 8px 10px;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        font-size: 13px;
-        background: #fff;
-        color: #333;
-      }
-
-      .nested-toggle {
-        margin-top: 12px;
-        padding-top: 10px;
-        border-top: 1px solid #f1f3f5;
-      }
-
-      .footer {
-        text-align: center;
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #e9ecef;
-        font-size: 11px;
-        color: #6c757d;
-        flex-shrink: 0;
-      }
-    </style>
+    <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>Veracross Plus</h1>
-      </div>
+      <header class="header">
+        <div class="brand">
+          <img
+            class="brand-icon"
+            id="brandIcon"
+            src="../../icons/32.png"
+            width="20"
+            height="20"
+            alt=""
+            aria-hidden="true"
+          />
+          <h1>Veracross Plus</h1>
+        </div>
+        <span class="header-sub">Settings</span>
+      </header>
 
       <div class="content">
+        <div class="section-label">Assignments</div>
+
         <div class="feature-card">
           <div class="feature-header">
-            <div class="feature-title">Homework Checkboxes</div>
+            <div class="feature-title">Homework checkboxes</div>
             <label class="switch">
               <input type="checkbox" id="enableChecklist" />
               <span class="slider"></span>
             </label>
           </div>
           <div class="feature-description">
-            Add interactive checkboxes to homework assignments for better task
-            management and progress tracking.
+            Mark homework and classwork done on the timeline and daily schedule.
           </div>
         </div>
 
         <div class="feature-card">
           <div class="feature-header">
-            <div class="feature-title">Tests &amp; Projects</div>
+            <div class="feature-title">Tests &amp; projects</div>
             <label class="switch">
               <input type="checkbox" id="enableAssessmentCheckboxes" />
               <span class="slider"></span>
             </label>
           </div>
           <div class="feature-description">
-            Also add checkboxes to tests, quizzes, exams, and projects. Leave
-            this off if you only want homework and classwork.
+            Also check off tests, quizzes, exams, and projects. Leave off for
+            homework and classwork only.
           </div>
         </div>
 
         <div class="feature-card">
           <div class="feature-header">
-            <div class="feature-title">Homepage Widget</div>
+            <div class="feature-title">Homepage widget</div>
             <label class="switch">
               <input type="checkbox" id="enableHomepageWidget" />
               <span class="slider"></span>
             </label>
           </div>
           <div class="feature-description">
-            On the student home page, show past-due and upcoming school and
-            custom assignments. Checking them off uses the same boxes as the
-            timeline.
+            Past-due and upcoming school and custom work on the student home
+            page. Same checkboxes as the timeline.
           </div>
           <div class="nested-toggle">
             <div class="feature-header">
@@ -232,7 +76,7 @@
             </div>
             <div class="feature-description">
               Keep checked items in a Completed group at the bottom of the
-              homepage widget.
+              widget.
             </div>
           </div>
         </div>
@@ -246,71 +90,73 @@
             </label>
           </div>
           <div class="feature-description">
-            Remind me about upcoming tests and projects. Notifications use
-            assignments cached when you visit Veracross.
+            Reminders for upcoming tests and projects from assignments cached
+            when you visit Veracross.
           </div>
           <div class="feature-description" id="reminderStatus"></div>
         </div>
 
         <div class="feature-card">
           <div class="feature-header">
-            <div class="feature-title">Lunch on Home</div>
-            <label class="switch">
-              <input type="checkbox" id="enableLunchHomepage" />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="feature-description">
-            Fixed lunch card on the student home page with day switching. Uses
-            Cincinnati Country Day’s Sage Dining menu.
-          </div>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-header">
-            <div class="feature-title">Lunch on Timeline</div>
-            <label class="switch">
-              <input type="checkbox" id="enableLunchTimeline" />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="feature-description">
-            Add a Lunch row on the assignments planner with each day’s main
-            entrée.
-          </div>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-header">
-            <div class="feature-title">Theme</div>
-          </div>
-          <div class="feature-description">
-            Restyle Veracross portal pages. Default leaves the stock look.
-            Seasonal packs like Halloween only change colors and accents.
-          </div>
-          <label class="field-label" for="selectedTheme">Active theme</label>
-          <select id="selectedTheme" class="field-select">
-            <option value="none">Default (Veracross)</option>
-          </select>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-header">
-            <div class="feature-title">Custom Assignments</div>
+            <div class="feature-title">Custom assignments</div>
             <label class="switch">
               <input type="checkbox" id="enableCustomAssignments" />
               <span class="slider"></span>
             </label>
           </div>
           <div class="feature-description">
-            Add your own assignments and extra timeline rows, like Home. After
-            enabling, use the button on the bottom right, or click a custom row
-            name to rename or recolor it.
+            Add your own work and timeline rows. After enabling, use Add on the
+            bottom right, or click a custom row name to rename or recolor it.
           </div>
+        </div>
+
+        <div class="section-label">Lunch</div>
+
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-title">Lunch on home</div>
+            <label class="switch">
+              <input type="checkbox" id="enableLunchHomepage" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="feature-description">
+            Day-switchable lunch card on student home from Cincinnati Country
+            Day’s Sage Dining menu.
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-title">Lunch on timeline</div>
+            <label class="switch">
+              <input type="checkbox" id="enableLunchTimeline" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="feature-description">
+            A Lunch row on the assignments planner with each day’s main entrée.
+          </div>
+        </div>
+
+        <div class="section-label">Appearance</div>
+
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-title">Theme</div>
+          </div>
+          <div class="feature-description">
+            Restyle portal pages. Default keeps the stock Veracross look.
+            Seasonal packs change colors and accents only.
+          </div>
+          <label class="field-label" for="selectedTheme">Active theme</label>
+          <select id="selectedTheme" class="field-select">
+            <option value="none">Default (Veracross)</option>
+          </select>
         </div>
       </div>
 
-      <div class="footer">Settings are saved automatically</div>
+      <div class="footer">Changes save automatically</div>
     </div>
     <script type="module" src="popup.js"></script>
   </body>
