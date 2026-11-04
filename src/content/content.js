@@ -7,10 +7,8 @@ import {
   isInstantUpdateInProgress,
   resetCustomAssignmentState,
 } from "./custom-assignments.js";
-import {
-  applyExperienceStyles,
-  loadExperienceModules,
-} from "./experience.js";
+import { applyExperienceStyles } from "./experience.js";
+import { applyHomepageWidget } from "./homepage.js";
 import { applyLunchHome } from "./lunch-home.js";
 import {
   applyLunchTimeline,
@@ -19,6 +17,7 @@ import {
 import { initRollout } from "./rollout.js";
 import { getStorage, isExtensionAlive, loadSettings } from "./storage.js";
 import { initTheme } from "./theme.js";
+import { initWhatsNew } from "./whats-new.js";
 
 // Safe default: legacy CWS UI until the Worker says otherwise (no modern flash).
 try {
@@ -225,203 +224,210 @@ function maybeRedirectHome(settings) {
   }
 }
 
-browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "refreshCustomAssignments") {
-    setTimeout(() => {
-      instantAssignmentUpdate();
-    }, 10);
-    sendResponse({ success: true });
+async function initModernExperience() {
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "refreshCustomAssignments") {
+      setTimeout(() => {
+        instantAssignmentUpdate();
+      }, 10);
+      sendResponse({ success: true });
+    }
+  });
+
+  await initTheme();
+  await initWhatsNew();
+  const settings = await loadSettings();
+
+  maybeRedirectHome(settings);
+
+  fixClippingIssues();
+  setTimeout(() => enhanceTimelineScrolling(), 100);
+
+  if (
+    location.hostname.includes("veracross") ||
+    location.hostname.includes("portals")
+  ) {
+    let timelineCheckCount = 0;
+    const maxChecks = 50;
+
+    const waitForTimeline = () => {
+      timelineCheckCount++;
+      const timeline = document.querySelector(
+        ".timeline-records, .timeline-table",
+      );
+
+      if (timeline) {
+        setTimeout(() => {
+          fixClippingIssues();
+          enhanceTimelineScrolling();
+        }, 500);
+        setTimeout(() => {
+          fixClippingIssues();
+          enhanceTimelineScrolling();
+        }, 1000);
+        setTimeout(() => {
+          fixClippingIssues();
+          enhanceTimelineScrolling();
+        }, 2000);
+      } else if (timelineCheckCount < maxChecks) {
+        setTimeout(waitForTimeline, 100);
+      }
+    };
+    waitForTimeline();
   }
-});
 
-(async function init() {
-  try {
-    // Staged rollout: Worker allowlist / published → modern redesign + #7/#8.
-    // Otherwise keep CWS-equivalent legacy UI (styles, popup, homepage, tour).
-    // Paint legacy CSS immediately so a slow Worker never flashes modern chrome.
-    applyExperienceStyles(false);
-    const rollout = await initRollout();
-    const modern = rollout.enabled === true;
-    if (modern) applyExperienceStyles(true);
-    const { initWhatsNew, applyHomepageWidget } =
-      loadExperienceModules(modern);
-
-    await initTheme();
-    await initWhatsNew();
-    const settings = await loadSettings();
-
-    maybeRedirectHome(settings);
-
+  const clipObserver = new MutationObserver((mutations) => {
+    if (!isExtensionAlive()) {
+      clipObserver.disconnect();
+      return;
+    }
     fixClippingIssues();
     setTimeout(() => enhanceTimelineScrolling(), 100);
 
-    if (
-      location.hostname.includes("veracross") ||
-      location.hostname.includes("portals")
-    ) {
-      let timelineCheckCount = 0;
-      const maxChecks = 50;
-
-      const waitForTimeline = () => {
-        timelineCheckCount++;
-        const timeline = document.querySelector(
-          ".timeline-records, .timeline-table",
-        );
-
-        if (timeline) {
-          setTimeout(() => {
-            fixClippingIssues();
-            enhanceTimelineScrolling();
-          }, 500);
-          setTimeout(() => {
-            fixClippingIssues();
-            enhanceTimelineScrolling();
-          }, 1000);
-          setTimeout(() => {
-            fixClippingIssues();
-            enhanceTimelineScrolling();
-          }, 2000);
-        } else if (timelineCheckCount < maxChecks) {
-          setTimeout(waitForTimeline, 100);
+    const hasTimelineChanges = mutations.some((mutation) => {
+      return Array.from(mutation.addedNodes).some((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if (
+            node.matches &&
+            (node.matches("[data-vch-custom]") ||
+              node.querySelector("[data-vch-custom]") ||
+              node.matches(".vch-custom-timeline-row") ||
+              node.matches(".vch-custom-assignment") ||
+              node.matches(".vch-lunch-header-chip") ||
+              node.querySelector(".vch-lunch-header-chip"))
+          ) {
+            return false;
+          }
+          return (
+            node.matches &&
+            (node.matches(".timeline-row") ||
+              node.matches(".timeline-cell") ||
+              node.matches(".timeline-records-inner") ||
+              node.querySelector(
+                ".timeline-row, .timeline-cell, .timeline-records-inner",
+              ))
+          );
         }
-      };
-      waitForTimeline();
+        return false;
+      });
+    });
+
+    if (
+      hasTimelineChanges &&
+      settings.enableCustomAssignments &&
+      !isInstantUpdateInProgress()
+    ) {
+      setTimeout(async () => {
+        if (!isExtensionAlive()) return;
+        resetCustomAssignmentState();
+        await instantAssignmentUpdate();
+      }, 100);
     }
 
-    const clipObserver = new MutationObserver((mutations) => {
-      if (!isExtensionAlive()) {
-        clipObserver.disconnect();
-        return;
-      }
-      fixClippingIssues();
-      setTimeout(() => enhanceTimelineScrolling(), 100);
+    if (hasTimelineChanges && settings.enableLunchTimeline) {
+      scheduleLunchTimelineRefresh(150);
+    }
+  });
+  clipObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
 
-      const hasTimelineChanges = mutations.some((mutation) => {
-        return Array.from(mutation.addedNodes).some((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            if (
-              node.matches &&
-              (node.matches("[data-vch-custom]") ||
-                node.querySelector("[data-vch-custom]") ||
-                node.matches(".vch-custom-timeline-row") ||
-                node.matches(".vch-custom-assignment") ||
-                node.matches(".vch-lunch-header-chip") ||
-                node.querySelector(".vch-lunch-header-chip"))
-            ) {
-              return false;
-            }
-            return (
-              node.matches &&
-              (node.matches(".timeline-row") ||
-                node.matches(".timeline-cell") ||
-                node.matches(".timeline-records-inner") ||
-                node.querySelector(
-                  ".timeline-row, .timeline-cell, .timeline-records-inner",
-                ))
-            );
-          }
-          return false;
-        });
-      });
+  window.addEventListener("resize", handleWindowResize);
 
-      if (
-        hasTimelineChanges &&
-        settings.enableCustomAssignments &&
-        !isInstantUpdateInProgress()
-      ) {
-        setTimeout(async () => {
-          if (!isExtensionAlive()) return;
-          resetCustomAssignmentState();
-          await instantAssignmentUpdate();
-        }, 100);
-      }
+  const scrollContainer =
+    document.querySelector(
+      ".timeline-table-wrapper, .timeline-records-wrapper, .timeline-wrapper, .timeline-table, .timeline-records",
+    ) || document;
+  scrollContainer.addEventListener("scroll", () => {
+    clearTimeout(scrollContainer.scrollTimeout);
+    scrollContainer.scrollTimeout = setTimeout(() => {}, 100);
+  });
 
-      if (hasTimelineChanges && settings.enableLunchTimeline) {
-        scheduleLunchTimelineRefresh(150);
-      }
-    });
-    clipObserver.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-    });
+  if (settings.enableChecklist) {
+    const checked = (await getStorage("vc_checked_assignments")) || {};
 
-    window.addEventListener("resize", handleWindowResize);
-
-    const scrollContainer =
-      document.querySelector(
-        ".timeline-table-wrapper, .timeline-records-wrapper, .timeline-wrapper, .timeline-table, .timeline-records",
-      ) || document;
-    scrollContainer.addEventListener("scroll", () => {
-      clearTimeout(scrollContainer.scrollTimeout);
-      scrollContainer.scrollTimeout = setTimeout(() => {}, 100);
-    });
-
-    if (settings.enableChecklist) {
-      const checked = (await getStorage("vc_checked_assignments")) || {};
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => {
-          applyChecklistToDocument(document, checked, settings);
-          setTimeout(() => enhanceTimelineScrolling(), 200);
-        });
-      } else {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
         applyChecklistToDocument(document, checked, settings);
         setTimeout(() => enhanceTimelineScrolling(), 200);
-      }
+      });
+    } else {
+      applyChecklistToDocument(document, checked, settings);
+      setTimeout(() => enhanceTimelineScrolling(), 200);
     }
+  }
 
-    if (settings.enableEstimator) {
-      applyEstimator();
+  if (settings.enableEstimator) {
+    applyEstimator();
+  }
+
+  await applyCustomAssignments(settings);
+  await applyHomepageWidget(settings);
+  await applyLunchHome(settings);
+  await applyLunchTimeline(settings);
+
+  let currentUrl = location.href;
+  const checkForUrlChange = () => {
+    if (!isExtensionAlive()) return;
+    if (location.href !== currentUrl) {
+      currentUrl = location.href;
+
+      resetCustomAssignmentState();
+      setTimeout(async () => {
+        const latest = await loadSettings();
+        Object.assign(settings, latest);
+        if (settings.enableHomepageWidget && isExtensionAlive()) {
+          await applyHomepageWidget(settings);
+        }
+        if (settings.enableLunchHomepage && isExtensionAlive()) {
+          await applyLunchHome(settings);
+        }
+        if (settings.enableCustomAssignments && isExtensionAlive()) {
+          resetCustomAssignmentState();
+          await instantAssignmentUpdate();
+        }
+        if (settings.enableLunchTimeline && isExtensionAlive()) {
+          await applyLunchTimeline(settings);
+        }
+      }, 100);
     }
-
-    await applyCustomAssignments(settings);
-    await applyHomepageWidget(settings);
-    await applyLunchHome(settings);
-    await applyLunchTimeline(settings);
-
-    let currentUrl = location.href;
-    const checkForUrlChange = () => {
-      if (!isExtensionAlive()) return;
-      if (location.href !== currentUrl) {
-        currentUrl = location.href;
-
-        resetCustomAssignmentState();
-        setTimeout(async () => {
-          const latest = await loadSettings();
-          Object.assign(settings, latest);
-          if (settings.enableHomepageWidget && isExtensionAlive()) {
-            await applyHomepageWidget(settings);
-          }
-          if (settings.enableLunchHomepage && isExtensionAlive()) {
-            await applyLunchHome(settings);
-          }
-          if (settings.enableCustomAssignments && isExtensionAlive()) {
-            resetCustomAssignmentState();
-            await instantAssignmentUpdate();
-          }
-          if (settings.enableLunchTimeline && isExtensionAlive()) {
-            await applyLunchTimeline(settings);
-          }
-        }, 100);
-      }
-
-      setTimeout(checkForUrlChange, 1000);
-    };
 
     setTimeout(checkForUrlChange, 1000);
+  };
 
-    let lastUrl = location.href;
-    const checkButtonVisibility = () => {
-      if (!isExtensionAlive()) return;
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        setTimeout(() => {
-          if (isExtensionAlive()) addFloatingAssignmentButton();
-        }, 500);
-      }
-      setTimeout(checkButtonVisibility, 1000);
-    };
+  setTimeout(checkForUrlChange, 1000);
+
+  let lastUrl = location.href;
+  const checkButtonVisibility = () => {
+    if (!isExtensionAlive()) return;
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      setTimeout(() => {
+        if (isExtensionAlive()) addFloatingAssignmentButton();
+      }, 500);
+    }
     setTimeout(checkButtonVisibility, 1000);
+  };
+  setTimeout(checkButtonVisibility, 1000);
+}
+
+(async function init() {
+  try {
+    // Paint exact CWS (8815883) CSS immediately — no modern flash.
+    applyExperienceStyles(false);
+    const rollout = await initRollout();
+    const modern = rollout.enabled === true;
+
+    if (!modern) {
+      // Exact pre-redesign app: checklist, custom assignments, estimator, FAB/modals.
+      const { initLegacyApp } = await import("./legacy-app.js");
+      await initLegacyApp();
+      return;
+    }
+
+    applyExperienceStyles(true);
+    await initModernExperience();
   } catch {
     // Silent error handling
   }

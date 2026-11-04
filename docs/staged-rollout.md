@@ -17,15 +17,15 @@ The package contains **both** UIs. The Worker decides which one runs:
 
 | `enabled` | Who | Experience |
 | --- | --- | --- |
-| `false` | Not on allowlist **and** version not published | **CWS-equivalent legacy UI** (0.6.x / pre-redesign): legacy popup, homepage widget, lunch chips/cards, custom-assignment FAB/modal, what’s-new, and styles |
-| `true` | Allowlisted **or** `published: true` | **Redesigned UI + PR #7/#8 features** (achromatic-ledger chrome, day-grouped homework, near-today ordering, modern popup / tour) |
+| `false` | Not on allowlist **and** version not published | **Exact CWS / pre-redesign UI** anchored at commit [`8815883`](https://github.com/Coolbossco/Veracross-Plus/commit/881588351be694d3a66e93e392e4e9e7d0836a01): detached `window.legacy` settings popup, that-era content styles, checklist, custom-assignment FAB/modals (via `legacy-app.js`) |
+| `true` | Allowlisted **or** `published: true` | **Redesigned UI + PR #7/#8 features** (achromatic-ledger chrome, homepage/lunch widgets, themes tour, day-grouped homework, modern toolbar popup) |
 
 Safe default until the Worker responds: **legacy** (no flash of the redesign).
 
 The client also sets `document.documentElement.dataset.vchRollout` (`"1"` / `"0"`),
 `dataset.vchExperience` (`modern` / `legacy`), syncs `rolloutEnabled` to
 `storage.local`, shows a **Beta** badge on the modern popup, and swaps the
-toolbar popup HTML via `action.setPopup`.
+toolbar action via `action.setPopup` between `popup.legacy.html` and `popup.html`.
 
 ## Operator steps (every release)
 
@@ -61,25 +61,24 @@ curl -sS 'https://rollout.codegraph.cc/v1/rollout?version=0.7.0&user=parnellks'
 ## Extension client
 
 - `src/content/rollout.js` — resolve local-part, fetch Worker, apply dataset /
-  storage / beta DOM, notify background.
-- `src/content/experience.js` — inject legacy vs modern CSS; load homepage /
-  what’s-new modules for the active mode.
-- Legacy snapshots: `styles.legacy.css`, `homepage.legacy.js`,
-  `whats-new.legacy.js`, `popup.legacy.html` (from 0.6.0 / pre-redesign).
-- Booted early from `src/content/content.js` (legacy CSS painted before the
-  fetch resolves).
+  storage, notify background.
+- `src/content/experience.js` — inject legacy (`styles.legacy.css` from 8815883)
+  vs modern CSS.
+- `src/content/legacy-app.js` — exact content app from 8815883 (booted when
+  `enabled === false`).
+- Legacy popup stack: `popup.legacy.html` → opens `window.legacy.html` (8815883).
+- Booted from `src/content/content.js` (legacy CSS painted before the fetch).
 - Host permission: `https://rollout.codegraph.cc/*`.
 
 ## Verify locally (Load Unpacked)
 
 1. `npm run build` → Load Unpacked from `dist/`.
-2. Open the student portal while **not** on the KV allowlist → toolbar popup and
-   page chrome should match current CWS (legacy). Hard-reload the portal tab
-   after changing allowlist.
-3. Add your Veracross local-part to the allowlist (or set `published: true`) →
-   reload the portal tab → redesign UI + Beta badge on the modern popup.
-4. Files to hard-reload after rebuild: extension on `chrome://extensions`
-   (Reload), then the Veracross tab (Ctrl+Shift+R). Re-open the toolbar popup.
+2. Reload the extension on `chrome://extensions`, hard-reload the Veracross tab
+   (Ctrl+Shift+R), re-open the toolbar icon.
+3. User **not** on the KV allowlist → detached rounded settings window + page
+   chrome matching commit 8815883 / current CWS (not the redesigned toolbar popup).
+4. Add your Veracross local-part to the allowlist (or set `published: true`) →
+   reload the portal tab → redesign UI + modern toolbar popup + Beta badge.
 
 ## Gating new surfaces
 

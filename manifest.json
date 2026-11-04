@@ -66,5 +66,17 @@
       "32": "icons/32.png"
     }
   },
-  "options_page": "src/options.html"
+  "options_page": "src/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["src/popup/window.legacy.html"],
+      "matches": [
+        "*://*.veracross.com/*",
+        "*://*.myveracross.com/*",
+        "*://portals.veracross.com/*",
+        "*://portals-embed.veracross.com/*",
+        "<all_urls>"
+      ]
+    }
+  ]
 }
