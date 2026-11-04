@@ -29,6 +29,11 @@ async function save() {
 document.addEventListener("DOMContentLoaded", () => {
   load();
 
+  const closeBtn = document.getElementById("closeBtn");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => window.close());
+  }
+
   const checklistToggle = document.getElementById("enableChecklist");
   if (checklistToggle) {
     checklistToggle.addEventListener("change", save);
