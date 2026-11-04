@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Veracross Plus",
   "description": "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "browser_specific_settings": {
     "gecko": {
       "id": "veracross-plus@codegraph.cc",
@@ -20,6 +20,7 @@
   },
   "host_permissions": [
     "https://stats.codegraph.cc/*",
+    "https://rollout.codegraph.cc/*",
     "https://www.sagedining.com/*",
     "*://*.veracross.com/*",
     "*://*.myveracross.com/*",
@@ -57,7 +58,7 @@
     }
   ],
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_popup": "src/popup/popup.legacy.html",
     "default_title": "Veracross Plus",
     "default_icon": {
       "16": "icons/16.png",
@@ -65,5 +66,17 @@
       "32": "icons/32.png"
     }
   },
-  "options_page": "src/options.html"
+  "options_page": "src/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["src/popup/window.legacy.html"],
+      "matches": [
+        "*://*.veracross.com/*",
+        "*://*.myveracross.com/*",
+        "*://portals.veracross.com/*",
+        "*://portals-embed.veracross.com/*",
+        "<all_urls>"
+      ]
+    }
+  ]
 }

@@ -11,15 +11,21 @@ import "../themes/skin.css";
 import "../themes/halloween/extras.css";
 import "../themes/galaxy/extras.css";
 import "../themes/aurora/extras.css";
+import { writeRolloutThemeCache } from "./rollout-cache.js";
 import { isExtensionAlive } from "./storage.js";
+import { clearThemesFromDocument } from "./theme-clear.js";
 import {
   bindThemeHarden,
   scheduleThemeHarden,
-  unbindThemeHarden,
 } from "./theme-harden.js";
 
+export { clearThemesFromDocument };
+
 let themeBound = false;
+let rolloutThemeBound = false;
 let applyGeneration = 0;
+/** Matches dual-experience default: themes off until rollout enables modern. */
+let themesAllowed = false;
 
 /**
  * Apply a theme id to the current document (every frame).
@@ -56,28 +62,77 @@ export function applyThemeToDocument(themeId, { transition = false } = {}) {
  * @param {string | null | undefined} themeId
  */
 function applyThemeImmediate(themeId) {
+  if (!themesAllowed) {
+    clearThemesFromDocument();
+    return;
+  }
+
   const root = document.documentElement;
   const resolvedId = resolveThemeId(themeId);
   const theme = shouldSkipTheme() ? null : getTheme(resolvedId);
 
-  for (const key of TOKEN_KEYS) {
-    root.style.removeProperty(`--vch-${key}`);
-  }
-
   if (!theme) {
-    delete root.dataset.vchTheme;
-    root.removeAttribute("data-vch-theme");
-    unbindThemeHarden();
+    clearThemesFromDocument();
     return;
   }
 
-  root.dataset.vchTheme = theme.id;
+  // Already painted by theme-boot — don't strip vars then re-set (FOUC).
+  if (root.dataset.vchTheme === theme.id) {
+    const vars = tokensToCssVars(theme.tokens);
+    for (const [name, value] of Object.entries(vars)) {
+      root.style.setProperty(name, value);
+    }
+    bindThemeHarden();
+    scheduleThemeHarden(0);
+    return;
+  }
+
   const vars = tokensToCssVars(theme.tokens);
+  const keep = new Set(Object.keys(vars));
+  root.dataset.vchTheme = theme.id;
   for (const [name, value] of Object.entries(vars)) {
     root.style.setProperty(name, value);
   }
+  for (const key of TOKEN_KEYS) {
+    const name = `--vch-${key}`;
+    if (!keep.has(name)) root.style.removeProperty(name);
+  }
   bindThemeHarden();
   scheduleThemeHarden(0);
+}
+
+/**
+ * Gate themes behind staged rollout. When disallowed, strip any active theme
+ * (including leftover CSS vars / harden inline styles) so legacy matches CWS.
+ * @param {boolean} allowed
+ */
+export function setThemesAllowed(allowed) {
+  themesAllowed = allowed === true;
+  if (!themesAllowed) {
+    clearThemesFromDocument();
+    writeRolloutThemeCache({ rolloutEnabled: false });
+  } else {
+    writeRolloutThemeCache({ rolloutEnabled: true });
+  }
+}
+
+/**
+ * Keep themes in sync if rolloutEnabled flips mid-session (e.g. allowlist edit).
+ */
+export function bindRolloutThemeGate() {
+  if (rolloutThemeBound) return;
+  rolloutThemeBound = true;
+
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.rolloutEnabled || !isExtensionAlive()) {
+      return;
+    }
+    const enabled = changes.rolloutEnabled.newValue === true;
+    setThemesAllowed(enabled);
+    if (enabled) {
+      void applySelectedTheme();
+    }
+  });
 }
 
 export async function applySelectedTheme() {
@@ -95,6 +150,10 @@ export async function applySelectedTheme() {
   } catch {
     themeId = DEFAULT_THEME_ID;
   }
+  writeRolloutThemeCache({
+    rolloutEnabled: themesAllowed,
+    themeId,
+  });
   applyThemeToDocument(themeId);
 }
 
@@ -111,6 +170,8 @@ export function bindThemeListeners() {
 }
 
 export async function initTheme() {
+  setThemesAllowed(true);
   bindThemeListeners();
+  bindRolloutThemeGate();
   await applySelectedTheme();
 }

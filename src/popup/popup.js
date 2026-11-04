@@ -200,9 +200,27 @@ function bindBrandIcon() {
   }
 }
 
+/**
+ * Show Beta badge when the content script synced rolloutEnabled from the Worker.
+ */
+async function applyBetaBadge() {
+  const badge = document.getElementById("betaBadge");
+  const line = document.getElementById("betaLine");
+  let enabled = false;
+  try {
+    const stored = await browser.storage.local.get({ rolloutEnabled: false });
+    enabled = stored.rolloutEnabled === true;
+  } catch {
+    enabled = false;
+  }
+  if (badge) badge.hidden = !enabled;
+  if (line) line.hidden = !enabled;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   bindBrandIcon();
   load();
+  applyBetaBadge();
   trackUmamiEvent("popup_opened");
 
   [

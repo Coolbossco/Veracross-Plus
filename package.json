@@ -1,6 +1,6 @@
 {
   "name": "veracross-plus",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Enhanced Veracross portal experience with homework checklists on timeline and daily schedule pages, grade estimation, custom assignments, and navigation improvements",
   "type": "module",
   "scripts": {
