@@ -19,6 +19,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'src/popup/popup.html'),
+        popupLegacy: resolve(__dirname, 'src/popup/popup.legacy.html'),
         options: resolve(__dirname, 'src/options.html'),
       },
     },

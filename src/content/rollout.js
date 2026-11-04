@@ -218,8 +218,11 @@ function fromUrlHints() {
 
 /**
  * Fetch rollout status for the installed extension version + resolved user.
- * Sets `document.documentElement.dataset.vchRollout`, syncs storage, and
- * toggles `[data-vch-beta]` visibility.
+ * Sets `document.documentElement.dataset.vchRollout`, syncs storage,
+ * notifies the background to swap popup HTML, and toggles `[data-vch-beta]`.
+ *
+ * When `enabled` is false the content script keeps the legacy (CWS 0.6.x)
+ * experience; when true it loads the redesigned UI / PR #7–#8 features.
  *
  * @returns {Promise<RolloutResult>}
  */
@@ -317,11 +320,14 @@ export async function initRollout() {
 function applyRolloutResult(result) {
   try {
     document.documentElement.dataset.vchRollout = result.enabled ? "1" : "0";
+    document.documentElement.dataset.vchExperience = result.enabled
+      ? "modern"
+      : "legacy";
   } catch {
     // ignore
   }
 
-  // Beta channel: show elements marked data-vch-beta only when enabled
+  // Optional markup hooks: show elements marked data-vch-beta only when enabled
   try {
     document.querySelectorAll("[data-vch-beta]").forEach((el) => {
       if (result.enabled) {
@@ -350,6 +356,17 @@ async function syncRolloutStorage(result) {
     });
   } catch {
     // ignore quota / invalidated context
+  }
+
+  try {
+    await browser.runtime.sendMessage({
+      type: "VCH_ROLLOUT",
+      enabled: result.enabled,
+      reason: result.reason,
+      version: result.version,
+    });
+  } catch {
+    // background may be asleep / unavailable — storage listener is backup
   }
 }
 

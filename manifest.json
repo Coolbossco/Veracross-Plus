@@ -58,7 +58,7 @@
     }
   ],
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_popup": "src/popup/popup.legacy.html",
     "default_title": "Veracross Plus",
     "default_icon": {
       "16": "icons/16.png",

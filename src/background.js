@@ -7,6 +7,10 @@ const CHECKED_KEY = "vc_checked_assignments";
 const PORTAL_HOST_MATCH = "*://*.veracross.com/*";
 const MS_DAY = 24 * 60 * 60 * 1000;
 
+/** Popup HTML paths (relative to extension root / built like manifest action). */
+const POPUP_LEGACY = "src/popup/popup.legacy.html";
+const POPUP_MODERN = "src/popup/popup.html";
+
 browser.runtime.onMessage.addListener((message) => {
   if (message?.type === "VCH_FETCH") {
     return fetchRemote(message);
@@ -17,11 +21,15 @@ browser.runtime.onMessage.addListener((message) => {
       diagnose: true,
     });
   }
+  if (message?.type === "VCH_ROLLOUT") {
+    return syncActionPopup(message.enabled === true).then(() => ({ ok: true }));
+  }
   return undefined;
 });
 
 browser.runtime.onInstalled.addListener((details) => {
   syncAssessmentAlarm();
+  void syncActionPopup();
   if (details.reason === "update") {
     void markWhatsNewPending();
   }
@@ -44,15 +52,39 @@ async function markWhatsNewPending() {
 
 browser.runtime.onStartup.addListener(() => {
   syncAssessmentAlarm();
+  void syncActionPopup();
 });
 
 browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.rolloutEnabled) {
+    void syncActionPopup(changes.rolloutEnabled.newValue === true);
+  }
   if (area !== "sync" || !changes.enableAssessmentReminders) return;
   syncAssessmentAlarm();
   if (changes.enableAssessmentReminders.newValue) {
     checkAssessmentReminders();
   }
 });
+
+/**
+ * Swap toolbar popup between legacy (CWS) and modern (redesign) HTML.
+ * Default / unknown → legacy so non-beta users never see the redesign chrome.
+ * @param {boolean=} enabledOverride
+ */
+async function syncActionPopup(enabledOverride) {
+  try {
+    let enabled = enabledOverride;
+    if (typeof enabled !== "boolean") {
+      const stored = await browser.storage.local.get({ rolloutEnabled: false });
+      enabled = stored.rolloutEnabled === true;
+    }
+    await browser.action.setPopup({
+      popup: enabled ? POPUP_MODERN : POPUP_LEGACY,
+    });
+  } catch (error) {
+    console.debug("Could not sync action popup for rollout.", error);
+  }
+}
 
 browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ASSESSMENT_ALARM) {
@@ -358,8 +390,9 @@ async function focusOrOpenPortal() {
   }
 }
 
-// Ensure alarm state is correct whenever the worker wakes.
+// Ensure alarm + popup path are correct whenever the worker wakes.
 syncAssessmentAlarm();
+void syncActionPopup();
 
 // Service-worker console helper (sendMessage from this worker has no receiver).
 globalThis.vchCheckReminders = (opts) =>

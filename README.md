@@ -74,22 +74,25 @@ because it does not implement Firefox's `data_collection` permission field.
 
 ```text
 manifest.json                 Shared Chrome/Firefox Manifest V3 definition
-docs/staged-rollout.md        CWS + Worker staged rollout runbook
+docs/staged-rollout.md        CWS + Worker staged rollout runbook (dual UI)
 rollout-worker/               Cloudflare Worker (read-only GET + KV)
 src/content/content.js        Boot, observers, and feature flags
-src/content/rollout.js        Worker beta-channel client
+src/content/rollout.js        Worker client (allowlist / published)
+src/content/experience.js     Legacy vs modern CSS + module gate
 src/content/checklist.js      Homework / assessment checkboxes
 src/content/custom-assignments.js  Custom rows, chips, and modals
-src/content/homepage.js       Student home assignment widget
+src/content/homepage.js       Modern student home assignment widget
+src/content/homepage.legacy.js  Pre-redesign homepage widget
 src/content/lunch.js          Sage Dining fetch + week cache
 src/content/lunch-home.js     Draggable home lunch card
 src/content/lunch-timeline.js Planner date-header lunch chips
 src/content/theme.js          Theme apply + storage listener
 src/content/theme-boot.js     Early theme boot (document_start)
 src/content/storage.js        Sync storage defaults and helpers
-src/content/styles.css        Content-script styles
+src/content/styles.css        Modern (redesign) content styles
+src/content/styles.legacy.css Pre-redesign content styles
 src/themes/                   Curated theme packs + shared skin.css
-src/popup/                    Conventional toolbar popup settings UI
+src/popup/                    Modern + legacy toolbar popup HTML
 src/options.html              Short note pointing at the toolbar popup
 public/icons/                 Extension icons
 dist/                         Generated unpacked extension (not committed)

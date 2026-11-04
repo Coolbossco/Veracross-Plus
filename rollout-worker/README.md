@@ -85,6 +85,7 @@ curl -sS 'https://rollout.codegraph.cc/v1/rollout?version=0.7.0&user=someoneelse
 
 - It does **not** push different Chrome Web Store packages to named users.
 - Package exposure still uses CWS gradual % / Trusted Testers.
-- This Worker gates the extension’s **beta channel** (`dataset.vchRollout`,
-  popup Beta badge, `[data-vch-beta]` surfaces). For 0.7.0 the redesign UI
-  ships in the package; future flags should check `rollout.betaChannel`.
+- This Worker gates the extension’s **dual experience**: `enabled: false` →
+  CWS-equivalent legacy UI; `enabled: true` → redesigned UI + new features.
+  The client applies that via `dataset.vchRollout` / `storage.rolloutEnabled`
+  (see `docs/staged-rollout.md`).

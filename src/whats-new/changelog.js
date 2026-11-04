@@ -8,7 +8,7 @@ export const CHANGELOG = {
     "Redesigned settings popup and overlay chrome with Geist type and shared tokens",
     "Homepage homework grouped by calendar day under Past due and Upcoming",
     "Official Veracross Plus toolbar and store icons",
-    "Staged rollout channel for beta surfaces (allowlist before publish)",
+    "Staged rollout: non-beta keeps CWS UI; allowlist/published unlocks redesign",
   ],
   "0.6.0": [
     "Themes: Default, Soft Light, Lilac, Matcha, Dark, Ocean, Forest, Ember, Halloween, Galaxy, and Aurora",

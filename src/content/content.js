@@ -1,5 +1,4 @@
 import browser from "webextension-polyfill";
-import "./styles.css";
 import { applyChecklistToDocument } from "./checklist.js";
 import {
   addFloatingAssignmentButton,
@@ -8,7 +7,10 @@ import {
   isInstantUpdateInProgress,
   resetCustomAssignmentState,
 } from "./custom-assignments.js";
-import { applyHomepageWidget } from "./homepage.js";
+import {
+  applyExperienceStyles,
+  loadExperienceModules,
+} from "./experience.js";
 import { applyLunchHome } from "./lunch-home.js";
 import {
   applyLunchTimeline,
@@ -17,7 +19,14 @@ import {
 import { initRollout } from "./rollout.js";
 import { getStorage, isExtensionAlive, loadSettings } from "./storage.js";
 import { initTheme } from "./theme.js";
-import { initWhatsNew } from "./whats-new.js";
+
+// Safe default: legacy CWS UI until the Worker says otherwise (no modern flash).
+try {
+  document.documentElement.dataset.vchRollout = "0";
+  document.documentElement.dataset.vchExperience = "legacy";
+} catch {
+  // ignore
+}
 
 function fixClippingIssues() {
   const timelineCells = document.querySelectorAll(".timeline-cell");
@@ -227,10 +236,16 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 (async function init() {
   try {
-    // Staged beta channel: sets dataset.vchRollout + storage.rolloutEnabled.
-    // 0.7.0 ships the redesign UI to everyone who receives the package;
-    // Worker allowlist / published gates betaChannel and [data-vch-beta] surfaces.
-    await initRollout();
+    // Staged rollout: Worker allowlist / published → modern redesign + #7/#8.
+    // Otherwise keep CWS-equivalent legacy UI (styles, popup, homepage, tour).
+    // Paint legacy CSS immediately so a slow Worker never flashes modern chrome.
+    applyExperienceStyles(false);
+    const rollout = await initRollout();
+    const modern = rollout.enabled === true;
+    if (modern) applyExperienceStyles(true);
+    const { initWhatsNew, applyHomepageWidget } =
+      loadExperienceModules(modern);
+
     await initTheme();
     await initWhatsNew();
     const settings = await loadSettings();
