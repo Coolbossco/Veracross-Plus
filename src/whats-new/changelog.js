@@ -6,6 +6,7 @@
 export const CHANGELOG = {
   "0.7.1": [
     "Themes recolor the assignment timeline without moving its columns, class rail, or chips",
+    "The week bar above the assignment days uses the theme surface color",
     "Beta stays on through a failed allowlist check, and the toolbar popup matches the page",
   ],
   "0.7.0": [

@@ -756,6 +756,17 @@ html[data-vch-theme] .timeline .timeline-row.header.summary {
   -webkit-box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.75) !important;
 }
 
+/* Week bar (Today / Previous / Next) sits under the portal nav and above
+   the day columns. Recolor only — it is not part of the measured grid. */
+html[data-vch-theme] .timeline-controls,
+html[data-vch-theme] #planner .timeline-controls,
+html[data-vch-theme] .timeline-controls .navigate {
+  background-color: var(--vch-surface) !important;
+  background-image: none !important;
+  color: var(--vch-text) !important;
+  border-color: var(--vch-border) !important;
+}
+
 html[data-vch-theme] .timeline .timeline-header-y .title,
 html[data-vch-theme] #planner .timeline-controls a,
 html[data-vch-theme] .timeline-controls .navigate a,
