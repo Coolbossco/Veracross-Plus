@@ -67,6 +67,14 @@ html[data-vch-theme="matcha"] {
   color-scheme: light;
 }
 
+/* Assignment planner is a measured absolute grid (class rail, day columns,
+   chips). Dark color-scheme changes scrollbar gutters and shifts those panes.
+   Recolor only — keep the planner document on the native light scheme. */
+html[data-vch-theme]:has(#planner),
+html[data-vch-theme]:has(.timeline) {
+  color-scheme: light !important;
+}
+
 html[data-vch-theme]:not(:has(#login-form)):not(:has(.account-form-container)),
 html[data-vch-theme]:not(:has(#login-form)):not(:has(.account-form-container)) body,
 html[data-vch-theme] #page,
@@ -262,9 +270,9 @@ html[data-vch-theme] .vx-portal-list__portal-icon {
 
 html[data-vch-theme] .app-container,
 html[data-vch-theme] .app-container.full-width,
-html[data-vch-theme] .container .content,
-html[data-vch-theme] .content,
-html[data-vch-theme] .content-area,
+html[data-vch-theme] .container .content:not(#planner .content):not(.timeline .content),
+html[data-vch-theme] .content:not(#planner):not(.timeline):not(#planner .content):not(.timeline .content),
+html[data-vch-theme] .content-area:not(#planner .content-area):not(.timeline .content-area),
 html[data-vch-theme] .iframe-loading,
 html[data-vch-theme] body.chromeless .container {
   background-color: var(--vch-surface) !important;
@@ -418,7 +426,7 @@ html[data-vch-theme] .vx-tag.message-count {
 html[data-vch-theme] .app-container .vx-button,
 html[data-vch-theme] .vx-button,
 html[data-vch-theme] .vx-button-group .vx-button,
-html[data-vch-theme] .button {
+html[data-vch-theme] .button:not(#planner .button):not(.timeline .button) {
   background: var(--vch-surfaceAlt) !important;
   color: var(--vch-text) !important;
   border-color: transparent !important;
@@ -651,15 +659,16 @@ html[data-vch-theme] .update-link:hover .vx-list__item {
 }
 
 /* ---- Timeline / planner ----
-   Light mode steps: white grid, gray header, paler class column, cream today.
-   Keep those steps; don't flatten them to one navy. */
+   Veracross lays this out with absolute panes and floated/inline-block cells.
+   Themes may recolor only. Do not set display, position, float, overflow,
+   width, height, content, visibility, or border widths on the grid. */
 html[data-vch-theme] #planner,
 html[data-vch-theme] .timeline .timeline-table,
 html[data-vch-theme] .timeline .timeline-records,
 html[data-vch-theme] .timeline-records-inner,
 html[data-vch-theme] .timeline-table-wrapper,
 html[data-vch-theme] .timeline-records-wrapper {
-  background: var(--vch-bg) !important;
+  background-color: var(--vch-bg) !important;
   border-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
   color: var(--vch-text) !important;
 }
@@ -668,14 +677,14 @@ html[data-vch-theme] .timeline .timeline-header-x,
 html[data-vch-theme] .timeline .timeline-header-intersect,
 html[data-vch-theme] .timeline .timeline-header-y,
 html[data-vch-theme] .timeline .timeline-row.header {
-  background: var(--vch-surfaceAlt) !important;
+  background-color: var(--vch-surfaceAlt) !important;
   border-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
   color: var(--vch-text) !important;
 }
 
 html[data-vch-theme] .timeline .timeline-row.header.summary,
 html[data-vch-theme] .timeline .timeline-row.header.summary .timeline-cell {
-  background: var(--vch-surface) !important;
+  background-color: var(--vch-surface) !important;
 }
 
 html[data-vch-theme] .timeline .timeline-row,
@@ -690,10 +699,11 @@ html[data-vch-theme] .timeline-cell.divider {
   border-right-color: color-mix(in srgb, var(--vch-text) 45%, var(--vch-bg)) !important;
 }
 
-/* Class column: stock draws a border on the pane and again on the cell. Keep one. */
+/* Class column: stock draws a border on the pane and again on the cell.
+   Recolor only — clearing border-width collapses the rail. */
 html[data-vch-theme] .timeline .timeline-header-y {
-  border-right: 1px solid color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
-  outline: none !important;
+  border-right-color: color-mix(in srgb, var(--vch-text) 26%, var(--vch-bg)) !important;
+  outline-color: transparent !important;
 }
 
 html[data-vch-theme] .timeline .timeline-header-y-inner,
@@ -702,8 +712,8 @@ html[data-vch-theme] .timeline .timeline-header-y .timeline-cell,
 html[data-vch-theme] .timeline .timeline-header-y .timeline-row,
 html[data-vch-theme] .timeline .timeline-header-intersect .timeline-cell,
 html[data-vch-theme] .timeline .timeline-header-intersect .timeline-row {
-  border-right: 0 !important;
-  outline: none !important;
+  border-right-color: transparent !important;
+  outline-color: transparent !important;
 }
 
 html[data-vch-theme] .timeline .timeline-row.header h4 {
@@ -717,33 +727,13 @@ html[data-vch-theme] .timeline .timeline-row.header.summary {
 html[data-vch-theme] .timeline .timeline-row.header.summary .count,
 html[data-vch-theme] #planner.timeline .timeline-row.header .count,
 html[data-vch-theme] .timeline-row.header .count {
-  background: var(--vch-surfaceAlt) !important;
+  background-color: var(--vch-surfaceAlt) !important;
   color: var(--vch-text) !important;
   border-color: transparent !important;
 }
 
-/* Stock sticky-header fade reads as a white glow on dark — use a dark edge or none */
-html[data-vch-theme] #planner,
-html[data-vch-theme] .timeline,
-html[data-vch-theme] .timeline .timeline-header-x,
-html[data-vch-theme] .timeline .timeline-header-x-inner,
-html[data-vch-theme] .timeline .timeline-header-y,
-html[data-vch-theme] .timeline .timeline-header-y-inner,
-html[data-vch-theme] .timeline .timeline-header-intersect,
-html[data-vch-theme] .timeline .timeline-records,
-html[data-vch-theme] .timeline-records-inner,
-html[data-vch-theme] .timeline-records-wrapper,
-html[data-vch-theme] .timeline-table-wrapper,
-html[data-vch-theme] .timeline .timeline-row.header,
-html[data-vch-theme] .timeline .timeline-row.header.summary,
-html[data-vch-theme] .timeline .timeline-row.header.summary .timeline-cell {
-  background-image: none !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
-  filter: none !important;
-  text-shadow: none !important;
-}
-
+/* Sticky-header fades are gradient backgrounds on pseudos. Those pseudos also
+   clear floats — never set content or display here. */
 html[data-vch-theme] .timeline .timeline-header-x::before,
 html[data-vch-theme] .timeline .timeline-header-x::after,
 html[data-vch-theme] .timeline .timeline-header-y::before,
@@ -754,9 +744,7 @@ html[data-vch-theme] .timeline-records-inner::before,
 html[data-vch-theme] .timeline-records-inner::after,
 html[data-vch-theme] .timeline .timeline-row.header.summary::before,
 html[data-vch-theme] .timeline .timeline-row.header.summary::after {
-  content: none !important;
-  display: none !important;
-  background: none !important;
+  background-color: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
   -webkit-box-shadow: none !important;
@@ -799,15 +787,13 @@ html[data-vch-theme] td.today,
 html[data-vch-theme] th.today,
 html[data-vch-theme] .timeline-row.today,
 html[data-vch-theme] .vch-custom-timeline-row.today {
-  background: var(--vch-today) !important;
-  background-image: none !important;
+  background-color: var(--vch-today) !important;
   color: var(--vch-text) !important;
-  box-shadow: none !important;
 }
 
 html[data-vch-theme] .timeline-cell.today::before,
 html[data-vch-theme] .vch-custom-timeline-row .timeline-cell.today::before {
-  background: var(--vch-today) !important;
+  background-color: var(--vch-today) !important;
 }
 
 /* Assignment chips — dark drop shadow (stock light-mode glow), no white halo */
@@ -824,16 +810,12 @@ html[data-vch-theme] .timeline-cell.today .assignment,
 html[data-vch-theme] .vch-custom-timeline-row .timeline-cell.today .assignment,
 html[data-vch-theme] .assignment.vch-decorated,
 html[data-vch-theme] .vch-custom-assignment.assignment {
-  background: color-mix(in srgb, var(--vch-text) 9%, var(--vch-surfaceAlt)) !important;
-  border: 0 !important;
-  border-radius: 4px !important;
+  background-color: color-mix(in srgb, var(--vch-text) 9%, var(--vch-surfaceAlt)) !important;
+  border-color: color-mix(in srgb, var(--vch-text) 22%, var(--vch-border)) !important;
   color: var(--vch-text) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55) !important;
   -webkit-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55) !important;
   text-shadow: none !important;
-  filter: none !important;
-  outline: none !important;
-  overflow: hidden !important;
 }
 
 html[data-vch-theme] #planner .assignment .assignment-type,
@@ -844,36 +826,26 @@ html[data-vch-theme] .assignment .assignment-type {
   color: var(--vch-text) !important;
 }
 
-/* Kill white inset/halo leftovers on chip children (keep chip's own dark shadow) */
-html[data-vch-theme] .timeline-cell .assignment *,
-html[data-vch-theme] .timeline-cell .assignment::before,
-html[data-vch-theme] .timeline-cell .assignment::after,
-html[data-vch-theme] #planner .assignment *,
-html[data-vch-theme] #planner .assignment::before,
-html[data-vch-theme] #planner .assignment::after,
-html[data-vch-theme] .timeline-row.header.summary,
-html[data-vch-theme] .timeline-row.header.summary .timeline-cell,
-html[data-vch-theme] .timeline-row.header.summary .count {
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
+/* Halo on chip text only. Do not restyle the grid row or clear filters. */
+html[data-vch-theme] .timeline-cell .assignment :is(span, a, p, div, strong, em),
+html[data-vch-theme] #planner .assignment :is(span, a, p, div, strong, em) {
   text-shadow: none !important;
-  filter: none !important;
 }
 
 html[data-vch-theme] #planner .assignment .assignment-description,
 html[data-vch-theme] .assignment .assignment-description,
 html[data-vch-theme] #planner .upcoming li .assignment-description,
 html[data-vch-theme] .assignment-list .assignment-description {
-  background: transparent !important;
+  background-color: transparent !important;
   text-shadow: none !important;
   color: var(--vch-textMuted) !important;
 }
 
 html[data-vch-theme] #planner .assignment .badge.due,
 html[data-vch-theme] .assignment .badge.due,
-html[data-vch-theme] .badge.due {
-  background: color-mix(in srgb, var(--vch-accent) 22%, transparent) !important;
-  border: 0 !important;
+html[data-vch-theme] .timeline .badge.due {
+  background-color: color-mix(in srgb, var(--vch-accent) 22%, transparent) !important;
+  border-color: transparent !important;
   box-shadow: none !important;
   text-shadow: none !important;
   color: var(--vch-link) !important;
@@ -960,14 +932,6 @@ html[data-vch-theme] .vch-done input.vch-checkbox::after {
   background: none !important;
   box-shadow: none !important;
   transform: translate(-50%, -65%) rotate(-45deg) !important;
-}
-
-html[data-vch-theme] #planner .timeline-cell .assignment,
-html[data-vch-theme] #planner .timeline-cell.scrollable .assignment,
-html[data-vch-theme] .timeline-cell .assignment,
-html[data-vch-theme] .assignment.vch-decorated {
-  filter: none !important;
-  outline: none !important;
 }
 
 /* ---- Forms / modals / calendar chrome ---- */
@@ -1091,21 +1055,22 @@ html[data-vch-theme] .control-calendar .fc-unthemed .fc-day.fc-today {
   background: var(--vch-today) !important;
 }
 
-/* Inline leftovers (cover common white banner flashes while popups mount) */
-html[data-vch-theme] [style*="background-color: white"],
-html[data-vch-theme] [style*="background-color:#fff" i],
-html[data-vch-theme] [style*="background-color: #fff" i],
-html[data-vch-theme] [style*="background-color:#ffffff" i],
-html[data-vch-theme] [style*="background-color: #ffffff" i],
-html[data-vch-theme] [style*="background-color:rgb(255"],
-html[data-vch-theme] [style*="background-color: rgb(255"],
-html[data-vch-theme] [style*="background-color:rgb(255,255,255"],
-html[data-vch-theme] [style*="background-color: rgb(255, 255, 255"],
-html[data-vch-theme] [style*="background: white"],
-html[data-vch-theme] [style*="background:#fff" i],
-html[data-vch-theme] [style*="background: #fff" i],
-html[data-vch-theme] [style*="background:#ffffff" i],
-html[data-vch-theme] [style*="background: #ffffff" i] {
+/* Inline leftovers (cover common white banner flashes while popups mount).
+   Not the planner grid — `background` shorthand wipes the images it uses to draw columns. */
+html[data-vch-theme] [style*="background-color: white"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color:#fff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color: #fff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color:#ffffff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color: #ffffff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color:rgb(255"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color: rgb(255"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color:rgb(255,255,255"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background-color: rgb(255, 255, 255"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background: white"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background:#fff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background: #fff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background:#ffffff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="background: #ffffff" i]:not(#planner):not(#planner *):not(.timeline):not(.timeline *) {
   background-color: var(--vch-surfaceAlt) !important;
   background: var(--vch-surfaceAlt) !important;
   color: var(--vch-text) !important;
@@ -1125,25 +1090,19 @@ html[data-vch-theme] :not(.event-link):not(.fc-event)[style*="color: #444" i] {
   color: var(--vch-text) !important;
 }
 
-html[data-vch-theme] [style*="FFF1DD"],
-html[data-vch-theme] [style*="fff1dd"],
-html[data-vch-theme] [style*="fffee0"],
-html[data-vch-theme] [style*="FFFEE0"] {
+html[data-vch-theme] [style*="FFF1DD"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="fff1dd"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="fffee0"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *),
+html[data-vch-theme] [style*="FFFEE0"]:not(#planner):not(#planner *):not(.timeline):not(.timeline *) {
   background-color: var(--vch-today) !important;
-  background: var(--vch-today) !important;
   color: var(--vch-text) !important;
 }
 
+/* Do not set color-scheme on the iframe element. That forces the embedded
+   planner into dark-scheme scrollbar metrics and pulls the class rail off the columns. */
 html[data-vch-theme] iframe.old-portals-iframe,
 html[data-vch-theme] iframe {
   background-color: var(--vch-bg) !important;
-  color-scheme: dark;
-}
-
-html[data-vch-theme="soft-light"] iframe,
-html[data-vch-theme="lilac"] iframe,
-html[data-vch-theme="matcha"] iframe {
-  color-scheme: light;
 }
 
 /* ---- Plus UI ---- */
@@ -1480,7 +1439,7 @@ html:is(
     label,
     button,
     i
-  ) {
+  ):not(#planner):not(#planner *):not(.timeline):not(.timeline *) {
   color: #111111 !important;
   -webkit-text-fill-color: #111111 !important;
   text-shadow: none !important;
