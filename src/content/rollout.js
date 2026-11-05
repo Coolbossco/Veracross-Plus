@@ -1,44 +1,80 @@
 import browser from "webextension-polyfill";
+import { decideRollout } from "./rollout-decision.js";
+import { writeRolloutThemeCache } from "./rollout-cache.js";
 import { isExtensionAlive } from "./storage.js";
 
 /** Configurable Worker origin (must match manifest host_permissions). */
 export const ROLLOUT_ENDPOINT = "https://rollout.codegraph.cc/v1/rollout";
 
-const SESSION_USER_KEY = "vch_rollout_user";
 const SESSION_RESULT_KEY = "vch_rollout_result";
 const STORAGE_ENABLED_KEY = "rolloutEnabled";
 const STORAGE_REASON_KEY = "rolloutReason";
 const STORAGE_VERSION_KEY = "rolloutVersion";
+const STORAGE_CONFIRMED_KEY = "rolloutConfirmed";
+const STORAGE_USER_KEY = "rolloutUser";
+const FETCH_TIMEOUT_MS = 8000;
+const SESSION_TTL_MS = 60_000;
+
+let rolloutGeneration = 0;
 
 /**
  * Resolve Veracross portal email local-part with several DOM / page fallbacks.
- * Cached in sessionStorage for the tab session.
+ * Not cached: a wrong first mailto used to stick for the whole tab and the
+ * Worker answered not_allowlisted.
+ * Prefer structured fields over the first mailto on the page.
  * @returns {string} lowercase local-part, or "" if unknown
  */
 export function resolveVeracrossLocalPart() {
-  try {
-    const cached = sessionStorage.getItem(SESSION_USER_KEY);
-    if (cached != null && cached !== "") return cached;
-  } catch {
-    // sessionStorage may be blocked in some embed frames
-  }
-
-  const resolved =
-    fromMailtoLinks() ||
+  return (
     fromDataAttributes() ||
-    fromProfileMenuText() ||
     fromPageJson() ||
+    fromProfileMenuText() ||
+    fromMailtoLinks() ||
     fromUrlHints() ||
-    "";
+    ""
+  );
+}
 
-  if (resolved) {
-    try {
-      sessionStorage.setItem(SESSION_USER_KEY, resolved);
-    } catch {
-      // ignore
-    }
+/**
+ * Re-check once the header/profile markup arrives. Calls `onUser` at most once.
+ * @param {(user: string) => void} onUser
+ * @returns {() => void}
+ */
+export function watchForRolloutUser(onUser) {
+  if (resolveVeracrossLocalPart()) return () => {};
+
+  let stopped = false;
+  /** @type {MutationObserver} */
+  let observer;
+  /** @type {ReturnType<typeof setTimeout>} */
+  let timer;
+
+  const stop = () => {
+    stopped = true;
+    observer?.disconnect();
+    clearTimeout(timer);
+  };
+
+  observer = new MutationObserver(() => {
+    if (stopped) return;
+    const found = resolveVeracrossLocalPart();
+    if (!found) return;
+    stop();
+    onUser(found);
+  });
+
+  try {
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  } catch {
+    return stop;
   }
-  return resolved;
+
+  timer = setTimeout(stop, 12_000);
+  return stop;
 }
 
 /**
@@ -213,105 +249,213 @@ function fromUrlHints() {
 }
 
 /**
- * @typedef {{ enabled: boolean, version: string, published: boolean, reason: string }} RolloutResult
+ * @typedef {{ enabled: boolean, version: string, published: boolean, reason: string, superseded?: boolean }} RolloutResult
  */
 
 /**
- * Fetch rollout status for the installed extension version + resolved user.
- * Sets `document.documentElement.dataset.vchRollout`, syncs storage,
- * notifies the background to swap popup HTML, and toggles `[data-vch-beta]`.
- *
- * When `enabled` is false the content script keeps the legacy (CWS 0.6.x)
- * experience; when true it loads the redesigned UI / PR #7–#8 features.
- *
- * @returns {Promise<RolloutResult>}
+ * @returns {Promise<{ enabled: boolean, version: string, user: string, confirmed: boolean, reason: string }>}
  */
-export async function initRollout() {
-  const version = browser.runtime.getManifest()?.version || "";
-  const user = resolveVeracrossLocalPart();
-
-  /** @type {RolloutResult} */
-  let result = {
+async function readStoredRollout() {
+  const empty = {
     enabled: false,
-    version,
-    published: false,
-    reason: "pending",
+    version: "",
+    user: "",
+    confirmed: false,
+    reason: "",
   };
-
-  // Short-lived session cache to avoid hammering the Worker on SPA navigations
+  if (!isExtensionAlive()) return empty;
   try {
-    const cachedRaw = sessionStorage.getItem(SESSION_RESULT_KEY);
-    if (cachedRaw) {
-      const cached = JSON.parse(cachedRaw);
-      if (
-        cached &&
-        cached.version === version &&
-        cached.user === user &&
-        typeof cached.enabled === "boolean" &&
-        Date.now() - (cached.fetchedAt || 0) < 60_000
-      ) {
-        result = {
-          enabled: cached.enabled,
-          version: cached.version,
-          published: !!cached.published,
-          reason: cached.reason || "cached",
-        };
-        applyRolloutResult(result);
-        return result;
-      }
-    }
-  } catch {
-    // ignore cache errors
-  }
-
-  if (!version) {
-    result.reason = "missing_version";
-    applyRolloutResult(result);
-    return result;
-  }
-
-  try {
-    const url = new URL(ROLLOUT_ENDPOINT);
-    url.searchParams.set("version", version);
-    if (user) url.searchParams.set("user", user);
-
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      credentials: "omit",
-      cache: "no-cache",
+    const stored = await browser.storage.local.get({
+      [STORAGE_ENABLED_KEY]: false,
+      [STORAGE_REASON_KEY]: "",
+      [STORAGE_VERSION_KEY]: "",
+      [STORAGE_CONFIRMED_KEY]: false,
+      [STORAGE_USER_KEY]: "",
     });
+    return {
+      enabled: stored[STORAGE_ENABLED_KEY] === true,
+      reason:
+        typeof stored[STORAGE_REASON_KEY] === "string"
+          ? stored[STORAGE_REASON_KEY]
+          : "",
+      version:
+        typeof stored[STORAGE_VERSION_KEY] === "string"
+          ? stored[STORAGE_VERSION_KEY]
+          : "",
+      confirmed: stored[STORAGE_CONFIRMED_KEY] === true,
+      user:
+        typeof stored[STORAGE_USER_KEY] === "string"
+          ? stored[STORAGE_USER_KEY]
+          : "",
+    };
+  } catch {
+    return empty;
+  }
+}
 
-    if (response.ok) {
-      const data = await response.json();
-      result = {
-        enabled: data?.enabled === true,
-        version: typeof data?.version === "string" ? data.version : version,
-        published: data?.published === true,
-        reason: typeof data?.reason === "string" ? data.reason : "ok",
-      };
-    } else {
-      result.reason = `http_${response.status}`;
+/**
+ * @param {string} version
+ * @param {string} user
+ */
+function readAuthoritativeSession(version, user) {
+  try {
+    const raw = sessionStorage.getItem(SESSION_RESULT_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (
+      cached &&
+      cached.authoritative === true &&
+      cached.version === version &&
+      cached.user === user &&
+      typeof cached.enabled === "boolean" &&
+      Date.now() - (cached.fetchedAt || 0) < SESSION_TTL_MS
+    ) {
+      return cached;
     }
   } catch {
-    result.reason = "fetch_failed";
+    // ignore
   }
+  return null;
+}
 
+/**
+ * @param {{ enabled: boolean, reason: string, authoritative: boolean }} decision
+ * @param {string} version
+ * @param {string} user
+ */
+function writeAuthoritativeSession(decision, version, user) {
+  if (!decision.authoritative || !user) return;
   try {
     sessionStorage.setItem(
       SESSION_RESULT_KEY,
       JSON.stringify({
-        ...result,
+        enabled: decision.enabled === true,
+        version,
         user,
+        reason: decision.reason,
+        authoritative: true,
         fetchedAt: Date.now(),
       }),
     );
   } catch {
     // ignore
   }
+}
 
-  applyRolloutResult(result);
-  await syncRolloutStorage(result);
-  return result;
+/**
+ * @param {string} version
+ * @param {string} user
+ * @returns {Promise<import("./rollout-decision.js").RolloutOutcome>}
+ */
+async function fetchRollout(version, user) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const url = new URL(ROLLOUT_ENDPOINT);
+    url.searchParams.set("version", version);
+    url.searchParams.set("user", user);
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      credentials: "omit",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return { type: "http", reason: `http_${response.status}` };
+    }
+    const data = await response.json();
+    return {
+      type: "body",
+      enabled: data?.enabled === true,
+      reason: typeof data?.reason === "string" ? data.reason : "ok",
+    };
+  } catch (error) {
+    const reason = error?.name === "AbortError" ? "timeout" : "fetch_failed";
+    return { type: "transport", reason };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Fetch rollout status for the installed extension version + resolved user.
+ * One decision is written to storage (toolbar popup) and the document
+ * (theme / experience) together.
+ *
+ * A prior enabled=true is kept across timeouts, HTTP errors, missing config,
+ * and a missed username lookup. Explicit not_allowlisted / unpublished for
+ * the granted user still turns beta off.
+ *
+ * @returns {Promise<RolloutResult>}
+ */
+export async function initRollout() {
+  const generation = ++rolloutGeneration;
+  const version = browser.runtime.getManifest()?.version || "";
+  const stored = await readStoredRollout();
+  const fresh = resolveVeracrossLocalPart();
+
+  let user = fresh;
+  if (stored.user && fresh && fresh !== stored.user) {
+    // Ask about the identity we already granted, not a stray mailto.
+    user = stored.user;
+    console.debug("[veracross-plus] rollout lookup_mismatch");
+  } else if (!user && stored.user) {
+    user = stored.user;
+    console.debug("[veracross-plus] rollout stored_user");
+  }
+
+  const cached = version && user ? readAuthoritativeSession(version, user) : null;
+
+  // Paint popup + document from the grant before the network so a slow or
+  // failed check cannot leave the themed page on the legacy toolbar popup.
+  if (stored.enabled === true && !(cached && cached.enabled === false)) {
+    await commitRollout(
+      {
+        enabled: true,
+        reason: stored.reason || "sticky",
+        authoritative: false,
+        rememberUser: stored.user || "",
+      },
+      version,
+    );
+  }
+
+  /** @type {import("./rollout-decision.js").RolloutOutcome} */
+  let outcome;
+  if (!version) {
+    outcome = { type: "transport", reason: "missing_version" };
+  } else if (!user) {
+    outcome = { type: "missing_user", reason: "missing_user" };
+  } else if (cached) {
+    outcome = {
+      type: "body",
+      enabled: cached.enabled === true,
+      reason: typeof cached.reason === "string" ? cached.reason : "cached",
+    };
+  } else {
+    outcome = await fetchRollout(version, user);
+  }
+
+  const decision = decideRollout({ user, stored, outcome });
+  if (generation !== rolloutGeneration) {
+    return {
+      enabled: decision.enabled,
+      version,
+      published: false,
+      reason: decision.reason,
+      superseded: true,
+    };
+  }
+
+  writeAuthoritativeSession(decision, version, user || decision.rememberUser);
+  const applied = await commitRollout(decision, version);
+  return {
+    enabled: applied.enabled,
+    version,
+    published: false,
+    reason: applied.reason,
+    superseded: false,
+  };
 }
 
 /**
@@ -344,16 +488,58 @@ function applyRolloutResult(result) {
 }
 
 /**
- * @param {RolloutResult} result
+ * Write the same bit the popup and the page both read, then tell the
+ * service worker to setPopup even when the stored value did not change
+ * (no storage event, so a legacy default popup would otherwise stick).
+ * @param {{ enabled: boolean, reason: string, authoritative: boolean, rememberUser: string }} decision
+ * @param {string} version
+ * @returns {Promise<{ enabled: boolean, reason: string }>}
  */
-async function syncRolloutStorage(result) {
-  if (!isExtensionAlive()) return;
+async function commitRollout(decision, version) {
+  let enabled = decision.enabled === true;
+  let reason = decision.reason || "";
+  let rememberUser = decision.rememberUser || "";
+
+  // A frame that never saw the username must not overwrite another frame's grant.
+  if (!enabled && decision.authoritative !== true) {
+    const latest = await readStoredRollout();
+    if (latest.enabled === true) {
+      enabled = true;
+      reason = latest.reason || "sticky";
+      rememberUser = latest.user || rememberUser;
+      console.debug("[veracross-plus] rollout kept grant");
+    }
+  }
+
+  applyRolloutResult({
+    enabled,
+    version,
+    published: false,
+    reason,
+  });
+  writeRolloutThemeCache({ rolloutEnabled: enabled });
+
+  console.debug(
+    `[veracross-plus] rollout ${enabled ? "enabled" : "legacy"} (${reason})`,
+  );
+
+  if (!isExtensionAlive()) return { enabled, reason };
+
+  /** @type {Record<string, unknown>} */
+  const payload = {
+    [STORAGE_ENABLED_KEY]: enabled,
+    [STORAGE_REASON_KEY]: reason,
+    [STORAGE_VERSION_KEY]: version,
+  };
+  if (decision.authoritative && enabled === (decision.enabled === true)) {
+    payload[STORAGE_CONFIRMED_KEY] = enabled;
+  }
+  if (rememberUser) {
+    payload[STORAGE_USER_KEY] = rememberUser;
+  }
+
   try {
-    await browser.storage.local.set({
-      [STORAGE_ENABLED_KEY]: result.enabled,
-      [STORAGE_REASON_KEY]: result.reason,
-      [STORAGE_VERSION_KEY]: result.version,
-    });
+    await browser.storage.local.set(payload);
   } catch {
     // ignore quota / invalidated context
   }
@@ -361,13 +547,15 @@ async function syncRolloutStorage(result) {
   try {
     await browser.runtime.sendMessage({
       type: "VCH_ROLLOUT",
-      enabled: result.enabled,
-      reason: result.reason,
-      version: result.version,
+      enabled,
+      reason,
+      version,
     });
   } catch {
-    // background may be asleep / unavailable — storage listener is backup
+    // background may be asleep — storage listener is the backup when the bit changes
   }
+
+  return { enabled, reason };
 }
 
 /**

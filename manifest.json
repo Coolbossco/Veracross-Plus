@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Veracross Plus",
   "description": "Enhanced Veracross with homework checkboxes on timeline and daily schedule, grade estimator, and custom assignments",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "browser_specific_settings": {
     "gecko": {
       "id": "veracross-plus@codegraph.cc",
