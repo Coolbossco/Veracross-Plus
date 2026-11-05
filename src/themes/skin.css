@@ -756,15 +756,34 @@ html[data-vch-theme] .timeline .timeline-row.header.summary {
   -webkit-box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.75) !important;
 }
 
-/* Week bar (Today / Previous / Next) sits under the portal nav and above
-   the day columns. Recolor only — it is not part of the measured grid. */
-html[data-vch-theme] .timeline-controls,
-html[data-vch-theme] #planner .timeline-controls,
-html[data-vch-theme] .timeline-controls .navigate {
+/* Week bar (Today / Previous / Next) sits under the portal tabs and above
+   the day columns. `.timeline-controls` is not that node. `.vch-week-bar` is
+   the full-width box around those links. Recolor only. */
+html[data-vch-theme] .vch-week-bar,
+html[data-vch-theme] .pager,
+html[data-vch-theme] .planner-nav,
+html[data-vch-theme] .planner-navigation,
+html[data-vch-theme] .assignment-planner-navigation,
+html[data-vch-theme] .assignment-navigation,
+html[data-vch-theme] .timeline-navigation,
+html[data-vch-theme] .timeline-nav,
+html[data-vch-theme] .date-navigation,
+html[data-vch-theme] .week-navigation,
+html[data-vch-theme] #planner > .navigation,
+html[data-vch-theme] .timeline > .navigation {
   background-color: var(--vch-surface) !important;
   background-image: none !important;
   color: var(--vch-text) !important;
   border-color: var(--vch-border) !important;
+}
+
+html[data-vch-theme] .vch-week-bar a,
+html[data-vch-theme] .pager a,
+html[data-vch-theme] .planner-nav a,
+html[data-vch-theme] .planner-navigation a,
+html[data-vch-theme] .timeline-navigation a,
+html[data-vch-theme] #planner > .navigation a {
+  color: var(--vch-link) !important;
 }
 
 html[data-vch-theme] .timeline .timeline-header-y .title,

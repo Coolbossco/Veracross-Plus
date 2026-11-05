@@ -3,6 +3,8 @@
  * Only runs when a theme is active.
  */
 
+import { clearWeekBar, paintWeekBar } from "./week-bar.js";
+
 const SKIP_TAGS = new Set([
   "IMG",
   "SVG",
@@ -286,9 +288,11 @@ export function scheduleThemeHarden(delayMs = 16) {
   hardenTimer = setTimeout(() => {
     if (!isThemed()) {
       clearHardenedStyles();
+      clearWeekBar();
       return;
     }
     hardenThemeContrast(document);
+    paintWeekBar(document);
   }, delayMs);
 }
 
@@ -337,4 +341,5 @@ export function unbindThemeHarden() {
   hardenObserver?.disconnect();
   hardenObserver = null;
   clearHardenedStyles();
+  clearWeekBar();
 }
